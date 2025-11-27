@@ -214,4 +214,179 @@
         
         // --- 聲調練習區 (新增在這裡) ---
         ['ˉ', 'purple', '一聲 (平平的)', '➖'],
-        ['ˊ', 'purple', '二聲
+        ['ˊ', 'purple', '二聲 (往上飛)', '✈️'],
+        ['ˇ', 'purple', '三聲 (打勾勾)', '✅'],
+        ['ˋ', 'purple', '四聲 (溜滑梯)', '↘️'],
+        ['˙', 'purple', '輕聲 (點一下)', '•']
+    ];
+
+    // --- 系統變數 ---
+    let currentLevelIndex = 0;
+    let synth = window.speechSynthesis;
+    let canvas = document.getElementById('drawCanvas');
+    let ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+
+    // --- 1. 初始化選單 ---
+    function initMenu() {
+        const grid = document.getElementById('level-grid');
+        grid.innerHTML = '';
+        
+        bpmData.forEach((item, index) => {
+            const btn = document.createElement('button');
+            btn.className = `level-btn bg-${item[1]}`;
+            
+            // 處理輕聲顯示位置，讓它看起來置中一點
+            if(item[0] === '˙') {
+                 btn.innerHTML = '<span style="position:relative; top:-5px;">˙</span>';
+            } else {
+                 btn.innerText = item[0];
+            }
+
+            btn.onclick = () => startGame(index);
+            grid.appendChild(btn);
+        });
+    }
+
+    // --- 2. 遊戲流程控制 ---
+    function startGame(index) {
+        currentLevelIndex = index;
+        const data = bpmData[index];
+        
+        document.getElementById('menu-view').classList.remove('active');
+        document.getElementById('game-view').classList.add('active');
+        
+        // 更新遊戲內容
+        document.getElementById('current-title').innerText = `練習：${data[0]}`;
+        document.getElementById('watermark').innerText = data[0];
+        document.getElementById('reward-icon').innerText = data[3];
+        
+        // 判斷顯示文字
+        let rewardText = "";
+        let speakText = "";
+        
+        // 如果是聲調 (紫色)，語音邏輯稍微不同
+        if (data[1] === 'purple') {
+            rewardText = `${data[0]} - ${data[2]}`;
+            // 為了讓語音好聽一點，去掉括號裡的字只唸前半段
+            let simpleName = data[2].split(' ')[0]; 
+            speakText = `${simpleName}，${simpleName}的${data[0]}`;
+        } else {
+            rewardText = `${data[0]} - ${data[2]}`;
+            speakText = `${data[0]}，${data[2]}的${data[0]}`;
+        }
+
+        document.getElementById('reward-text').innerText = rewardText;
+        
+        // 重置畫布
+        setTimeout(resizeCanvas, 100);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('modal').style.display = 'none';
+
+        speak(speakText);
+    }
+
+    function goBackToMenu() {
+        document.getElementById('game-view').classList.remove('active');
+        document.getElementById('menu-view').classList.add('active');
+        document.getElementById('modal').style.display = 'none';
+        
+        const grid = document.getElementById('level-grid');
+        if(grid.children[currentLevelIndex]) {
+            grid.children[currentLevelIndex].classList.add('cleared');
+        }
+    }
+
+    // --- 3. 繪圖邏輯 ---
+    function resizeCanvas() {
+        const wrapper = document.getElementById('canvas-wrapper');
+        const rect = wrapper.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        
+        // 聲調用紫色筆，其他用藍色筆
+        const data = bpmData[currentLevelIndex];
+        ctx.strokeStyle = (data[1] === 'purple') ? '#8e44ad' : '#2a75bb'; 
+        
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 15; 
+    }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX; clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX; clientY = e.clientY;
+        }
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function startDrawing(e) {
+        e.preventDefault(); isDrawing = true;
+        const pos = getPos(e);
+        lastX = pos.x; lastY = pos.y;
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = ctx.strokeStyle; ctx.fill(); ctx.beginPath();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const pos = getPos(e);
+        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+        lastX = pos.x; lastY = pos.y;
+    }
+
+    function stopDrawing() { isDrawing = false; ctx.beginPath(); }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    canvas.addEventListener('touchstart', startDrawing, {passive: false});
+    canvas.addEventListener('touchmove', draw, {passive: false});
+    canvas.addEventListener('touchend', stopDrawing);
+
+    // --- 4. 按鈕事件 ---
+    document.getElementById('back-btn').addEventListener('click', goBackToMenu);
+    
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        speak("加油，再試一次");
+    });
+
+    document.getElementById('catch-btn').addEventListener('click', () => {
+        const data = bpmData[currentLevelIndex];
+        document.getElementById('modal').style.display = 'flex';
+        
+        // 聲調的獎勵語音
+        if (data[1] === 'purple') {
+            let simpleName = data[2].split(' ')[0];
+            speak(`好厲害！學會了${simpleName}！`);
+        } else {
+            speak(`太棒了！收服${data[2]}！`);
+        }
+    });
+
+    // --- 5. 語音與啟動 ---
+    function speak(text) {
+        if (!synth) return;
+        synth.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW'; utterance.rate = 1; utterance.pitch = 1.2;
+        synth.speak(utterance);
+    }
+
+    window.onload = function() {
+        initMenu();
+        window.addEventListener('resize', resizeCanvas);
+    };
+
+</script>
+</body>
+</html>
