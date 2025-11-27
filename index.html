@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢ㄅㄆㄇ大冒險 V4 (含聲調)</title>
+    <title>寶可夢全能大冒險 V7 (錯誤彈窗)</title>
     <style>
         /* --- 基礎設定 --- */
         body {
@@ -14,114 +14,92 @@
             height: 100vh; width: 100vw;
         }
 
-        /* --- 畫面切換控制 --- */
+        /* --- 畫面切換 --- */
         .view {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
-            display: none; /* 預設隱藏 */
-            flex-direction: column;
+            display: none; flex-direction: column;
         }
         .view.active { display: flex; }
 
-        /* --- 1. 選單頁面 (Map) --- */
+        /* --- 選單頁面 --- */
         #menu-view {
-            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
-            overflow-y: auto; /* 允許垂直捲動 */
-            -webkit-overflow-scrolling: touch;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 50%, #FFE0B2 100%);
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
 
         .map-header {
-            padding: 20px;
-            text-align: center;
+            padding: 20px; text-align: center;
             background: rgba(255,255,255,0.95);
             position: sticky; top: 0; z-index: 10;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; align-items: center;
         }
-        
-        .map-title {
-            color: #2a75bb; margin: 0; font-size: 1.5rem;
-        }
+        .map-title { color: #2a75bb; margin: 0; font-size: 1.5rem; }
+        .map-subtitle { font-size: 0.9rem; color: #666; margin-top: 5px; background: #eee; padding: 2px 10px; border-radius: 10px; }
 
         .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 一排 4 個 */
-            gap: 15px;
-            padding: 20px;
-            padding-bottom: 80px; /* 底部留白多一點 */
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 15px; padding: 20px; padding-bottom: 80px;
         }
 
         .level-btn {
-            aspect-ratio: 1; /* 正方形 */
-            border: none;
-            border-radius: 15px;
-            font-size: 2.5rem;
-            font-family: "KaiTi", "BiauKai", serif;
-            color: white;
-            box-shadow: 0 5px 0 rgba(0,0,0,0.2);
-            cursor: pointer;
-            transition: transform 0.1s;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+            aspect-ratio: 1; border: none; border-radius: 15px;
+            font-size: 2.2rem; font-family: "KaiTi", "BiauKai", serif;
+            color: white; box-shadow: 0 5px 0 rgba(0,0,0,0.2);
+            cursor: pointer; transition: transform 0.1s;
             position: relative;
         }
         .level-btn:active { transform: translateY(5px); box-shadow: none; }
 
-        /* 顏色類別 */
         .bg-blue { background-color: #5D9CEC; }
         .bg-pink { background-color: #F08080; }
         .bg-green { background-color: #87D37C; }
-        .bg-orange { background-color: #F4A460; }
-        /* 新增：紫色給聲調用 */
-        .bg-purple { background-color: #9b59b6; border: 2px solid #8e44ad; } 
-        
-        /* 破關標記 */
+        .bg-purple { background-color: #9b59b6; border: 2px solid #8e44ad; }
+        .bg-orange { background-color: #FF8C00; border: 2px solid #E65100; color: #fff; }
+
+        .section-title {
+            grid-column: 1 / -1; text-align: center; font-weight: bold; color: #555;
+            margin-top: 10px; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .section-title::before, .section-title::after { content: ''; display: block; width: 30px; height: 2px; background: #ccc; }
+
         .cleared::after {
-            content: '★';
-            position: absolute;
-            font-size: 1.5rem;
-            color: gold;
-            text-shadow: 0 0 3px black;
-            right: 5px; bottom: 5px;
+            content: '★'; position: absolute; font-size: 1.5rem;
+            color: gold; text-shadow: 0 0 3px black; right: 5px; bottom: 5px;
         }
 
-        /* --- 2. 遊戲頁面 (Game) --- */
+        /* --- 遊戲頁面 --- */
         #game-container {
-            flex-grow: 1;
-            margin: 10px;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            display: flex; flex-direction: column;
-            overflow: hidden;
-            border: 4px solid #FFCB05;
-            position: relative;
+            flex-grow: 1; margin: 10px; background: white;
+            border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; overflow: hidden;
+            border: 4px solid #FFCB05; position: relative;
         }
+        
+        /* 震動特效 */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+        .shake { animation: shake 0.4s ease-in-out; border-color: #ff5e5e !important; }
 
         header {
             height: 50px; background: #FFCB05;
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 15px; font-weight: bold; color: #2a75bb;
         }
-        
-        #back-btn {
-            background: white; border: 2px solid #2a75bb;
-            border-radius: 20px; padding: 5px 15px;
-            font-weight: bold; cursor: pointer;
-        }
+        #back-btn { background: white; border: 2px solid #2a75bb; border-radius: 20px; padding: 5px 15px; font-weight: bold; }
 
         #canvas-wrapper {
             position: relative; flex-grow: 1; width: 100%;
             background: radial-gradient(#fafafa 15%, transparent 16%) 0 0,
                         radial-gradient(#fafafa 15%, transparent 16%) 8px 8px;
             background-size: 16px 16px;
-        }
-
-        #watermark {
-            position: absolute;
-            font-size: min(50vh, 50vw);
-            color: #e0e0e0; font-weight: 900;
-            pointer-events: none; user-select: none;
-            top: 50%; left: 50%; transform: translate(-50%, -55%);
-            font-family: "KaiTi", "BiauKai", serif;
         }
 
         canvas { position: absolute; top: 0; left: 0; }
@@ -138,19 +116,29 @@
         #clear-btn { background-color: #ff5e5e; color: white; }
         #catch-btn { background-color: #3b4cca; color: white; }
 
-        /* 獎勵視窗 */
+        /* 通用彈窗 (成功/失敗共用) */
         #modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: none; flex-direction: column;
-            justify-content: center; align-items: center;
-            z-index: 999; text-align: center; color: white;
+            background: rgba(0,0,0,0.85); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 999;
+            text-align: center; color: white;
+            backdrop-filter: blur(3px); /* 讓背景模糊一點 */
         }
-        .reward-img {
+        .modal-icon {
             font-size: 100px; background: white; border-radius: 50%;
             width: 140px; height: 140px; line-height: 140px;
             margin-bottom: 20px; border: 5px solid gold;
+            animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
+        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+        
+        .modal-btn {
+            background: gold; color: black; margin-top: 30px;
+            padding: 15px 40px; font-size: 1.5rem;
+            border: none; border-radius: 50px; font-weight: bold;
+            box-shadow: 0 5px 0 #b8860b; cursor: pointer;
+        }
+        .modal-btn:active { transform: translateY(5px); box-shadow: none; }
 
     </style>
 </head>
@@ -158,49 +146,43 @@
 
     <div id="menu-view" class="view active">
         <div class="map-header">
-            <h1 class="map-title">注音大冒險</h1>
-            <small style="color:#666">點選一個符號開始！</small>
+            <h1 class="map-title">寶可夢學園</h1>
+            <div class="map-subtitle">V7 錯誤提示版</div>
         </div>
-        <div class="grid-container" id="level-grid">
-            </div>
+        <div class="grid-container" id="level-grid"></div>
     </div>
 
     <div id="game-view" class="view">
         <div id="game-container">
             <header>
-                <button id="back-btn">← 回地圖</button>
+                <button id="back-btn">← 回去</button>
                 <span id="current-title">練習</span>
                 <span style="width: 50px;"></span> 
             </header>
 
             <div id="canvas-wrapper">
-                <div id="watermark"></div>
+                <canvas id="bgCanvas"></canvas> 
                 <canvas id="drawCanvas"></canvas>
             </div>
 
             <div class="controls">
-                <button id="clear-btn" class="btn">橡皮擦</button>
-                <button id="catch-btn" class="btn">丟出寶貝球！</button>
+                <button id="clear-btn" class="btn">重寫</button>
+                <button id="catch-btn" class="btn">寫好了！</button>
             </div>
 
             <div id="modal">
-                <div class="reward-img" id="reward-icon"></div>
-                <h2 style="font-size: 2rem; margin: 10px;">成功！</h2>
-                <p id="reward-text" style="font-size: 1.5rem; color: #FFCB05;"></p>
-                <button class="btn" onclick="goBackToMenu()" style="background: gold; color: black; margin-top: 30px;">
-                    下一關 →
-                </button>
+                <div class="modal-icon" id="modal-icon"></div>
+                <h2 id="modal-title" style="font-size: 2rem; margin: 10px;"></h2>
+                <p id="modal-text" style="font-size: 1.5rem; color: #FFCB05; margin: 0 20px;"></p>
+                <button class="modal-btn" id="modal-action-btn"></button>
             </div>
         </div>
     </div>
 
 <script>
-    // --- 資料設定區 ---
-    // 格式：[符號, 顏色類別, 描述/寶可夢, 圖示]
-    // 顏色: blue, pink, green, orange, purple(聲調)
+    // --- 資料庫 ---
     const bpmData = [
-        // ㄅㄆㄇ
-        ['ㄅ', 'blue', '巴大蝶', '🦋'], ['ㄆ', 'blue', '皮卡丘', '⚡'], ['ㄇ', 'blue', '喵喵', '🐱'], ['ㄈ', 'blue', '鳳王', '🦅'],
+        ['ㄅ', 'blue', '巴大蝶', '🦋', '注音冒險'], ['ㄆ', 'blue', '皮卡丘', '⚡'], ['ㄇ', 'blue', '喵喵', '🐱'], ['ㄈ', 'blue', '鳳王', '🦅'],
         ['ㄉ', 'pink', '呆呆獸', '🦛'], ['ㄊ', 'pink', '土台龜', '🐢'], ['ㄋ', 'pink', '尼多王', '🦏'], ['ㄌ', 'pink', '拉普拉斯', '🦕'],
         ['ㄍ', 'green', '固拉多', '🦖'], ['ㄎ', 'green', '卡比獸', '🧸'], ['ㄏ', 'green', '火恐龍', '🔥'],
         ['ㄐ', 'blue', '傑尼龜', '🐢'], ['ㄑ', 'blue', '敲音猴', '🐒'], ['ㄒ', 'blue', '吸盤魔偶', '🤡'],
@@ -208,178 +190,245 @@
         ['ㄗ', 'green', '直衝熊', '🦡'], ['ㄘ', 'green', '草苗龜', '🌿'], ['ㄙ', 'green', '索爾迦雷歐', '🦁'],
         ['ㄧ', 'blue', '伊布', '🦊'], ['ㄨ', 'blue', '烏龜', '🐢'], ['ㄩ', 'blue', '圓陸鯊', '🦈'],
         ['ㄚ', 'pink', '阿柏蛇', '🐍'], ['ㄛ', 'pink', '歐路普', '🐞'], ['ㄜ', 'pink', '惡食大王', '👾'], ['ㄝ', 'pink', '椰蛋樹', '🌴'],
-        ['ㄞ', 'green', '愛管侍', '🐈'], ['ㄟ', 'green', 'Aipom(長尾怪手)', '🐒'], ['ㄠ', 'green', '傲骨燕', '🐦'], ['ㄡ', 'green', '歐哈那', '🌸'],
+        ['ㄞ', 'green', '愛管侍', '🐈'], ['ㄟ', 'green', '長尾怪手', '🐒'], ['ㄠ', 'green', '傲骨燕', '🐦'], ['ㄡ', 'green', '歐哈那', '🌸'],
         ['ㄢ', 'blue', '安瓢蟲', '🐞'], ['ㄣ', 'blue', '恩沛', '🐧'], ['ㄤ', 'blue', '昂', '🐺'], ['ㄥ', 'blue', '耿鬼', '👻'],
         ['ㄦ', 'pink', '二', '2️⃣'],
-        
-        // --- 聲調練習區 (新增在這裡) ---
-        ['ˉ', 'purple', '一聲 (平平的)', '➖'],
-        ['ˊ', 'purple', '二聲 (往上飛)', '✈️'],
-        ['ˇ', 'purple', '三聲 (打勾勾)', '✅'],
-        ['ˋ', 'purple', '四聲 (溜滑梯)', '↘️'],
-        ['˙', 'purple', '輕聲 (點一下)', '•']
+        ['ˉ', 'purple', '一聲 (平平的)', '➖', '聲調練習'], ['ˊ', 'purple', '二聲 (往上飛)', '✈️'],
+        ['ˇ', 'purple', '三聲 (打勾勾)', '✅'], ['ˋ', 'purple', '四聲 (溜滑梯)', '↘️'], ['˙', 'purple', '輕聲 (點一下)', '•'],
+        ['0', 'orange', '0 (像雞蛋)', '🥚', '數字森林'], ['1', 'orange', '1 (像鉛筆)', '🌱'], ['2', 'orange', '2 (像鴨子)', '🌿'],
+        ['3', 'orange', '3 (像耳朵)', '🌺'], ['4', 'orange', '4 (像帆船)', '🔥'], ['5', 'orange', '5 (像鉤子)', '🦖'],
+        ['6', 'orange', '6 (像哨子)', '🐉'], ['7', 'orange', '7 (像拐杖)', '🐢'], ['8', 'orange', '8 (像眼鏡)', '🐢'], ['9', 'orange', '9 (像氣球)', '🐢']
     ];
 
-    // --- 系統變數 ---
     let currentLevelIndex = 0;
     let synth = window.speechSynthesis;
-    let canvas = document.getElementById('drawCanvas');
-    let ctx = canvas.getContext('2d');
+    let drawCanvas = document.getElementById('drawCanvas');
+    let bgCanvas = document.getElementById('bgCanvas');
+    let ctx = drawCanvas.getContext('2d', { willReadFrequently: true });
+    let bgCtx = bgCanvas.getContext('2d');
     let isDrawing = false;
     let lastX = 0, lastY = 0;
 
-    // --- 1. 初始化選單 ---
+    // --- 初始化 ---
     function initMenu() {
         const grid = document.getElementById('level-grid');
         grid.innerHTML = '';
-        
         bpmData.forEach((item, index) => {
+            if (item[4]) {
+                const title = document.createElement('div');
+                title.className = 'section-title'; title.innerText = item[4]; grid.appendChild(title);
+            }
             const btn = document.createElement('button');
             btn.className = `level-btn bg-${item[1]}`;
-            
-            // 處理輕聲顯示位置，讓它看起來置中一點
-            if(item[0] === '˙') {
-                 btn.innerHTML = '<span style="position:relative; top:-5px;">˙</span>';
-            } else {
-                 btn.innerText = item[0];
-            }
-
+            if(item[0] === '˙') btn.innerHTML = '<span style="position:relative; top:-5px;">˙</span>';
+            else btn.innerText = item[0];
             btn.onclick = () => startGame(index);
             grid.appendChild(btn);
         });
     }
 
-    // --- 2. 遊戲流程控制 ---
     function startGame(index) {
         currentLevelIndex = index;
         const data = bpmData[index];
-        
         document.getElementById('menu-view').classList.remove('active');
         document.getElementById('game-view').classList.add('active');
-        
-        // 更新遊戲內容
         document.getElementById('current-title').innerText = `練習：${data[0]}`;
-        document.getElementById('watermark').innerText = data[0];
-        document.getElementById('reward-icon').innerText = data[3];
-        
-        // 判斷顯示文字
-        let rewardText = "";
-        let speakText = "";
-        
-        // 如果是聲調 (紫色)，語音邏輯稍微不同
-        if (data[1] === 'purple') {
-            rewardText = `${data[0]} - ${data[2]}`;
-            // 為了讓語音好聽一點，去掉括號裡的字只唸前半段
-            let simpleName = data[2].split(' ')[0]; 
-            speakText = `${simpleName}，${simpleName}的${data[0]}`;
-        } else {
-            rewardText = `${data[0]} - ${data[2]}`;
-            speakText = `${data[0]}，${data[2]}的${data[0]}`;
-        }
-
-        document.getElementById('reward-text').innerText = rewardText;
-        
-        // 重置畫布
-        setTimeout(resizeCanvas, 100);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
         document.getElementById('modal').style.display = 'none';
 
+        setTimeout(resizeCanvas, 100);
+        
+        let speakText = "";
+        if (data[1] === 'orange' && data[0] !== '0') {
+            let numName = data[2].split(' ')[0]; let rhyme = data[2].split('(')[1].replace(')', '');
+            speakText = `${numName}，${rhyme}的${numName}`;
+        } else if (data[1] === 'purple') {
+            let simpleName = data[2].split(' ')[0]; speakText = `${simpleName}，${simpleName}的${data[0]}`;
+        } else {
+            speakText = `${data[0]}，${data[2].split(' ')[0]}的${data[0]}`;
+        }
         speak(speakText);
     }
+
+    function resizeCanvas() {
+        const wrapper = document.getElementById('canvas-wrapper');
+        const rect = wrapper.getBoundingClientRect();
+        drawCanvas.width = bgCanvas.width = rect.width;
+        drawCanvas.height = bgCanvas.height = rect.height;
+        
+        drawTargetCharacter(bgCtx, '#e0e0e0');
+        const data = bpmData[currentLevelIndex];
+        
+        if (data[1] === 'orange') ctx.strokeStyle = '#E65100';
+        else if (data[1] === 'purple') ctx.strokeStyle = '#8e44ad';
+        else ctx.strokeStyle = '#2a75bb';
+        
+        ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 20; 
+    }
+
+    function drawTargetCharacter(context, color) {
+        const data = bpmData[currentLevelIndex];
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        context.font = `900 ${Math.min(context.canvas.width, context.canvas.height) * 0.55}px "KaiTi", "BiauKai", sans-serif`;
+        context.fillStyle = color;
+        context.textAlign = "center"; context.textBaseline = "middle";
+        let yOffset = (data[0] === '˙') ? -20 : 0;
+        context.fillText(data[0], context.canvas.width / 2, context.canvas.height / 2 + 20 + yOffset);
+    }
+
+    // --- 觸控繪圖 ---
+    function getPos(e) {
+        const rect = drawCanvas.getBoundingClientRect();
+        let cx, cy;
+        if (e.touches && e.touches.length > 0) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+        else { cx = e.clientX; cy = e.clientY; }
+        return { x: cx - rect.left, y: cy - rect.top };
+    }
+    function startDrawing(e) { e.preventDefault(); isDrawing = true; const pos = getPos(e); lastX = pos.x; lastY = pos.y; ctx.beginPath(); ctx.arc(lastX, lastY, ctx.lineWidth/2, 0, Math.PI*2); ctx.fillStyle = ctx.strokeStyle; ctx.fill(); ctx.beginPath(); }
+    function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke(); lastX = pos.x; lastY = pos.y; }
+    function stopDrawing() { isDrawing = false; ctx.beginPath(); }
+
+    drawCanvas.addEventListener('mousedown', startDrawing); drawCanvas.addEventListener('mousemove', draw);
+    drawCanvas.addEventListener('mouseup', stopDrawing); drawCanvas.addEventListener('mouseout', stopDrawing);
+    drawCanvas.addEventListener('touchstart', startDrawing, {passive: false}); drawCanvas.addEventListener('touchmove', draw, {passive: false});
+    drawCanvas.addEventListener('touchend', stopDrawing);
+
+    // --- 驗證邏輯 ---
+    function checkWriting() {
+        const width = drawCanvas.width;
+        const height = drawCanvas.height;
+        const checkW = 100; const checkH = 100;
+        const tempC = document.createElement('canvas');
+        tempC.width = checkW; tempC.height = checkH;
+        const tempCtx = tempC.getContext('2d');
+
+        // 目標字 (紅色)
+        const data = bpmData[currentLevelIndex];
+        tempCtx.font = `900 ${checkW * 0.6}px "KaiTi", "BiauKai", sans-serif`;
+        tempCtx.fillStyle = '#FF0000';
+        tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
+        tempCtx.fillText(data[0], checkW/2, checkH/2 + 5);
+        const targetPixels = countPixels(tempCtx, checkW, checkH);
+        
+        if (targetPixels === 0) return "pass"; 
+
+        // 檢查重疊
+        tempCtx.globalCompositeOperation = 'source-in';
+        tempCtx.drawImage(drawCanvas, 0, 0, width, height, 0, 0, checkW, checkH);
+        const overlapPixels = countPixels(tempCtx, checkW, checkH);
+
+        // 檢查總墨水
+        tempCtx.globalCompositeOperation = 'source-over';
+        tempCtx.clearRect(0,0,checkW,checkH);
+        tempCtx.drawImage(drawCanvas, 0, 0, width, height, 0, 0, checkW, checkH);
+        const totalInkPixels = countPixels(tempCtx, checkW, checkH);
+
+        if (totalInkPixels < targetPixels * 0.05) return "empty";
+        if (overlapPixels / targetPixels > 0.15) return "pass";
+        return "messy";
+    }
+
+    function countPixels(context, w, h) {
+        const imgData = context.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        let count = 0;
+        for(let i = 3; i < data.length; i += 4) { if(data[i] > 50) count++; }
+        return count;
+    }
+
+    // --- 彈窗系統 (V7 核心) ---
+    function showModal(type, title, text, icon) {
+        const modal = document.getElementById('modal');
+        const mTitle = document.getElementById('modal-title');
+        const mText = document.getElementById('modal-text');
+        const mIcon = document.getElementById('modal-icon');
+        const mBtn = document.getElementById('modal-action-btn');
+        const container = document.getElementById('game-container');
+
+        modal.style.display = 'flex';
+        mTitle.innerText = title;
+        mText.innerText = text;
+        mIcon.innerText = icon;
+        
+        if (type === 'success') {
+            mIcon.style.border = '5px solid gold';
+            mBtn.innerText = "下一關 →";
+            mBtn.onclick = goBackToMenu;
+            mBtn.style.background = 'gold'; mBtn.style.color = 'black';
+        } else {
+            // 失敗類型
+            mIcon.style.border = '5px solid #ff5e5e'; // 紅色邊框
+            mBtn.innerText = "再試一次";
+            mBtn.style.background = '#ff5e5e'; mBtn.style.color = 'white';
+            mBtn.onclick = () => {
+                modal.style.display = 'none'; // 關閉彈窗
+                // 如果是歪掉，可以選擇是否自動清除，這邊先保留筆跡讓孩子看
+                if (type === 'empty') {
+                    // 空白的就不用清
+                } else {
+                   // 歪掉的可以保留，讓她自己按橡皮擦，或者這裡加一行 ctx.clearRect(...) 自動清
+                }
+            };
+            
+            // 震動特效
+            container.classList.add('shake');
+            setTimeout(() => container.classList.remove('shake'), 500);
+        }
+    }
+
+    // --- 按鈕 ---
+    document.getElementById('back-btn').addEventListener('click', goBackToMenu);
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        speak("加油");
+    });
+    
+    document.getElementById('catch-btn').addEventListener('click', () => {
+        const result = checkWriting();
+        const data = bpmData[currentLevelIndex];
+
+        if (result === "pass") {
+            // 成功彈窗
+            let rewardText, speakText;
+            if (data[1] === 'orange') {
+                rewardText = (data[0] === '0') ? "得到寶可夢蛋！" : `圖鑑 No.${data[0]}`;
+                speakText = (data[0] === '0') ? "得到寶可夢蛋！" : `抓到了！圖鑑編號${data[0]}！`;
+            } else {
+                rewardText = `${data[2].split(' ')[0]}`;
+                speakText = `太棒了！收服${data[2].split(' ')[0]}！`;
+            }
+            speak(speakText);
+            
+            // 標記完成
+            const grid = document.getElementById('level-grid');
+            const buttons = grid.querySelectorAll('button');
+            if(buttons[currentLevelIndex]) buttons[currentLevelIndex].classList.add('cleared');
+            
+            showModal('success', '成功！', rewardText, data[3]);
+
+        } else if (result === "empty") {
+            // 空白彈窗
+            speak("咦？空空的？要寫字喔！");
+            showModal('empty', '空空的？', '要畫在線上面喔！', '❓');
+            
+        } else {
+            // 歪掉彈窗
+            speak("歪掉了～加油！");
+            showModal('messy', '歪掉囉！', '要寫在灰色線條上！', '❌');
+        }
+    });
 
     function goBackToMenu() {
         document.getElementById('game-view').classList.remove('active');
         document.getElementById('menu-view').classList.add('active');
         document.getElementById('modal').style.display = 'none';
-        
-        const grid = document.getElementById('level-grid');
-        if(grid.children[currentLevelIndex]) {
-            grid.children[currentLevelIndex].classList.add('cleared');
-        }
     }
 
-    // --- 3. 繪圖邏輯 ---
-    function resizeCanvas() {
-        const wrapper = document.getElementById('canvas-wrapper');
-        const rect = wrapper.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        
-        // 聲調用紫色筆，其他用藍色筆
-        const data = bpmData[currentLevelIndex];
-        ctx.strokeStyle = (data[1] === 'purple') ? '#8e44ad' : '#2a75bb'; 
-        
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.lineWidth = 15; 
-    }
-
-    function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        let clientX, clientY;
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX; clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX; clientY = e.clientY;
-        }
-        return { x: clientX - rect.left, y: clientY - rect.top };
-    }
-
-    function startDrawing(e) {
-        e.preventDefault(); isDrawing = true;
-        const pos = getPos(e);
-        lastX = pos.x; lastY = pos.y;
-        ctx.beginPath();
-        ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
-        ctx.fillStyle = ctx.strokeStyle; ctx.fill(); ctx.beginPath();
-    }
-
-    function draw(e) {
-        if (!isDrawing) return;
-        e.preventDefault();
-        const pos = getPos(e);
-        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
-        lastX = pos.x; lastY = pos.y;
-    }
-
-    function stopDrawing() { isDrawing = false; ctx.beginPath(); }
-
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-    canvas.addEventListener('touchstart', startDrawing, {passive: false});
-    canvas.addEventListener('touchmove', draw, {passive: false});
-    canvas.addEventListener('touchend', stopDrawing);
-
-    // --- 4. 按鈕事件 ---
-    document.getElementById('back-btn').addEventListener('click', goBackToMenu);
-    
-    document.getElementById('clear-btn').addEventListener('click', () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        speak("加油，再試一次");
-    });
-
-    document.getElementById('catch-btn').addEventListener('click', () => {
-        const data = bpmData[currentLevelIndex];
-        document.getElementById('modal').style.display = 'flex';
-        
-        // 聲調的獎勵語音
-        if (data[1] === 'purple') {
-            let simpleName = data[2].split(' ')[0];
-            speak(`好厲害！學會了${simpleName}！`);
-        } else {
-            speak(`太棒了！收服${data[2]}！`);
-        }
-    });
-
-    // --- 5. 語音與啟動 ---
     function speak(text) {
         if (!synth) return;
         synth.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'zh-TW'; utterance.rate = 1; utterance.pitch = 1.2;
-        synth.speak(utterance);
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-TW'; u.rate = 1; u.pitch = 1.2;
+        synth.speak(u);
     }
 
     window.onload = function() {
