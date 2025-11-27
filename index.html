@@ -1,350 +1,313 @@
-{\rtf1\ansi\ansicpg950\cocoartf2709
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>寶可夢ㄅㄆㄇ大冒險 V2</title>
+    <style>
+        /* 1. 基礎設定：禁止頁面滑動，滿版顯示 */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #f0f8ff;
+            font-family: system-ui, -apple-system, "Microsoft JhengHei", sans-serif;
+            touch-action: none; /* 關鍵：禁止瀏覽器預設的觸控縮放/滑動 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
 
-\f0\fs24 \cf0 <!DOCTYPE html>\
-<html lang="zh-TW">\
-<head>\
-    <meta charset="UTF-8">\
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\
-    <title>\uc0\u23542 \u21487 \u22818 \u12549 \u12550 \u12551 \u22823 \u20882 \u38570 </title>\
-    <style>\
-        /* CSS: \uc0\u37341 \u23565 iPad\u33287 \u24188 \u20818 \u30340 \u20171 \u38754 \u20778 \u21270  */\
-        body \{\
-            margin: 0;\
-            padding: 0;\
-            overflow: hidden; /* \uc0\u31105 \u27490 \u25458 \u21205  */\
-            background-color: #f0f8ff;\
-            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;\
-            touch-action: none; /* \uc0\u31105 \u27490 \u38928 \u35373 \u35320 \u25511 \u34892 \u28858  */\
-            display: flex;\
-            flex-direction: column;\
-            align-items: center;\
-            justify-content: center;\
-            height: 100vh;\
-        \}\
-\
-        #game-container \{\
-            position: relative;\
-            width: 95vw;\
-            height: 90vh;\
-            background: white;\
-            border-radius: 20px;\
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);\
-            display: flex;\
-            flex-direction: column;\
-            align-items: center;\
-            overflow: hidden;\
-        \}\
-\
-        /* \uc0\u38914 \u37096 \u27161 \u38988 \u33287 \u30382 \u21345 \u19992  */\
-        header \{\
-            width: 100%;\
-            height: 15%;\
-            background: #FFCB05; /* \uc0\u30382 \u21345 \u19992 \u40643  */\
-            display: flex;\
-            align-items: center;\
-            justify-content: center;\
-            border-radius: 20px 20px 0 0;\
-            position: relative;\
-        \}\
-\
-        h1 \{\
-            color: #2a75bb; /* \uc0\u23542 \u21487 \u22818 \u34253  */\
-            margin: 0;\
-            font-size: 1.5rem;\
-        \}\
-\
-        /* \uc0\u32362 \u22294 \u21312 \u22495  */\
-        #canvas-wrapper \{\
-            position: relative;\
-            flex-grow: 1;\
-            width: 100%;\
-            display: flex;\
-            justify-content: center;\
-            align-items: center;\
-            background: url('data:image/svg+xml;utf8,<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="%23eee"/></svg>'); /* \uc0\u31777 \u21934 \u32178 \u26684 \u32972 \u26223  */\
-        \}\
-\
-        canvas \{\
-            border: 5px dashed #ccc;\
-            border-radius: 10px;\
-            cursor: crosshair;\
-        \}\
-\
-        /* \uc0\u32972 \u26223 \u28014 \u27700 \u21360 \u23383  (\u35731 \u23401 \u23376 \u25551 \u23531 \u29992 ) */\
-        #watermark \{\
-            position: absolute;\
-            font-size: 250px;\
-            font-weight: bold;\
-            color: #eee;\
-            pointer-events: none;\
-            user-select: none;\
-            top: 50%;\
-            left: 50%;\
-            transform: translate(-50%, -55%);\
-        \}\
-\
-        /* \uc0\u25511 \u21046 \u25353 \u37397 \u21312  */\
-        .controls \{\
-            width: 100%;\
-            height: 15%;\
-            display: flex;\
-            justify-content: space-around;\
-            align-items: center;\
-            background: #fff;\
-            padding-bottom: 10px;\
-        \}\
-\
-        .btn \{\
-            border: none;\
-            border-radius: 50px;\
-            padding: 10px 20px;\
-            font-size: 1.2rem;\
-            font-weight: bold;\
-            cursor: pointer;\
-            box-shadow: 0 4px 0 rgba(0,0,0,0.2);\
-            transition: transform 0.1s;\
-        \}\
-        \
-        .btn:active \{\
-            transform: translateY(4px);\
-            box-shadow: none;\
-        \}\
-\
-        #clear-btn \{\
-            background-color: #ff5e5e;\
-            color: white;\
-        \}\
-\
-        #catch-btn \{\
-            background-color: #3b4cca; /* \uc0\u31934 \u38728 \u29699 \u32005 /\u34253 \u25645 \u37197  */\
-            color: white;\
-            display: flex;\
-            align-items: center;\
-            gap: 10px;\
-        \}\
-\
-        /* \uc0\u23542 \u21487 \u22818 \u29699 \u22294 \u31034  (CSS\u32362 \u35069 ) */\
-        .pokeball-icon \{\
-            width: 24px;\
-            height: 24px;\
-            background: linear-gradient(to bottom, red 48%, black 48%, black 52%, white 52%);\
-            border-radius: 50%;\
-            border: 2px solid black;\
-            position: relative;\
-        \}\
-        .pokeball-icon::after \{\
-            content: '';\
-            position: absolute;\
-            top: 50%;\
-            left: 50%;\
-            transform: translate(-50%, -50%);\
-            width: 6px;\
-            height: 6px;\
-            background: white;\
-            border: 2px solid black;\
-            border-radius: 50%;\
-        \}\
-\
-        /* \uc0\u29518 \u21237 \u24392 \u31383  */\
-        #modal \{\
-            position: absolute;\
-            top: 0;\
-            left: 0;\
-            width: 100%;\
-            height: 100%;\
-            background: rgba(0,0,0,0.8);\
-            display: none;\
-            flex-direction: column;\
-            justify-content: center;\
-            align-items: center;\
-            z-index: 100;\
-            text-align: center;\
-            color: white;\
-        \}\
-        \
-        #modal img \{\
-            width: 200px;\
-            height: 200px;\
-            border-radius: 50%;\
-            border: 5px solid gold;\
-            background: white;\
-            margin-bottom: 20px;\
-            animation: bounce 0.6s infinite alternate;\
-        \}\
-\
-        @keyframes bounce \{\
-            from \{ transform: translateY(0); \}\
-            to \{ transform: translateY(-20px); \}\
-        \}\
-\
-    </style>\
-</head>\
-<body>\
-\
-<div id="game-container">\
-    <header>\
-        <span style="font-size: 40px; margin-right: 10px;">\uc0\u9889 </span>\
-        <h1>\uc0\u36319 \u33879 \u30382 \u21345 \u19992 \u23416 \u65306 \u12549 </h1>\
-    </header>\
-\
-    <div id="canvas-wrapper">\
-        <div id="watermark">\uc0\u12549 </div>\
-        <canvas id="drawCanvas"></canvas>\
-    </div>\
-\
-    <div class="controls">\
-        <button id="clear-btn" class="btn">\uc0\u27233 \u30382 \u25830  (\u37325 \u23531 )</button>\
-        <button id="catch-btn" class="btn">\
-            <div class="pokeball-icon"></div>\
-            \uc0\u25105 \u23531 \u22909 \u20102 \u65281 \u25910 \u26381 \u65281 \
-        </button>\
-    </div>\
-\
-    <div id="modal">\
-        <span style="font-size: 150px;">\uc0\u55358 \u56715 </span>\
-        <h2>\uc0\u22826 \u26834 \u20102 \u65281 </h2>\
-        <p>\uc0\u20320 \u25910 \u26381 \u20102 \u12300 \u24052 \u22823 \u34678 \u12301 \u65281 </p>\
-        <p style="color: yellow; font-size: 1.5rem;">\uc0\u12549  - \u12549  - \u24052 \u22823 \u34678 \u65281 </p>\
-        <button class="btn" onclick="resetGame()" style="background: gold; color: black; margin-top: 20px;">\uc0\u20877 \u19968 \u27425 \u65281 </button>\
-    </div>\
-</div>\
-\
-<script>\
-    // --- 1. \uc0\u21021 \u22987 \u21270 \u35373 \u23450  ---\
-    const canvas = document.getElementById('drawCanvas');\
-    const ctx = canvas.getContext('2d');\
-    const wrapper = document.getElementById('canvas-wrapper');\
-    const modal = document.getElementById('modal');\
-    \
-    // \uc0\u35373 \u23450 \u30059 \u31558 \
-    let isDrawing = false;\
-    let lastX = 0;\
-    let lastY = 0;\
-\
-    // \uc0\u35519 \u25972  Canvas \u22823 \u23567 \u20197 \u31526 \u21512 \u34722 \u24149 \
-    function resizeCanvas() \{\
-        // \uc0\u21462 \u24471  wrapper \u30340 \u23526 \u38555 \u22823 \u23567 \
-        const rect = wrapper.getBoundingClientRect();\
-        canvas.width = rect.width * 0.9;\
-        canvas.height = rect.height * 0.9;\
-        \
-        // \uc0\u35373 \u23450 \u30059 \u31558 \u27171 \u24335  (\u27599 \u27425  resize \u26371 \u37325 \u32622 \u65292 \u25152 \u20197 \u35201 \u37325 \u35373 )\
-        ctx.strokeStyle = '#2a75bb'; // \uc0\u23542 \u21487 \u22818 \u34253 \u33394 \u31558 \u36321 \
-        ctx.lineJoin = 'round';\
-        ctx.lineCap = 'round';\
-        ctx.lineWidth = 15; // \uc0\u36969 \u21512 \u23567 \u26379 \u21451 \u30340 \u31895 \u32048 \
-        ctx.shadowBlur = 2;\
-        ctx.shadowColor = '#2a75bb';\
-    \}\
-\
-    window.addEventListener('resize', resizeCanvas);\
-    // \uc0\u24310 \u36978 \u22519 \u34892 \u20197 \u30906 \u20445  DOM \u36617 \u20837 \
-    setTimeout(resizeCanvas, 100);\
-\
-    // --- 2. \uc0\u32362 \u22294 \u21151 \u33021  (\u28369 \u40736  + \u35320 \u25511 ) ---\
-    function getPos(e) \{\
-        const rect = canvas.getBoundingClientRect();\
-        let clientX, clientY;\
-        \
-        if (e.touches && e.touches.length > 0) \{\
-            clientX = e.touches[0].clientX;\
-            clientY = e.touches[0].clientY;\
-        \} else \{\
-            clientX = e.clientX;\
-            clientY = e.clientY;\
-        \}\
-        \
-        return \{\
-            x: clientX - rect.left,\
-            y: clientY - rect.top\
-        \};\
-    \}\
-\
-    function startDrawing(e) \{\
-        e.preventDefault(); // \uc0\u38450 \u27490 \u28414 \u21205 \
-        isDrawing = true;\
-        const pos = getPos(e);\
-        lastX = pos.x;\
-        lastY = pos.y;\
-    \}\
-\
-    function draw(e) \{\
-        if (!isDrawing) return;\
-        e.preventDefault();\
-        const pos = getPos(e);\
-        \
-        ctx.beginPath();\
-        ctx.moveTo(lastX, lastY);\
-        ctx.lineTo(pos.x, pos.y);\
-        ctx.stroke();\
-        \
-        lastX = pos.x;\
-        lastY = pos.y;\
-    \}\
-\
-    function stopDrawing() \{\
-        isDrawing = false;\
-    \}\
-\
-    // \uc0\u28369 \u40736 \u20107 \u20214 \
-    canvas.addEventListener('mousedown', startDrawing);\
-    canvas.addEventListener('mousemove', draw);\
-    canvas.addEventListener('mouseup', stopDrawing);\
-    canvas.addEventListener('mouseout', stopDrawing);\
-\
-    // \uc0\u35320 \u25511 \u20107 \u20214  (iPad/\u25163 \u27231 )\
-    canvas.addEventListener('touchstart', startDrawing, \{passive: false\});\
-    canvas.addEventListener('touchmove', draw, \{passive: false\});\
-    canvas.addEventListener('touchend', stopDrawing);\
-\
-    // --- 3. \uc0\u25353 \u37397 \u21151 \u33021  ---\
-    document.getElementById('clear-btn').addEventListener('click', () => \{\
-        ctx.clearRect(0, 0, canvas.width, canvas.height);\
-        speak("\uc0\u20877 \u35430 \u19968 \u27425 \u65292 \u21152 \u27833 \u65281 ");\
-    \});\
-\
-    document.getElementById('catch-btn').addEventListener('click', () => \{\
-        // \uc0\u31777 \u21934 \u21028 \u26039 \u65306 \u22914 \u26524 \u26377 \u30059 \u26481 \u35199  (\u36889 \u35041 \u19981 \u20570 \u35079 \u38620 \u36776 \u35672 \u65292 \u40723 \u21237 \u28858 \u20027 )\
-        modal.style.display = 'flex';\
-        speak("\uc0\u24685 \u21916 \u65281 \u20320 \u25910 \u26381 \u20102 \u24052 \u22823 \u34678 \u65281 \u12549 \u65292 \u12549 \u65292 \u24052 \u22823 \u34678 \u65281 ");\
-        createConfetti();\
-    \});\
-\
-    function resetGame() \{\
-        modal.style.display = 'none';\
-        ctx.clearRect(0, 0, canvas.width, canvas.height);\
-        speak("\uc0\u36319 \u33879 \u30382 \u21345 \u19992 \u65292 \u23531 \u12549 \u65281 ");\
-    \}\
-\
-    // --- 4. \uc0\u35486 \u38899 \u21151 \u33021  (Web Speech API) ---\
-    function speak(text) \{\
-        if ('speechSynthesis' in window) \{\
-            const utterance = new SpeechSynthesisUtterance(text);\
-            utterance.lang = 'zh-TW'; // \uc0\u35373 \u23450 \u20013 \u25991 \
-            utterance.rate = 0.9; // \uc0\u31245 \u24494 \u24930 \u19968 \u40670 \u32102 \u23567 \u26379 \u21451 \u32893 \
-            utterance.pitch = 1.2; // \uc0\u31245 \u24494 \u39640 \u38899 \u19968 \u40670 \u27604 \u36611 \u21487 \u24859 \
-            window.speechSynthesis.cancel(); // \uc0\u20572 \u27490 \u19978 \u19968 \u21477 \
-            window.speechSynthesis.speak(utterance);\
-        \}\
-    \}\
-\
-    // --- 5. \uc0\u31777 \u21934 \u30340 \u24950 \u31069 \u29305 \u25928  (Confetti) ---\
-    function createConfetti() \{\
-        // \uc0\u36889 \u35041 \u21487 \u20197 \u21152 \u20837 \u26356 \u35079 \u38620 \u30340  canvas \u29305 \u25928 \u65292 \u30446 \u21069 \u20808 \u29992 \u31777 \u21934 \u30340 \u32972 \u26223 \u35722 \u33394 \u20195 \u26367 \
-        // \uc0\u23526 \u38555 \u38283 \u30332 \u26371 \u24341 \u20837  canvas-confetti \u24235 \
-    \}\
-\
-    // \uc0\u32178 \u38913 \u36617 \u20837 \u26178 \u30340 \u27489 \u36814 \u35486 \
-    window.onload = function() \{\
-        // \uc0\u28687 \u35261 \u22120 \u36890 \u24120 \u38480 \u21046 \u33258 \u21205 \u25773 \u25918 \u32882 \u38899 \u65292 \u38656 \u35201 \u20351 \u29992 \u32773 \u20114 \u21205 \u24460 \u25165 \u33021 \u25773 \u25918 \
-        // \uc0\u25152 \u20197 \u36889 \u35041 \u20808 \u19981 \u33258 \u21205 \u25773 \u25918 \u65292 \u31561 \u40670 \u25802 \u25353 \u37397 \u26178 \u25165 \u26371 \u26377 \u32882 \u38899 \
-    \};\
-\
-</script>\
-</body>\
-</html>}
+        /* 2. 遊戲主容器 */
+        #game-container {
+            position: relative;
+            width: 95vw;
+            height: 95vh;
+            margin-top: 2.5vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 4px solid #FFCB05; /* 皮卡丘黃邊框 */
+        }
+
+        /* 3. 標題區 */
+        header {
+            height: 60px;
+            background: #FFCB05;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2a75bb;
+            font-weight: bold;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        /* 4. 繪圖區 (最重要的地方) */
+        #canvas-wrapper {
+            position: relative;
+            flex-grow: 1; /* 佔滿剩餘空間 */
+            width: 100%;
+            background: radial-gradient(#fafafa 15%, transparent 16%) 0 0,
+                        radial-gradient(#fafafa 15%, transparent 16%) 8px 8px;
+            background-size: 16px 16px; /* 點點背景紙質感 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 背景浮水印 (ㄅ) */
+        #watermark {
+            position: absolute;
+            font-size: min(60vh, 60vw); /* 自動調整大小 */
+            color: #e0e0e0;
+            font-weight: 900;
+            pointer-events: none; /* 讓點擊穿透 */
+            user-select: none;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -55%);
+        }
+
+        /* 畫布本體 */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            touch-action: none; /*再一次確保不干擾 */
+        }
+
+        /* 5. 按鈕區 */
+        .controls {
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+            background: #fff;
+            border-top: 1px solid #eee;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: all 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        #clear-btn { background-color: #ff5e5e; color: white; }
+        #catch-btn { background-color: #3b4cca; color: white; }
+
+        /* 6. 獎勵視窗 */
+        #modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            text-align: center;
+            color: white;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .reward-img {
+            font-size: 120px;
+            background: white;
+            border-radius: 50%;
+            width: 150px;
+            height: 150px;
+            line-height: 150px;
+            margin-bottom: 20px;
+            border: 5px solid gold;
+            animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <header>
+        <span>⚡ 跟著皮卡丘學：ㄅ</span>
+    </header>
+
+    <div id="canvas-wrapper">
+        <div id="watermark">ㄅ</div>
+        <canvas id="drawCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="clear-btn" class="btn">橡皮擦</button>
+        <button id="catch-btn" class="btn">丟出寶貝球！</button>
+    </div>
+
+    <div id="modal">
+        <div class="reward-img">🦋</div>
+        <h2 style="font-size: 2rem; margin: 10px;">收服成功！</h2>
+        <p style="font-size: 1.5rem; color: #FFCB05;">是「巴大蝶」！</p>
+        <button class="btn" onclick="resetGame()" style="background: gold; color: black; margin-top: 30px; font-size: 1.5rem;">再一次！</button>
+    </div>
+</div>
+
+<script>
+    // --- 核心邏輯區 ---
+    const canvas = document.getElementById('drawCanvas');
+    const ctx = canvas.getContext('2d');
+    const wrapper = document.getElementById('canvas-wrapper');
+    const modal = document.getElementById('modal');
+    
+    // 設定畫筆狀態
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    
+    // 語音合成初始化
+    let synth = window.speechSynthesis;
+    let hasInteracted = false; // 追蹤是否已經點擊過螢幕
+
+    // 1. 初始化畫布尺寸 (修正模糊問題)
+    function resizeCanvas() {
+        const rect = wrapper.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        
+        // 設定畫筆樣式
+        ctx.strokeStyle = '#2a75bb'; 
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 12; 
+    }
+    
+    // 監聽視窗改變，保持畫布正確
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 50); // 確保載入後執行
+
+    // 2. 取得正確座標 (支援滑鼠與觸控)
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    // 3. 繪圖事件處理
+    function startDrawing(e) {
+        e.preventDefault(); // 防止畫面滾動
+        isDrawing = true;
+        const pos = getPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+        
+        // 畫一個點 (處理單點)
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
+        ctx.beginPath(); // 重新開始路徑
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault(); // 絕對禁止滾動
+        const pos = getPos(e);
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+        ctx.beginPath(); // 斷開路徑，避免連線
+    }
+
+    // 綁定事件 (支援電腦與手機)
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    canvas.addEventListener('touchstart', startDrawing, {passive: false});
+    canvas.addEventListener('touchmove', draw, {passive: false});
+    canvas.addEventListener('touchend', stopDrawing);
+
+    // 4. 按鈕功能
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        speak("再試一次！");
+    });
+
+    document.getElementById('catch-btn').addEventListener('click', () => {
+        // 解鎖聲音 (如果是第一次點擊)
+        if (!hasInteracted) { hasInteracted = true; }
+        
+        // 簡單判定有沒有畫畫 (檢查中心點有沒有顏色)
+        // 這裡為了讓小朋友開心，不做嚴格檢查，直接給獎勵
+        modal.style.display = 'flex';
+        speak("恭喜！抓到了！ㄅ，巴大蝶！");
+    });
+
+    function resetGame() {
+        modal.style.display = 'none';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        speak("跟著皮卡丘，寫ㄅ！");
+    }
+    
+    // 讓全域也能呼叫 (給 HTML onclick 用)
+    window.resetGame = resetGame;
+
+    // 5. 語音功能 (強化相容性)
+    function speak(text) {
+        if (!synth) return;
+        
+        // 取消上一句
+        synth.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW'; 
+        utterance.rate = 1; 
+        utterance.pitch = 1.2; 
+        
+        // 嘗試播放
+        synth.speak(utterance);
+    }
+
+</script>
+</body>
+</html>
