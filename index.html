@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢全能大冒險 V7 (錯誤彈窗)</title>
+    <title>寶可夢全能大冒險 V8 (寫字判定優化)</title>
     <style>
         /* --- 基礎設定 --- */
         body {
@@ -78,7 +78,6 @@
             border: 4px solid #FFCB05; position: relative;
         }
         
-        /* 震動特效 */
         @keyframes shake {
             0% { transform: translateX(0); }
             25% { transform: translateX(-10px); }
@@ -116,13 +115,13 @@
         #clear-btn { background-color: #ff5e5e; color: white; }
         #catch-btn { background-color: #3b4cca; color: white; }
 
-        /* 通用彈窗 (成功/失敗共用) */
+        /* 彈窗 */
         #modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); display: none; flex-direction: column;
             justify-content: center; align-items: center; z-index: 999;
             text-align: center; color: white;
-            backdrop-filter: blur(3px); /* 讓背景模糊一點 */
+            backdrop-filter: blur(3px);
         }
         .modal-icon {
             font-size: 100px; background: white; border-radius: 50%;
@@ -147,7 +146,7 @@
     <div id="menu-view" class="view active">
         <div class="map-header">
             <h1 class="map-title">寶可夢學園</h1>
-            <div class="map-subtitle">V7 錯誤提示版</div>
+            <div class="map-subtitle">V8 輕鬆寫字版</div>
         </div>
         <div class="grid-container" id="level-grid"></div>
     </div>
@@ -292,7 +291,7 @@
     drawCanvas.addEventListener('touchstart', startDrawing, {passive: false}); drawCanvas.addEventListener('touchmove', draw, {passive: false});
     drawCanvas.addEventListener('touchend', stopDrawing);
 
-    // --- 驗證邏輯 ---
+    // --- 驗證邏輯 (V8 大改版) ---
     function checkWriting() {
         const width = drawCanvas.width;
         const height = drawCanvas.height;
@@ -301,30 +300,59 @@
         tempC.width = checkW; tempC.height = checkH;
         const tempCtx = tempC.getContext('2d');
 
-        // 目標字 (紅色)
+        // 1. 取得目標字範圍 (紅色)
         const data = bpmData[currentLevelIndex];
         tempCtx.font = `900 ${checkW * 0.6}px "KaiTi", "BiauKai", sans-serif`;
         tempCtx.fillStyle = '#FF0000';
         tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
         tempCtx.fillText(data[0], checkW/2, checkH/2 + 5);
-        const targetPixels = countPixels(tempCtx, checkW, checkH);
+        const targetPixels = countPixels(tempCtx, checkW, checkH); // 灰色字的總面積
         
         if (targetPixels === 0) return "pass"; 
 
-        // 檢查重疊
-        tempCtx.globalCompositeOperation = 'source-in';
-        tempCtx.drawImage(drawCanvas, 0, 0, width, height, 0, 0, checkW, checkH);
-        const overlapPixels = countPixels(tempCtx, checkW, checkH);
-
-        // 檢查總墨水
+        // 2. 取得使用者總墨水量
         tempCtx.globalCompositeOperation = 'source-over';
         tempCtx.clearRect(0,0,checkW,checkH);
         tempCtx.drawImage(drawCanvas, 0, 0, width, height, 0, 0, checkW, checkH);
-        const totalInkPixels = countPixels(tempCtx, checkW, checkH);
+        const totalInkPixels = countPixels(tempCtx, checkW, checkH); // 小朋友畫的總面積
 
-        if (totalInkPixels < targetPixels * 0.05) return "empty";
-        if (overlapPixels / targetPixels > 0.15) return "pass";
-        return "messy";
+        // 3. 取得重疊部分
+        tempCtx.globalCompositeOperation = 'source-in'; // 只保留重疊
+        // 重畫一次目標字
+        tempCtx.fillStyle = '#FF0000';
+        tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
+        tempCtx.fillText(data[0], checkW/2, checkH/2 + 5);
+        const overlapPixels = countPixels(tempCtx, checkW, checkH); // 重疊的面積
+
+        console.log(`Target: ${targetPixels}, Ink: ${totalInkPixels}, Overlap: ${overlapPixels}`);
+
+        // --- 判定標準 V8 ---
+
+        // A. 根本沒畫 (墨水太少)
+        // 絕對數量檢查，避免點一下就過
+        if (totalInkPixels < 20) return "empty"; 
+
+        // B. 準確度 (畫在範圍內的比例)
+        // 公式：重疊面積 / 孩子畫的總面積
+        // 只要孩子畫的線條，有 30% 是落在灰色軌道上，就表示她有試著跟著寫，而不是在旁邊亂塗。
+        const accuracy = overlapPixels / totalInkPixels;
+
+        // C. 完成度 (覆蓋率)
+        // 公式：重疊面積 / 灰色字總面積
+        // 以前要 15%，現在只要 3%！
+        // 只要有一條細線畫在字裡面，覆蓋率通常就會超過 3-5%。
+        const completion = overlapPixels / targetPixels;
+
+        // 通過條件：
+        // 1. 寫得還算準 (Accuracy > 0.3)
+        // 2. 有畫到字 (Completion > 0.03)
+        if (accuracy > 0.3 && completion > 0.03) {
+            return "pass";
+        }
+
+        // 失敗分支
+        if (completion <= 0.03) return "empty"; // 畫太少或沒畫到重點
+        return "messy"; // 畫了很多但都在外面 (Accuracy 低)
     }
 
     function countPixels(context, w, h) {
@@ -335,7 +363,7 @@
         return count;
     }
 
-    // --- 彈窗系統 (V7 核心) ---
+    // --- 彈窗系統 ---
     function showModal(type, title, text, icon) {
         const modal = document.getElementById('modal');
         const mTitle = document.getElementById('modal-title');
@@ -345,9 +373,7 @@
         const container = document.getElementById('game-container');
 
         modal.style.display = 'flex';
-        mTitle.innerText = title;
-        mText.innerText = text;
-        mIcon.innerText = icon;
+        mTitle.innerText = title; mText.innerText = text; mIcon.innerText = icon;
         
         if (type === 'success') {
             mIcon.style.border = '5px solid gold';
@@ -355,21 +381,10 @@
             mBtn.onclick = goBackToMenu;
             mBtn.style.background = 'gold'; mBtn.style.color = 'black';
         } else {
-            // 失敗類型
-            mIcon.style.border = '5px solid #ff5e5e'; // 紅色邊框
+            mIcon.style.border = '5px solid #ff5e5e';
             mBtn.innerText = "再試一次";
             mBtn.style.background = '#ff5e5e'; mBtn.style.color = 'white';
-            mBtn.onclick = () => {
-                modal.style.display = 'none'; // 關閉彈窗
-                // 如果是歪掉，可以選擇是否自動清除，這邊先保留筆跡讓孩子看
-                if (type === 'empty') {
-                    // 空白的就不用清
-                } else {
-                   // 歪掉的可以保留，讓她自己按橡皮擦，或者這裡加一行 ctx.clearRect(...) 自動清
-                }
-            };
-            
-            // 震動特效
+            mBtn.onclick = () => { modal.style.display = 'none'; };
             container.classList.add('shake');
             setTimeout(() => container.classList.remove('shake'), 500);
         }
@@ -387,7 +402,6 @@
         const data = bpmData[currentLevelIndex];
 
         if (result === "pass") {
-            // 成功彈窗
             let rewardText, speakText;
             if (data[1] === 'orange') {
                 rewardText = (data[0] === '0') ? "得到寶可夢蛋！" : `圖鑑 No.${data[0]}`;
@@ -397,23 +411,16 @@
                 speakText = `太棒了！收服${data[2].split(' ')[0]}！`;
             }
             speak(speakText);
-            
-            // 標記完成
             const grid = document.getElementById('level-grid');
             const buttons = grid.querySelectorAll('button');
             if(buttons[currentLevelIndex]) buttons[currentLevelIndex].classList.add('cleared');
-            
             showModal('success', '成功！', rewardText, data[3]);
-
         } else if (result === "empty") {
-            // 空白彈窗
-            speak("咦？空空的？要寫字喔！");
-            showModal('empty', '空空的？', '要畫在線上面喔！', '❓');
-            
+            speak("咦？空空的？要畫在線上面喔！");
+            showModal('empty', '沒畫到？', '要畫在線條上喔！', '❓');
         } else {
-            // 歪掉彈窗
             speak("歪掉了～加油！");
-            showModal('messy', '歪掉囉！', '要寫在灰色線條上！', '❌');
+            showModal('messy', '歪掉囉！', '要寫在灰色線條裡面！', '❌');
         }
     });
 
