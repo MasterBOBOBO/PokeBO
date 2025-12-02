@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢學園 V18 (純淨虛線版)</title>
+    <title>寶可夢學園 V22 (精靈球星星修正)</title>
     <style>
         /* --- 基礎設定 --- */
         body {
@@ -44,7 +44,7 @@
             gap: 15px; padding: 20px; padding-bottom: 80px;
         }
 
-        /* 巨大化按鈕 */
+        /* 通用按鈕 */
         .level-btn {
             aspect-ratio: 1; border: none; border-radius: 20px;
             font-size: 7rem; 
@@ -57,7 +57,52 @@
             line-height: 1; padding: 0; 
         }
         .level-btn:active { transform: translateY(6px); box-shadow: none; }
+        .level-btn.small-font { font-size: 4.5rem; }
+
+        /* === V22 重點修正區開始 === */
+
+        /* 精靈球樣式 */
+        .pokeball-btn {
+            background: linear-gradient(to bottom, #FF0000 46%, #333 46%, #333 54%, #FFF 54%);
+            border: 4px solid #333;
+            color: white;
+        }
         
+        /* V22修正: 將精靈球中間結構移到 ::before，避免與星星衝突 */
+        .pokeball-btn::before {
+            content: ''; position: absolute;
+            width: 30%; height: 30%;
+            background: white; border: 4px solid #333;
+            border-radius: 50%; z-index: 1;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+
+        /* 精靈球上的數字浮水印 */
+        .pokeball-text {
+            position: relative; z-index: 2;
+            color: #333; font-size: 5rem;
+            text-shadow: 2px 2px 0px #fff;
+        }
+
+        /* 通用的過關星星 (適用於一般按鈕，顯示在右下角) */
+        .cleared::after {
+            content: '★'; position: absolute; font-size: 2rem;
+            color: gold; text-shadow: 0 0 4px black;
+            right: 8px; bottom: 8px; z-index: 5;
+        }
+
+        /* V22修正: 精靈球過關時的特殊星星樣式 (只顯示星星，位置在下方中間) */
+        .pokeball-btn.cleared::after {
+            font-size: 3rem; /* 星星大一點 */
+            right: auto; bottom: 8%; /* 取消靠右，設定靠下 */
+            left: 50%; transform: translateX(-50%); /* 水平置中 */
+        }
+        
+        /* === V22 重點修正區結束 === */
+
+
+        /* 聲調文字調整 */
+        .tone-text-span { font-size: 2.5rem; } 
         .light-tone-span { font-size: 5rem; position: relative; top: -10px; }
 
         .bg-blue { background-color: #5D9CEC; }
@@ -79,11 +124,6 @@
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         .section-title::before, .section-title::after { content: ''; display: block; width: 40px; height: 3px; background: #ccc; }
-
-        .cleared::after {
-            content: '★'; position: absolute; font-size: 2rem;
-            color: gold; text-shadow: 0 0 4px black; right: 8px; bottom: 8px; z-index: 2;
-        }
 
         /* --- 遊戲頁面 --- */
         #game-container {
@@ -168,7 +208,7 @@
     <div id="menu-view" class="view active">
         <div class="map-header">
             <h1 class="map-title">寶可夢學園</h1>
-            <div class="map-subtitle">V18 純淨虛線版</div>
+            <div class="map-subtitle">V22 精靈球星星修正版</div>
         </div>
         <div class="grid-container" id="level-grid"></div>
     </div>
@@ -202,7 +242,25 @@
     </div>
 
 <script>
-    // --- V18: 移除所有容易對不準的筆順資料，只保留純淨的文字資料 ---
+    const pokeNames151 = [
+        "蛋", "妙蛙種子", "妙蛙草", "妙蛙花", "小火龍", "火恐龍", "噴火龍", "傑尼龜", "卡咪龜", "水箭龜", 
+        "綠毛蟲", "鐵甲蛹", "巴大蝶", "獨角蟲", "鐵殼蛹", "大針蜂", "波波", "比比鳥", "大比鳥", "小拉達", 
+        "拉達", "烈雀", "大嘴雀", "阿柏蛇", "阿柏怪", "皮卡丘", "雷丘", "穿山鼠", "穿山王", "尼多蘭", 
+        "尼多娜", "尼多后", "尼多朗", "尼多力諾", "尼多王", "皮皮", "皮可西", "六尾", "九尾", "胖丁", 
+        "胖可丁", "超音蝠", "大嘴蝠", "走路草", "臭臭花", "霸王花", "派拉斯", "派拉斯特", "毛球", "摩魯蛾", 
+        "地鼠", "三地鼠", "喵喵", "貓老大", "可達鴨", "哥達鴨", "猴怪", "火爆猴", "卡蒂狗", "風速狗", 
+        "蚊香蝌蚪", "蚊香君", "蚊香泳士", "凱西", "勇基拉", "胡地", "腕力", "豪力", "怪力", "喇叭芽", 
+        "口呆花", "大食花", "瑪瑙水母", "毒刺水母", "小拳石", "隆隆石", "隆隆岩", "小火馬", "烈焰馬", "呆呆獸", 
+        "呆殼獸", "小磁怪", "三合一磁怪", "大蔥鴨", "嘟嘟", "嘟嘟利", "小海獅", "白海獅", "臭泥", "臭臭泥", 
+        "大舌貝", "刺甲貝", "鬼斯", "鬼斯通", "耿鬼", "大岩蛇", "催眠貘", "引夢貘人", "大鉗蟹", "巨鉗蟹", 
+        "霹靂電球", "頑皮雷彈", "蛋蛋", "椰蛋樹", "卡拉卡拉", "嘎啦嘎啦", "飛腿郎", "快拳郎", "大舌頭", "瓦斯彈", 
+        "雙彈瓦斯", "獨角犀牛", "鑽角犀獸", "吉利蛋", "蔓藤怪", "袋獸", "墨海馬", "海刺龍", "角金魚", "金魚王", 
+        "海星星", "寶石海星", "魔牆人偶", "飛天螳螂", "迷唇姐", "電擊獸", "鴨嘴火獸", "凱羅斯", "肯泰羅", "鯉魚王", 
+        "暴鯉龍", "拉普拉斯", "百變怪", "伊布", "水伊布", "雷伊布", "火伊布", "多邊獸", "菊石獸", "多刺菊石獸", 
+        "化石盔", "鐮刀盔", "化石翼龍", "卡比獸", "急凍鳥", "閃電鳥", "火焰鳥", "迷你龍", "哈克龍", "快龍", 
+        "超夢", "夢幻"
+    ];
+
     const bpmData = [
         ['ㄅ', 'blue', '巴大蝶', '12', '注音冒險', '玻'], ['ㄆ', 'blue', '皮卡丘', '25', null, '坡'], 
         ['ㄇ', 'blue', '喵喵', '52', null, '摸'], ['ㄈ', 'blue', '鳳王', '250', null, '佛'],
@@ -213,7 +271,7 @@
         ['ㄐ', 'blue', '傑尼龜', '7', null, '基'], ['ㄑ', 'blue', '敲音猴', '810', null, '七'], 
         ['ㄒ', 'blue', '小火龍', '4', null, '西'], 
         ['ㄓ', 'pink', '哲爾尼亞斯', '716', null, '知'], ['ㄔ', 'pink', '超夢', '150', null, '吃'], 
-        ['ㄕ', 'pink', '水箭龜', '9', null, '師'], ['ㄖ', 'pink', '烈空坐', '384', null, '日'],
+        ['ㄕ', 'pink', '水箭龜', '9', null, '師'], ['ㄖ', 'pink', '熱帶龍', '357', null, '熱'], 
         ['ㄗ', 'green', '走路草', '43', null, '資'], ['ㄘ', 'green', '草苗龜', '387', null, '雌'], 
         ['ㄙ', 'green', '索爾迦雷歐', '791', null, '思'],
         ['ㄧ', 'blue', '伊布', '133', null, '衣'], ['ㄨ', 'blue', '烏波', '194', null, '屋'], ['ㄩ', 'blue', '圓陸鯊', '443', null, '迂'],
@@ -224,12 +282,22 @@
         ['ㄢ', 'blue', '安瓢蟲', '165', null, '安'], ['ㄣ', 'blue', '噴火龍', '6', null, '恩'], 
         ['ㄤ', 'blue', '胖丁', '39', null, '昂'], ['ㄥ', 'blue', '耿鬼', '94', null, '鞥'],
         ['ㄦ', 'pink', '長耳兔', '428', null, '兒'],
-        ['ˉ', 'purple', '一聲 (平平的)', '➖', '聲調練習', '一聲'], ['ˊ', 'purple', '二聲 (往上飛)', '✈️', null, '二聲'],
-        ['ˇ', 'purple', '三聲 (打勾勾)', '✅', null, '三聲'], ['ˋ', 'purple', '四聲 (溜滑梯)', '↘️', null, '四聲'], ['˙', 'purple', '輕聲 (點一下)', '•', null, '輕聲'],
-        ['0', 'orange', '0 (像雞蛋)', '🥚', '數字森林', '零'], ['1', 'orange', '1 (像鉛筆)', '1', null, '一'], ['2', 'orange', '2 (像鴨子)', '2', null, '二'],
-        ['3', 'orange', '3 (像耳朵)', '3', null, '三'], ['4', 'orange', '4 (像帆船)', '4', null, '四'], ['5', 'orange', '5 (像鉤子)', '5', null, '五'],
-        ['6', 'orange', '6 (像哨子)', '6', null, '六'], ['7', 'orange', '7 (像拐杖)', '7', null, '七'], ['8', 'orange', '8 (像眼鏡)', '8', null, '八'], ['9', 'orange', '9 (像氣球)', '9', null, '九']
+        
+        [' ', 'purple', '一聲 (原本的聲音)', '➖', '聲調練習', '一聲'], 
+        ['ˊ', 'purple', '二聲 (往上飛)', '✈️', null, '二聲'],
+        ['ˇ', 'purple', '三聲 (打勾勾)', '✅', null, '三聲'], 
+        ['ˋ', 'purple', '四聲 (溜滑梯)', '↘️', null, '四聲'], 
+        ['˙', 'purple', '輕聲 (點一下)', '•', null, '輕聲'],
+        
+        ['0', 'pokeball', '0 (像精靈球)', '🔴', '數字森林 (1-151)', '零']
     ];
+
+    for (let i = 1; i <= 151; i++) {
+        let name = pokeNames151[i];
+        bpmData.push([
+            i.toString(), 'orange', `No.${i} ${name}`, i.toString(), null, i.toString()
+        ]);
+    }
 
     let currentLevelIndex = 0;
     let synth = window.speechSynthesis;
@@ -244,7 +312,7 @@
 
     function getImgUrl(id) {
         if (isNaN(id) && id.length > 3) return null; 
-        if (id === '🥚' || id === '➖' || id === '✈️' || id === '✅' || id === '↘️' || id === '•') return null;
+        if (id === '🔴' || id === '➖' || id === '✈️' || id === '✅' || id === '↘️' || id === '•') return null;
         return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
     }
 
@@ -266,24 +334,37 @@
                 title.className = 'section-title'; title.innerText = item[4]; grid.appendChild(title);
             }
             const btn = document.createElement('button');
-            btn.className = `level-btn bg-${item[1]}`;
             
-            const imgUrl = getImgUrl(item[3]);
-            if (imgUrl) {
-                const bg = document.createElement('div');
-                bg.className = 'poke-bg'; bg.style.backgroundImage = `url('${imgUrl}')`;
-                btn.appendChild(bg);
-            }
-
-            const txt = document.createElement('span');
-            txt.style.position = 'relative'; txt.style.zIndex = '2';
-            if(item[0] === '˙') {
-                 txt.innerHTML = '<span class="light-tone-span">˙</span>';
+            if (item[1] === 'pokeball') {
+                btn.className = `level-btn pokeball-btn`;
+                const txt = document.createElement('span');
+                txt.innerText = item[0];
+                txt.className = 'pokeball-text';
+                btn.appendChild(txt);
             } else {
-                 txt.innerText = item[0];
+                btn.className = `level-btn bg-${item[1]}`;
+                if (item[0].length >= 3) btn.classList.add('small-font');
+
+                const imgUrl = getImgUrl(item[3]);
+                if (imgUrl) {
+                    const bg = document.createElement('div');
+                    bg.className = 'poke-bg'; bg.style.backgroundImage = `url('${imgUrl}')`;
+                    btn.appendChild(bg);
+                }
+
+                const txt = document.createElement('span');
+                txt.style.position = 'relative'; txt.style.zIndex = '2';
+                
+                if(item[0] === '˙') {
+                     txt.innerHTML = '<span class="light-tone-span">˙</span>';
+                } else if (item[0] === ' ') {
+                     txt.innerHTML = '<span class="tone-text-span">一聲</span>';
+                } else {
+                     txt.innerText = item[0];
+                }
+                btn.appendChild(txt);
             }
             
-            btn.appendChild(txt);
             btn.onclick = () => startGame(index);
             grid.appendChild(btn);
         });
@@ -294,7 +375,10 @@
         const data = bpmData[index];
         document.getElementById('menu-view').classList.remove('active');
         document.getElementById('game-view').classList.add('active');
-        document.getElementById('current-title').innerText = `練習：${data[0]}`;
+        
+        let titleText = data[0];
+        if(titleText === ' ') titleText = "一聲 (空白)";
+        document.getElementById('current-title').innerText = `練習：${titleText}`;
         document.getElementById('modal').style.display = 'none';
 
         setTimeout(() => {
@@ -303,12 +387,17 @@
         
         let sound = data[5] ? data[5] : data[0]; 
         let speakText = "";
+        
         if (data[1] === 'orange' && data[0] !== '0') {
-            let numName = data[2].split(' ')[0]; let rhyme = data[2].split('(')[1].replace(')', '');
-            speakText = `${sound}，... ${rhyme}的${sound}`;
+            let name = data[2].split(' ')[1]; 
+            speakText = `${sound} ... (停頓) ... ${name}`;
         } else if (data[1] === 'purple') {
             let simpleName = data[2].split(' ')[0]; 
             speakText = `${simpleName}，... ${simpleName}的${sound}`;
+        } else if (data[0] === '0') {
+            speakText = "零 ... (停頓) ... 像精靈球的零";
+        } else if (data[0] === ' ') {
+            speakText = "一聲 ... (停頓) ... 一聲不需要寫，直接按寫好了";
         } else {
             let pokeName = data[2];
             if (data[0] === 'ㄣ') pokeName = '噴火龍'; if (data[0] === 'ㄟ') pokeName = '雷丘';
@@ -324,29 +413,43 @@
         drawCanvas.width = bgCanvas.width = rect.width;
         drawCanvas.height = bgCanvas.height = rect.height;
         
-        drawDashedGuide(bgCtx, '#ccc'); // 畫上安全的虛線
+        drawDashedGuide(bgCtx, '#ccc');
         
         const data = bpmData[currentLevelIndex];
-        if (data[1] === 'orange') ctx.strokeStyle = '#E65100';
+        if (data[1] === 'orange' || data[1] === 'pokeball') ctx.strokeStyle = '#E65100';
         else if (data[1] === 'purple') ctx.strokeStyle = '#8e44ad';
         else ctx.strokeStyle = '#2a75bb';
         
         ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 25; 
     }
 
-    // --- V18: 純虛線引導 (最安全最準確) ---
     function drawDashedGuide(context, color) {
         const data = bpmData[currentLevelIndex];
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        const fontSize = Math.min(context.canvas.width, context.canvas.height) * 0.7;
-        context.font = `900 ${fontSize}px "KaiTi", "BiauKai", sans-serif`;
+        
+        if (data[0] === ' ') return;
+
+        let fontSizeRatio = 0.7;
+        if (data[0].length >= 3) fontSizeRatio = 0.5;
+        
+        const fontSize = Math.min(context.canvas.width, context.canvas.height) * fontSizeRatio;
         context.textAlign = "center"; context.textBaseline = "middle";
-        let yOffset = (data[0] === '˙') ? -20 : 0;
         let x = context.canvas.width / 2;
-        let y = context.canvas.height / 2 + 20 + yOffset;
+        let y = context.canvas.height / 2 + 20;
+        let yOffset = (data[0] === '˙') ? -20 : 0;
 
         context.strokeStyle = color; context.lineWidth = 6; 
-        context.setLineDash([15, 15]); context.strokeText(data[0], x, y); context.setLineDash([]);
+        context.setLineDash([15, 15]); 
+
+        if (data[0] === '˙') {
+            context.beginPath();
+            context.arc(x, context.canvas.height * 0.3, 30, 0, Math.PI * 2);
+            context.stroke();
+        } else {
+            context.font = `900 ${fontSize}px "KaiTi", "BiauKai", sans-serif`;
+            context.strokeText(data[0], x, y + yOffset);
+        }
+        context.setLineDash([]);
     }
 
     function getPos(e) {
@@ -390,12 +493,34 @@
         const tempCtx = tempC.getContext('2d');
         const data = bpmData[currentLevelIndex];
 
-        // 判定還是要依賴字體外型，這樣才準
-        tempCtx.font = `900 ${checkW * 0.7}px "KaiTi", "BiauKai", sans-serif`; 
-        tempCtx.fillStyle = '#FF0000'; tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
-        tempCtx.fillText(data[0], checkW/2, checkH/2 + 5);
+        if (data[0] === ' ') {
+            tempCtx.drawImage(drawCanvas, 0, 0, width, height, 0, 0, checkW, checkH);
+            const ink = countPixels(tempCtx, checkW, checkH);
+            if (ink < 100) return "pass"; 
+            else return "messy";
+        }
+
+        let fontSizeRatio = 0.7;
+        if (data[0].length >= 3) fontSizeRatio = 0.5;
+        let x = checkW / 2; let y = checkH / 2 + 5;
+
+        tempCtx.fillStyle = '#FF0000';
+        tempCtx.strokeStyle = '#FF0000';
+        tempCtx.lineWidth = 25; 
+
+        if (data[0] === '˙') {
+            tempCtx.beginPath();
+            tempCtx.arc(x, checkH * 0.3, 15, 0, Math.PI * 2); 
+            tempCtx.fill();
+            tempCtx.stroke();
+        } else {
+            tempCtx.font = `900 ${checkW * fontSizeRatio}px "KaiTi", "BiauKai", sans-serif`; 
+            tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
+            tempCtx.strokeText(data[0], x, y);
+            tempCtx.fillText(data[0], x, y);
+        }
+
         const targetPixels = countPixels(tempCtx, checkW, checkH);
-        
         if (targetPixels === 0) return "pass"; 
 
         tempCtx.globalCompositeOperation = 'source-over';
@@ -404,15 +529,24 @@
         const totalInkPixels = countPixels(tempCtx, checkW, checkH);
 
         tempCtx.globalCompositeOperation = 'source-in';
-        tempCtx.fillStyle = '#FF0000'; tempCtx.fillText(data[0], checkW/2, checkH/2 + 5);
+        if (data[0] === '˙') {
+            tempCtx.beginPath(); tempCtx.arc(x, checkH * 0.3, 15, 0, Math.PI * 2); 
+            tempCtx.fill(); tempCtx.stroke();
+        } else {
+            tempCtx.strokeStyle = '#FF0000'; tempCtx.lineWidth = 25; tempCtx.strokeText(data[0], x, y);
+            tempCtx.fillStyle = '#FF0000'; tempCtx.fillText(data[0], x, y);
+        }
+        
         const overlapPixels = countPixels(tempCtx, checkW, checkH);
 
         if (totalInkPixels < 20) return "empty"; 
+        
         const accuracy = overlapPixels / totalInkPixels;
         const completion = overlapPixels / targetPixels;
 
-        if (accuracy > 0.3 && completion > 0.03) return "pass";
-        if (completion <= 0.03) return "empty";
+        if (accuracy > 0.15 && completion > 0.01) return "pass";
+        
+        if (completion <= 0.01) return "empty";
         return "messy";
     }
 
@@ -465,9 +599,16 @@
 
         if (result === "pass") {
             let rewardText, speakText;
-            if (data[1] === 'orange') {
-                rewardText = (data[0] === '0') ? "得到寶可夢蛋！" : `圖鑑 No.${data[0]}`;
-                speakText = (data[0] === '0') ? "得到寶可夢蛋！" : `抓到了！圖鑑編號${data[0]}！`;
+            if (data[1] === 'orange' && data[0] !== '0') {
+                let name = data[2].split(' ')[1];
+                rewardText = `${data[0]} - ${name}`;
+                speakText = `太棒了！收服${name}！`;
+            } else if (data[0] === '0') { 
+                rewardText = `圖鑑 ${data[0]}`;
+                speakText = "得到寶可夢蛋！";
+            } else if (data[0] === ' ') {
+                rewardText = "學會了一聲！";
+                speakText = "太棒了！學會了一聲！";
             } else {
                 rewardText = `${data[2]}`;
                 speakText = `太棒了！收服${data[2]}！`;
