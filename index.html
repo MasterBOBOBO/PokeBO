@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>寶可夢學園 - Apple Premium</title>
     <style>
         :root {
@@ -16,67 +16,83 @@
             --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang TC", "Microsoft JhengHei", sans-serif;
         }
 
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
         body {
             margin: 0; padding: 0;
             background-color: var(--bg);
             font-family: var(--apple-font);
-            height: 100vh; width: 100vw;
-            -webkit-font-smoothing: antialiased;
-            overflow: hidden; /* 防止整個 body 抖動 */
+            /* 使用 dvh 確保在手機上高度精確 */
+            height: 100dvh; width: 100vw;
+            overflow: hidden; 
+            display: flex;
+            flex-direction: column;
         }
 
-        /* 視圖容器 */
         .view {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: none; flex-direction: column;
+            display: none;
+            flex-direction: column;
+            height: 100dvh;
+            width: 100%;
+            position: absolute;
+            top: 0; left: 0;
         }
         .view.active { display: flex; }
 
-        /* 選單視圖：允許垂直捲動 */
-        #menu-view { 
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch; 
+        /* 選單佈局修復 */
+        #menu-view {
+            overflow-y: auto;
+            overflow-x: hidden;
             background: var(--bg);
+            -webkit-overflow-scrolling: touch;
         }
 
         .map-header {
-            padding: 30px 20px; text-align: center;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            position: sticky; top: 0; z-index: 100;
+            padding: 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
             border-bottom: 0.5px solid rgba(0,0,0,0.1);
+            width: 100%;
         }
-        .map-title { color: var(--text); margin: 0; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; }
 
-        /* 關鍵修正：響應式 Grid 排版 */
+        .map-title { color: var(--text); margin: 0; font-size: 1.5rem; font-weight: 700; }
+
+        /* Grid 修復：確保自動換行排列 */
         .grid-container {
-            display: grid; 
-            /* 根據寬度自動填滿，最小 90px，最大 1份額 */
-            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-            gap: 12px; padding: 20px;
-            max-width: 1000px; margin: 0 auto;
-            padding-bottom: 100px; /* 底部留白避免遮擋 */
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+            gap: 12px;
+            padding: 15px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            /* 預留底部空間給最後一排 */
+            padding-bottom: 60px;
         }
 
         .level-btn {
-            aspect-ratio: 1; border: none; border-radius: 24px;
-            font-weight: 700; font-family: var(--apple-font);
+            aspect-ratio: 1;
+            border: none;
+            border-radius: 20px;
+            font-weight: 700;
             color: var(--text);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.04);
-            cursor: pointer; transition: all 0.3s ease;
-            position: relative; overflow: hidden;
-            display: flex; justify-content: center; align-items: center;
-            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
         }
-        .level-btn:active { transform: scale(0.9); opacity: 0.8; }
+        .level-btn:active { transform: scale(0.92); opacity: 0.9; }
 
-        /* 針對不同裝置微調文字大小 */
-        .level-btn span { position: relative; z-index: 2; }
-        @media (max-width: 480px) {
-            .grid-container { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 10px; }
-            .level-btn { border-radius: 20px; }
-        }
+        .level-btn span { font-size: 2.2rem; z-index: 2; position: relative; }
 
         .bg-blue { background: var(--m-blue); }
         .bg-pink { background: var(--m-pink); }
@@ -86,34 +102,58 @@
         .pokeball-btn { background: linear-gradient(to bottom, #ffcfcf 46%, #ddd 46%, #ddd 54%, #fff 54%); }
 
         .poke-bg {
-            position: absolute; bottom: -5px; right: -5px;
-            width: 60%; height: 60%; opacity: 0.2; 
+            position: absolute; bottom: 0; right: 0;
+            width: 55%; height: 55%; opacity: 0.25; 
             background-size: contain; background-repeat: no-repeat; pointer-events: none;
         }
 
         .section-title {
             grid-column: 1 / -1; font-weight: 600; color: #a1a1a6;
-            margin-top: 30px; font-size: 0.85rem; display: flex; align-items: center; gap: 10px;
-            letter-spacing: 1px; text-transform: uppercase;
+            margin-top: 30px; font-size: 0.8rem; display: flex; align-items: center; gap: 10px;
         }
-        .section-title::after { content: ''; flex-grow: 1; height: 0.5px; background: #d2d2d7; }
+        .section-title::after { content: ''; flex-grow: 1; height: 1px; background: #eee; }
 
-        /* 遊戲畫面 */
-        header { height: 65px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 0.5px solid #d2d2d7; }
-        #back-btn { background: #f2f2f7; border: none; border-radius: 12px; padding: 10px 18px; color: #007aff; font-weight: 600; cursor: pointer; }
+        /* 繪圖視圖修復 */
+        header { 
+            height: 60px; 
+            min-height: 60px;
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 15px; 
+            background: #fff; 
+            border-bottom: 0.5px solid #ddd;
+        }
         
-        #canvas-wrapper { position: relative; flex-grow: 1; background: #fff; touch-action: none; overflow: hidden; }
+        #canvas-wrapper { 
+            flex: 1; 
+            position: relative; 
+            background: #fff; 
+            touch-action: none; 
+            overflow: hidden; 
+        }
+        
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         
-        .controls { height: 100px; display: flex; justify-content: center; gap: 15px; align-items: center; background: #f5f5f7; border-top: 0.5px solid #d2d2d7; }
-        .btn { border: none; border-radius: 16px; padding: 14px 35px; font-size: 1rem; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .controls { 
+            height: 90px; 
+            min-height: 90px;
+            display: flex; 
+            justify-content: center; 
+            gap: 15px; 
+            align-items: center; 
+            background: #f5f5f7; 
+            padding-bottom: env(safe-area-inset-bottom); /* 避開 iPhone 下方橫條 */
+        }
+
+        .btn { border: none; border-radius: 14px; padding: 12px 30px; font-size: 1rem; font-weight: 600; cursor: pointer; }
         #clear-btn { background: #e5e5ea; color: #3a3a3c; }
         #catch-btn { background: #bae6fd; color: #007aff; }
 
         #modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(15px);
-            display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 2000;
         }
     </style>
 </head>
@@ -122,7 +162,7 @@
     <div id="menu-view" class="view active">
         <div class="map-header">
             <h1 class="map-title">寶可夢學園</h1>
-            <div style="color:#a1a1a6; font-size: 0.75rem; margin-top:5px; font-weight: 700; letter-spacing: 1.5px;">PREMIUM EDITION</div>
+            <div style="color:#a1a1a6; font-size: 0.7rem; font-weight: 700; letter-spacing: 1px;">PREMIUM EDITION</div>
         </div>
         <div class="grid-container" id="level-grid"></div>
     </div>
@@ -142,18 +182,16 @@
             <button id="catch-btn" class="btn">寫好了</button>
         </div>
         <div id="modal">
-            <div id="modal-icon" style="width:180px; height:180px; background-size:contain; background-repeat:no-repeat; background-position:center; margin-bottom:20px;"></div>
-            <h2 id="modal-title" style="margin:0; font-size: 1.6rem;">太棒了！</h2>
-            <p id="modal-text" style="color:#86868b; font-size: 1rem; margin-top: 8px;"></p>
-            <button class="btn" id="modal-action-btn" style="background:#bae6fd; color:#007aff; margin-top:25px; width: 200px;">繼續學習</button>
+            <div id="modal-icon" style="width:150px; height:150px; background-size:contain; background-repeat:no-repeat; background-position:center;"></div>
+            <h2 id="modal-title" style="margin:15px 0 0; font-size: 1.5rem;">太棒了！</h2>
+            <p id="modal-text" style="color:#86868b; margin-top: 5px;"></p>
+            <button class="btn" id="modal-action-btn" style="background:#bae6fd; color:#007aff; margin-top:20px; width: 180px;">繼續學習</button>
         </div>
     </div>
 
 <script>
-    // 名稱資料
-    const pokeNames151 = ["","妙蛙種子","妙蛙草","妙蛙花","小火龍","火恐龍","噴火龍","傑尼龜","卡咪龜","水箭龜","綠毛蟲","鐵甲蛹","巴大蝶","獨角蟲","鐵殼蛹","大針蜂","波波","比比鳥","大比鳥","小拉達","拉達","烈雀","大嘴雀","阿柏蛇","阿柏怪","皮卡丘","雷丘","穿山鼠","穿山王","尼多蘭","尼多娜","尼多后","尼多朗","尼多力諾","尼多王","皮皮","皮可西","六尾","九尾","胖丁","胖丁","超音蝠","大嘴蝠","走路草","臭臭花","霸王花","派拉斯","派拉斯特","毛球","摩魯蛾","地鼠","三地鼠","喵喵","貓老大","可達鴨","哥達鴨","猴怪","火爆猴","卡蒂狗","風速狗","蚊香蝌蚪","蚊香君","蚊香泳士","凱西","勇基拉","胡地","腕力","豪力","怪力","喇叭芽","口呆花","大食花","瑪瑙水母","毒刺水母","小拳石","隆隆石","隆隆岩","小火馬","烈焰馬","呆呆獸","呆殼獸","小磁怪","三合一磁怪","大蔥鴨","嘟嘟","嘟嘟利","小海獅","白海獅","臭泥","臭臭泥","大舌貝","刺甲貝","鬼斯","鬼斯通","耿鬼","大岩蛇","催眠貘","引夢貘人","大鉗蟹","巨鉗蟹","霹靂電球","頑皮雷彈","蛋蛋","椰蛋樹","卡拉拉","嘎啦嘎啦","飛腿郎","快拳郎","大舌頭","瓦斯彈","雙彈瓦斯","獨角犀牛","鑽角犀獸","吉利蛋","蔓藤怪","袋獸","墨海馬","海刺龍","角金魚","金魚王","海星星","寶石海星","魔牆人偶","飛天螳螂","迷唇姐","電擊獸","鴨嘴火獸","凱羅斯","肯泰羅","鯉魚王","暴鯉龍","拉普拉斯","百變怪","伊布","水伊布","雷伊布","火伊布","多邊獸","菊石獸","多刺菊石獸","化石盔","鐮刀盔","化石翼龍","卡比獸","急凍鳥","閃電鳥","火焰鳥","迷你龍","哈克龍","快龍","超夢","夢幻"];
+    const pokeNames151 = ["","妙蛙種子","妙蛙草","妙蛙花","小火龍","火恐龍","噴火龍","傑尼龜","卡咪龜","水箭龜","綠毛蟲","鐵甲蛹","巴大蝶","獨角蟲","鐵殼蛹","大針蜂","波波","比比鳥","大比鳥","小拉達","拉達","烈雀","大嘴雀","阿柏蛇","阿柏怪","皮卡丘","雷丘","穿山鼠","穿山王","尼多蘭","尼多娜","尼多后","尼多朗","尼多力諾","尼多王","皮皮","皮可西","六尾","九尾","胖丁","胖丁","超音蝠","大嘴蝠","走路草","臭臭花","霸王花","派拉斯","派拉斯特","毛球","摩魯蛾","地鼠","三地鼠","喵喵","貓老大","可達鴨","哥達鴨","猴怪","火爆猴","卡蒂狗","風速狗","蚊香蝌蚪","蚊香君","蚊香泳士","凱西","勇基拉","胡地","腕力","豪力","怪力","喇叭芽","口呆花","大食花","瑪瑙水母","毒刺水母","小拳石","隆隆石","隆隆岩","小火馬","烈焰馬","呆呆獸","呆殼獸","小磁怪","三合一磁怪","大蔥鴨","嘟嘟","嘟嘟利","小海獅","白海獅","臭泥","臭臭泥","大舌貝","刺甲貝","鬼斯","鬼斯通","耿鬼","大岩蛇","催眠貘","引夢貘人","大鉗蟹","巨鉗蟹","霹靂電球","頑皮雷彈","蛋蛋","椰蛋樹","卡拉拉","嘎啦嘎啦","飛腿郎","快拳郎","大舌頭","瓦斯彈","雙彈瓦斯","獨角犀牛","鑽角犀獸","吉利蛋","蔓藤怪","袋獸","墨海馬","海刺龍","角金魚","金魚王","海星星","寶石海星星","魔牆人偶","飛天螳螂","迷唇姐","電擊獸","鴨嘴火獸","凱羅斯","肯泰羅","鯉魚王","暴鯉龍","拉普拉斯","百變怪","伊布","水伊布","雷伊布","火伊布","多邊獸","菊石獸","多刺菊石獸","化石盔","鐮刀盔","化石翼龍","卡比獸","急凍鳥","閃電鳥","火焰鳥","迷你龍","哈克龍","快龍","超夢","夢幻"];
 
-    // 注音與關卡資料
     const bpmData = [
         ['ㄅ','blue','巴大蝶','12','注音冒險 (聲母)','玻'],['ㄆ','blue','皮卡丘','25',null,'坡'],['ㄇ','blue','喵喵','52',null,'摸'],['ㄈ','blue','鳳王','250',null,'佛'],
         ['ㄉ','pink','呆呆獸','79',null,'得'],['ㄊ','pink','土台龜','389',null,'特'],['ㄋ','pink','尼多王','34',null,'訥'],['ㄌ','pink','拉普拉斯','131',null,'勒'],
@@ -169,7 +207,6 @@
         ['0','pokeball','精靈球','🔴','數字森林','零']
     ];
 
-    // 填充數字關卡
     for(let i=1; i<=151; i++) {
         bpmData.push([i.toString(), 'orange', `No.${i} ${pokeNames151[i]}`, i.toString(), i===1?'數字 1-151':null, i.toString()]);
     }
@@ -186,7 +223,6 @@
         return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
     }
 
-    // 初始化選單
     function initMenu() {
         const grid = document.getElementById('level-grid');
         grid.innerHTML = '';
@@ -199,8 +235,11 @@
             const displayText = item[0] === ' ' ? '' : item[0];
             const isDigit = /^\d+$/.test(displayText);
             
-            // 響應式調整文字大小
-            btn.style.fontSize = isDigit ? (displayText.length > 2 ? '1.8rem' : '2.5rem') : '3.5rem';
+            // 手機字體適配
+            if (isDigit) {
+                btn.querySelector('span')?.remove();
+                btn.style.fontSize = displayText.length > 2 ? '1.2rem' : '1.8rem';
+            }
 
             const imgUrl = getImgUrl(item[3]);
             if (imgUrl) {
@@ -224,15 +263,13 @@
         
         ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
         
-        requestAnimationFrame(() => {
-            resize();
-            speak(bpmData[idx][5] || bpmData[idx][0]);
-        });
+        // 強制重新計算 Canvas 大小
+        setTimeout(resize, 100);
+        speak(bpmData[idx][5] || bpmData[idx][0]);
     }
 
     function resize() {
         const wrapper = document.getElementById('canvas-wrapper');
-        if (!wrapper) return;
         const w = wrapper.clientWidth;
         const h = wrapper.clientHeight;
         
@@ -243,7 +280,7 @@
         
         ctx.lineCap = 'round'; 
         ctx.lineJoin = 'round'; 
-        ctx.lineWidth = 18; 
+        ctx.lineWidth = 15; 
         ctx.strokeStyle = '#3a3a3c';
     }
 
@@ -251,7 +288,7 @@
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
         const char = bpmData[currentLevel][0];
         const textToDraw = char === ' ' ? '―' : char;
-        const fontSize = Math.min(bgCanvas.width, bgCanvas.height) * 0.7;
+        const fontSize = Math.min(bgCanvas.width, bgCanvas.height) * 0.65;
         
         bgCtx.textAlign = 'center'; 
         bgCtx.textBaseline = 'middle';
@@ -277,8 +314,8 @@
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'zh-TW';
-        u.rate = 0.85;
-        setTimeout(() => { window.speechSynthesis.speak(u); }, 50);
+        u.rate = 0.9;
+        window.speechSynthesis.speak(u);
     }
 
     const getPos = (e) => {
@@ -297,7 +334,6 @@
 
     const moveDraw = (e) => {
         if(!isDrawing) return;
-        if (e.cancelable) e.preventDefault();
         const p = getPos(e); 
         ctx.lineTo(p.x, p.y); 
         ctx.stroke();
@@ -334,8 +370,8 @@
         if (score > 0.15) {
             showSuccess();
         } else {
-            speak("加油，再寫一次！");
-            alert("請依照虛線描寫喔！");
+            speak("再試一次");
+            alert("再試一次！請依照虛線描寫。");
         }
     };
 
@@ -347,7 +383,7 @@
         icon.innerText = imgUrl ? '' : '🌟';
         document.getElementById('modal-text').innerText = `順利收服了 ${data[2]}！`;
         document.getElementById('modal').style.display = 'flex';
-        speak("太棒了！收服成功！");
+        speak("好棒喔");
     }
 
     document.getElementById('modal-action-btn').onclick = () => {
