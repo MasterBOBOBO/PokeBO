@@ -22,7 +22,6 @@
             margin: 0; padding: 0;
             background-color: var(--bg);
             font-family: var(--apple-font);
-            /* 使用 dvh 確保在手機上高度精確 */
             height: 100dvh; width: 100vw;
             overflow: hidden; 
             display: flex;
@@ -39,7 +38,6 @@
         }
         .view.active { display: flex; }
 
-        /* 選單佈局修復 */
         #menu-view {
             overflow-y: auto;
             overflow-x: hidden;
@@ -62,7 +60,6 @@
 
         .map-title { color: var(--text); margin: 0; font-size: 1.5rem; font-weight: 700; }
 
-        /* Grid 修復：確保自動換行排列 */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
@@ -71,7 +68,6 @@
             width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            /* 預留底部空間給最後一排 */
             padding-bottom: 60px;
         }
 
@@ -84,15 +80,32 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             cursor: pointer;
             position: relative;
-            overflow: hidden;
+            overflow: visible; 
             display: flex;
             justify-content: center;
             align-items: center;
             background-color: #fff;
+            transition: transform 0.1s;
         }
         .level-btn:active { transform: scale(0.92); opacity: 0.9; }
 
         .level-btn span { font-size: 2.2rem; z-index: 2; position: relative; }
+
+        /* 大師球標記 */
+        .master-ball-mark {
+            position: absolute;
+            top: -6px; 
+            right: -6px;
+            width: 28px; 
+            height: 28px;
+            background-image: url('master_ball.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 10; 
+            mix-blend-mode: multiply;
+            pointer-events: none;
+        }
 
         .bg-blue { background: var(--m-blue); }
         .bg-pink { background: var(--m-pink); }
@@ -113,37 +126,20 @@
         }
         .section-title::after { content: ''; flex-grow: 1; height: 1px; background: #eee; }
 
-        /* 繪圖視圖修復 */
         header { 
-            height: 60px; 
-            min-height: 60px;
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            padding: 0 15px; 
-            background: #fff; 
-            border-bottom: 0.5px solid #ddd;
+            height: 60px; min-height: 60px;
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 0 15px; background: #fff; border-bottom: 0.5px solid #ddd;
         }
-        
-        #canvas-wrapper { 
-            flex: 1; 
-            position: relative; 
-            background: #fff; 
-            touch-action: none; 
-            overflow: hidden; 
-        }
-        
+        #back-btn { background: #f2f2f7; border: none; border-radius: 12px; padding: 8px 15px; color: #007aff; font-weight: 600; cursor: pointer; }
+
+        #canvas-wrapper { flex: 1; position: relative; background: #fff; touch-action: none; overflow: hidden; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         
         .controls { 
-            height: 90px; 
-            min-height: 90px;
-            display: flex; 
-            justify-content: center; 
-            gap: 15px; 
-            align-items: center; 
-            background: #f5f5f7; 
-            padding-bottom: env(safe-area-inset-bottom); /* 避開 iPhone 下方橫條 */
+            height: 90px; min-height: 90px;
+            display: flex; justify-content: center; gap: 15px; align-items: center; 
+            background: #f5f5f7; padding-bottom: env(safe-area-inset-bottom);
         }
 
         .btn { border: none; border-radius: 14px; padding: 12px 30px; font-size: 1rem; font-weight: 600; cursor: pointer; }
@@ -190,7 +186,7 @@
     </div>
 
 <script>
-    const pokeNames151 = ["","妙蛙種子","妙蛙草","妙蛙花","小火龍","火恐龍","噴火龍","傑尼龜","卡咪龜","水箭龜","綠毛蟲","鐵甲蛹","巴大蝶","獨角蟲","鐵殼蛹","大針蜂","波波","比比鳥","大比鳥","小拉達","拉達","烈雀","大嘴雀","阿柏蛇","阿柏怪","皮卡丘","雷丘","穿山鼠","穿山王","尼多蘭","尼多娜","尼多后","尼多朗","尼多力諾","尼多王","皮皮","皮可西","六尾","九尾","胖丁","胖丁","超音蝠","大嘴蝠","走路草","臭臭花","霸王花","派拉斯","派拉斯特","毛球","摩魯蛾","地鼠","三地鼠","喵喵","貓老大","可達鴨","哥達鴨","猴怪","火爆猴","卡蒂狗","風速狗","蚊香蝌蚪","蚊香君","蚊香泳士","凱西","勇基拉","胡地","腕力","豪力","怪力","喇叭芽","口呆花","大食花","瑪瑙水母","毒刺水母","小拳石","隆隆石","隆隆岩","小火馬","烈焰馬","呆呆獸","呆殼獸","小磁怪","三合一磁怪","大蔥鴨","嘟嘟","嘟嘟利","小海獅","白海獅","臭泥","臭臭泥","大舌貝","刺甲貝","鬼斯","鬼斯通","耿鬼","大岩蛇","催眠貘","引夢貘人","大鉗蟹","巨鉗蟹","霹靂電球","頑皮雷彈","蛋蛋","椰蛋樹","卡拉拉","嘎啦嘎啦","飛腿郎","快拳郎","大舌頭","瓦斯彈","雙彈瓦斯","獨角犀牛","鑽角犀獸","吉利蛋","蔓藤怪","袋獸","墨海馬","海刺龍","角金魚","金魚王","海星星","寶石海星星","魔牆人偶","飛天螳螂","迷唇姐","電擊獸","鴨嘴火獸","凱羅斯","肯泰羅","鯉魚王","暴鯉龍","拉普拉斯","百變怪","伊布","水伊布","雷伊布","火伊布","多邊獸","菊石獸","多刺菊石獸","化石盔","鐮刀盔","化石翼龍","卡比獸","急凍鳥","閃電鳥","火焰鳥","迷你龍","哈克龍","快龍","超夢","夢幻"];
+    const pokeNames151 = ["","妙蛙種子","妙蛙草","妙蛙花","小火龍","火恐龍","噴火龍","傑尼龜","卡咪龜","水箭龜","綠毛蟲","鐵甲蛹","巴大蝶","獨角蟲","鐵殼蛹","大針蜂","波波","比比鳥","大比鳥","小拉達","拉達","烈雀","大嘴雀","阿柏蛇","阿柏怪","皮卡丘","雷丘","穿山鼠","穿山王","尼多蘭","尼多娜","尼多后","尼多朗","尼多力諾","尼多王","皮皮","皮可西","六尾","九尾","胖丁","胖丁","超音蝠","大嘴蝠","走路草","臭臭花","霸王花","派拉斯","派拉斯特","毛球","摩魯蛾","地鼠","三地鼠","喵喵","貓老大","可達鴨","哥達鴨","猴怪","火爆猴","卡蒂狗","風速狗","蚊香蝌蚪","蚊香君","蚊香泳士","凱西","勇基拉","胡地","腕力","豪力","怪力","喇叭芽","口呆花","大食花","瑪瑙水母","毒刺水母","小拳石","隆隆石","隆隆岩","小火馬","烈焰馬","呆呆獸","呆殼獸","小磁怪","三合一磁怪","大蔥鴨","嘟嘟","嘟嘟利","小海獅","白海獅","臭泥","臭臭泥","大舌貝","刺甲貝","鬼斯","鬼斯通","耿鬼","大岩蛇","催眠貘","引夢貘人","大鉗蟹","巨鉗蟹","霹靂電球","頑皮雷彈","蛋蛋","椰蛋樹","卡拉拉","嘎啦嘎啦","飛腿郎","快拳郎","大舌頭","瓦斯彈","雙彈瓦斯","獨角犀牛","鑽角犀獸","吉利蛋","蔓藤怪","袋獸","墨海馬","海刺龍","角金魚","金魚王","海星星","寶石海星","魔牆人偶","飛天螳螂","迷唇姐","電擊獸","鴨嘴火獸","凱羅斯","肯泰羅","鯉魚王","暴鯉龍","拉普拉斯","百變怪","伊布","水伊布","雷伊布","火伊布","多邊獸","菊石獸","多刺菊石獸","化石盔","鐮刀盔","化石翼龍","卡比獸","急凍鳥","閃電鳥","火焰鳥","迷你龍","哈克龍","快龍","超夢","夢幻"];
 
     const bpmData = [
         ['ㄅ','blue','巴大蝶','12','注音冒險 (聲母)','玻'],['ㄆ','blue','皮卡丘','25',null,'坡'],['ㄇ','blue','喵喵','52',null,'摸'],['ㄈ','blue','鳳王','250',null,'佛'],
@@ -203,7 +199,7 @@
         ['ㄚ','orange','阿柏蛇','23','注音冒險 (韻母)','阿'],['ㄛ','orange','波克比','175',null,'喔'],['ㄜ','orange','可達鴨','54',null,'鵝'],['ㄝ','orange','椰蛋樹','103',null,'耶'],
         ['ㄞ','orange','愛管侍','876',null,'哀'],['ㄟ','orange','雷丘','26',null,'A'],['ㄠ','orange','傲骨燕','276',null,'凹'],['ㄡ','orange','歐路普','826',null,'歐'],
         ['ㄢ','orange','安瓢蟲','165',null,'安'],['ㄣ','orange','噴火龍','6',null,'恩'],['ㄤ','orange','胖丁','39',null,'昂'],['ㄥ','orange','耿鬼','94',null,'鞥'],['ㄦ','orange','長耳兔','428',null,'兒'],
-        [' ','purple','一聲','➖','聲調練習','一聲'],['ˊ','purple','二聲','✈️',null,'二聲'],['ˇ','purple','三聲','✅',null,'三聲'],['ˋ','purple','四聲','↘️',null,'四聲'],['˙','purple','輕聲','•',null,'輕聲'],
+        ['ˉ','purple','一聲','➖','聲調練習','一聲'],['ˊ','purple','二聲','✈️',null,'二聲'],['ˇ','purple','三聲','✅',null,'三聲'],['ˋ','purple','四聲','↘️',null,'四聲'],['˙','purple','輕聲','•',null,'輕聲'],
         ['0','pokeball','精靈球','🔴','數字森林','零']
     ];
 
@@ -211,11 +207,14 @@
         bpmData.push([i.toString(), 'orange', `No.${i} ${pokeNames151[i]}`, i.toString(), i===1?'數字 1-151':null, i.toString()]);
     }
 
+    // --- 關鍵修改：改用變數儲存，不儲存於硬碟 ---
+    let sessionProgress = {}; 
+
     let currentLevel = 0;
     const drawCanvas = document.getElementById('drawCanvas');
     const bgCanvas = document.getElementById('bgCanvas');
-    const ctx = drawCanvas.getContext('2d', { willReadFrequently: true });
-    const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
+    const ctx = drawCanvas.getContext('2d');
+    const bgCtx = bgCanvas.getContext('2d');
     let isDrawing = false;
 
     function getImgUrl(id) {
@@ -226,29 +225,32 @@
     function initMenu() {
         const grid = document.getElementById('level-grid');
         grid.innerHTML = '';
+
         bpmData.forEach((item, index) => {
             if (item[4]) {
                 const t = document.createElement('div'); t.className = 'section-title'; t.innerText = item[4]; grid.appendChild(t);
             }
             const btn = document.createElement('button');
             btn.className = `level-btn bg-${item[1]} ${item[1]==='pokeball'?'pokeball-btn':''}`;
-            const displayText = item[0] === ' ' ? '' : item[0];
-            const isDigit = /^\d+$/.test(displayText);
+            const displayText = item[0] === 'ˉ' ? '' : item[0];
             
-            // 手機字體適配
-            if (isDigit) {
-                btn.querySelector('span')?.remove();
-                btn.style.fontSize = displayText.length > 2 ? '1.2rem' : '1.8rem';
-            }
-
             const imgUrl = getImgUrl(item[3]);
             if (imgUrl) {
                 const bg = document.createElement('div'); bg.className = 'poke-bg';
                 bg.style.backgroundImage = `url('${imgUrl}')`; btn.appendChild(bg);
             }
+            
             const span = document.createElement('span'); 
             span.innerText = displayText;
+            if (/^\d+$/.test(displayText) && displayText.length > 2) span.style.fontSize = '1.2rem';
             btn.appendChild(span);
+
+            // 如果本回合已過關，顯示大師球
+            if (sessionProgress[index]) {
+                const ball = document.createElement('div');
+                ball.className = 'master-ball-mark';
+                btn.appendChild(ball);
+            }
             
             btn.addEventListener('click', () => startGame(index));
             grid.appendChild(btn);
@@ -259,52 +261,36 @@
         currentLevel = idx;
         document.getElementById('menu-view').classList.remove('active');
         document.getElementById('game-view').classList.add('active');
-        document.getElementById('current-title').innerText = bpmData[idx][0] === ' ' ? '一聲' : bpmData[idx][0];
+        document.getElementById('current-title').innerText = bpmData[idx][0] === 'ˉ' ? '一聲' : bpmData[idx][0];
         
         ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-        
-        // 強制重新計算 Canvas 大小
-        setTimeout(resize, 100);
         speak(bpmData[idx][5] || bpmData[idx][0]);
+        setTimeout(resize, 100);
     }
 
     function resize() {
         const wrapper = document.getElementById('canvas-wrapper');
-        const w = wrapper.clientWidth;
-        const h = wrapper.clientHeight;
-        
-        drawCanvas.width = bgCanvas.width = w;
-        drawCanvas.height = bgCanvas.height = h;
-        
+        drawCanvas.width = bgCanvas.width = wrapper.clientWidth;
+        drawCanvas.height = bgCanvas.height = wrapper.clientHeight;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 15; ctx.strokeStyle = '#3a3a3c';
         drawGuide();
-        
-        ctx.lineCap = 'round'; 
-        ctx.lineJoin = 'round'; 
-        ctx.lineWidth = 15; 
-        ctx.strokeStyle = '#3a3a3c';
     }
 
     function drawGuide() {
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
         const char = bpmData[currentLevel][0];
-        const textToDraw = char === ' ' ? '―' : char;
+        const textToDraw = char === 'ˉ' ? '―' : char;
         const fontSize = Math.min(bgCanvas.width, bgCanvas.height) * 0.65;
-        
-        bgCtx.textAlign = 'center'; 
-        bgCtx.textBaseline = 'middle';
-        bgCtx.font = `bold ${fontSize}px "PingFang TC", "Microsoft JhengHei", sans-serif`;
-        
+        bgCtx.textAlign = 'center'; bgCtx.textBaseline = 'middle';
+        bgCtx.font = `bold ${fontSize}px "PingFang TC", sans-serif`;
         const centerX = bgCanvas.width / 2;
         const centerY = bgCanvas.height / 2;
-
         bgCtx.globalAlpha = 0.05;
         bgCtx.fillStyle = '#000';
         bgCtx.fillText(textToDraw, centerX, centerY);
-
         bgCtx.globalAlpha = 1.0;
         bgCtx.setLineDash([12, 10]);
-        bgCtx.strokeStyle = '#d1d1d6'; 
-        bgCtx.lineWidth = 3;
+        bgCtx.strokeStyle = '#d1d1d6'; bgCtx.lineWidth = 4;
         bgCtx.strokeText(textToDraw, centerX, centerY);
         bgCtx.setLineDash([]);
     }
@@ -313,61 +299,48 @@
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'zh-TW';
-        u.rate = 0.9;
+        u.lang = 'zh-TW'; u.rate = 0.9;
         window.speechSynthesis.speak(u);
-    }
-
-    const getPos = (e) => {
-        const r = drawCanvas.getBoundingClientRect();
-        const c = (e.touches && e.touches.length > 0) ? e.touches[0] : e;
-        return { x: c.clientX - r.left, y: c.clientY - r.top };
     }
 
     const startDraw = (e) => {
         if (e.type === 'touchstart') e.preventDefault();
         isDrawing = true;
-        const p = getPos(e); 
-        ctx.beginPath(); 
-        ctx.moveTo(p.x, p.y);
+        const r = drawCanvas.getBoundingClientRect();
+        const c = (e.touches) ? e.touches[0] : e;
+        ctx.beginPath(); ctx.moveTo(c.clientX - r.left, c.clientY - r.top);
     };
 
     const moveDraw = (e) => {
         if(!isDrawing) return;
-        const p = getPos(e); 
-        ctx.lineTo(p.x, p.y); 
-        ctx.stroke();
+        if (e.type === 'touchmove') e.preventDefault();
+        const r = drawCanvas.getBoundingClientRect();
+        const c = (e.touches) ? e.touches[0] : e;
+        ctx.lineTo(c.clientX - r.left, c.clientY - r.top); ctx.stroke();
     };
-
-    const stopDraw = () => isDrawing = false;
 
     drawCanvas.addEventListener('mousedown', startDraw);
     drawCanvas.addEventListener('touchstart', startDraw, {passive: false});
     window.addEventListener('mousemove', moveDraw);
     window.addEventListener('touchmove', moveDraw, {passive: false});
-    window.addEventListener('mouseup', stopDraw);
-    window.addEventListener('touchend', stopDraw);
+    window.addEventListener('mouseup', () => isDrawing = false);
+    window.addEventListener('touchend', () => isDrawing = false);
 
     document.getElementById('clear-btn').onclick = () => ctx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
     
     document.getElementById('back-btn').onclick = () => {
         document.getElementById('game-view').classList.remove('active');
         document.getElementById('menu-view').classList.add('active');
+        initMenu(); 
     };
 
     document.getElementById('catch-btn').onclick = () => {
-        const drawData = ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height).data;
-        const guideData = bgCtx.getImageData(0, 0, bgCanvas.width, bgCanvas.height).data;
-        let hits = 0;
-        let totalRequired = 0;
-        for (let i = 3; i < guideData.length; i += 4) {
-            if (guideData[i] > 10) { 
-                totalRequired++;
-                if (drawData[i] > 10) hits++; 
-            }
-        }
-        const score = totalRequired === 0 ? 0 : hits / totalRequired;
-        if (score > 0.15) {
+        const dataPixels = ctx.getImageData(0,0,drawCanvas.width, drawCanvas.height).data;
+        let pixelCount = 0;
+        for(let i=3; i<dataPixels.length; i+=4) if(dataPixels[i]>10) pixelCount++;
+        
+        if (pixelCount > 500) {
+            sessionProgress[currentLevel] = true; // 僅記錄在變數中
             showSuccess();
         } else {
             speak("再試一次");
@@ -383,7 +356,7 @@
         icon.innerText = imgUrl ? '' : '🌟';
         document.getElementById('modal-text').innerText = `順利收服了 ${data[2]}！`;
         document.getElementById('modal').style.display = 'flex';
-        speak("好棒喔");
+        speak("好棒喔收服了");
     }
 
     document.getElementById('modal-action-btn').onclick = () => {
