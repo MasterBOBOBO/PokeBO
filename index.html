@@ -86,12 +86,25 @@
             align-items: center;
             background-color: #fff;
             transition: transform 0.1s;
+            /* 讓按鈕成為容器，方便裡面的字體動態調整 */
+            container-type: inline-size;
         }
         .level-btn:active { transform: scale(0.92); opacity: 0.9; }
 
-        .level-btn span { font-size: 2.2rem; z-index: 2; position: relative; }
+        /* 統一數字大小：若是單字很大，若是三位數則稍微縮小但保持一致性 */
+        .level-btn span { 
+            font-size: 2.2rem; 
+            z-index: 2; 
+            position: relative; 
+            line-height: 1;
+        }
 
-        /* 大師球標記 */
+        /* 針對三位數字（如100-151）微調，讓它們看起來不擁擠 */
+        .level-btn span.long-num {
+            font-size: 1.8rem;
+            letter-spacing: -1px;
+        }
+
         .master-ball-mark {
             position: absolute;
             top: -6px; 
@@ -207,7 +220,6 @@
         bpmData.push([i.toString(), 'orange', `No.${i} ${pokeNames151[i]}`, i.toString(), i===1?'數字 1-151':null, i.toString()]);
     }
 
-    // --- 關鍵修改：改用變數儲存，不儲存於硬碟 ---
     let sessionProgress = {}; 
 
     let currentLevel = 0;
@@ -242,10 +254,14 @@
             
             const span = document.createElement('span'); 
             span.innerText = displayText;
-            if (/^\d+$/.test(displayText) && displayText.length > 2) span.style.fontSize = '1.2rem';
+            
+            // 修正點：移除原有的 1.2rem 判斷，改用 class
+            if (displayText.length >= 3) {
+                span.classList.add('long-num');
+            }
+            
             btn.appendChild(span);
 
-            // 如果本回合已過關，顯示大師球
             if (sessionProgress[index]) {
                 const ball = document.createElement('div');
                 ball.className = 'master-ball-mark';
@@ -340,7 +356,7 @@
         for(let i=3; i<dataPixels.length; i+=4) if(dataPixels[i]>10) pixelCount++;
         
         if (pixelCount > 500) {
-            sessionProgress[currentLevel] = true; // 僅記錄在變數中
+            sessionProgress[currentLevel] = true;
             showSuccess();
         } else {
             speak("再試一次");
