@@ -17,13 +17,15 @@
         }
 
         body {
-            margin: 0; padding: 0; overflow: hidden;
+            margin: 0; padding: 0;
             background-color: var(--bg);
             font-family: var(--apple-font);
-            touch-action: none; height: 100vh; width: 100vw;
+            height: 100vh; width: 100vw;
             -webkit-font-smoothing: antialiased;
+            overflow: hidden; /* 防止整個 body 抖動 */
         }
 
+        /* 視圖容器 */
         .view {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
@@ -31,34 +33,50 @@
         }
         .view.active { display: flex; }
 
-        #menu-view { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        /* 選單視圖：允許垂直捲動 */
+        #menu-view { 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; 
+            background: var(--bg);
+        }
+
         .map-header {
-            padding: 25px 20px; text-align: center;
+            padding: 30px 20px; text-align: center;
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
             position: sticky; top: 0; z-index: 100;
             border-bottom: 0.5px solid rgba(0,0,0,0.1);
         }
-        .map-title { color: var(--text); margin: 0; font-size: 1.7rem; font-weight: 700; letter-spacing: -0.5px; }
+        .map-title { color: var(--text); margin: 0; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; }
 
+        /* 關鍵修正：響應式 Grid 排版 */
         .grid-container {
             display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 16px; padding: 20px;
-            max-width: 1200px; margin: 0 auto;
-            padding-bottom: 120px;
+            /* 根據寬度自動填滿，最小 90px，最大 1份額 */
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 12px; padding: 20px;
+            max-width: 1000px; margin: 0 auto;
+            padding-bottom: 100px; /* 底部留白避免遮擋 */
         }
 
         .level-btn {
-            aspect-ratio: 1; border: none; border-radius: 30px;
+            aspect-ratio: 1; border: none; border-radius: 24px;
             font-weight: 700; font-family: var(--apple-font);
             color: var(--text);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+            cursor: pointer; transition: all 0.3s ease;
             position: relative; overflow: hidden;
             display: flex; justify-content: center; align-items: center;
+            -webkit-tap-highlight-color: transparent;
         }
-        .level-btn:active { transform: scale(0.92); opacity: 0.8; }
+        .level-btn:active { transform: scale(0.9); opacity: 0.8; }
+
+        /* 針對不同裝置微調文字大小 */
+        .level-btn span { position: relative; z-index: 2; }
+        @media (max-width: 480px) {
+            .grid-container { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 10px; }
+            .level-btn { border-radius: 20px; }
+        }
 
         .bg-blue { background: var(--m-blue); }
         .bg-pink { background: var(--m-pink); }
@@ -68,32 +86,33 @@
         .pokeball-btn { background: linear-gradient(to bottom, #ffcfcf 46%, #ddd 46%, #ddd 54%, #fff 54%); }
 
         .poke-bg {
-            position: absolute; bottom: 0; right: 0;
-            width: 50%; height: 50%; opacity: 0.25; 
+            position: absolute; bottom: -5px; right: -5px;
+            width: 60%; height: 60%; opacity: 0.2; 
             background-size: contain; background-repeat: no-repeat; pointer-events: none;
         }
 
         .section-title {
             grid-column: 1 / -1; font-weight: 600; color: #a1a1a6;
-            margin-top: 40px; font-size: 0.9rem; display: flex; align-items: center; gap: 12px;
-            letter-spacing: 1px;
+            margin-top: 30px; font-size: 0.85rem; display: flex; align-items: center; gap: 10px;
+            letter-spacing: 1px; text-transform: uppercase;
         }
         .section-title::after { content: ''; flex-grow: 1; height: 0.5px; background: #d2d2d7; }
 
+        /* 遊戲畫面 */
         header { height: 65px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 0.5px solid #d2d2d7; }
         #back-btn { background: #f2f2f7; border: none; border-radius: 12px; padding: 10px 18px; color: #007aff; font-weight: 600; cursor: pointer; }
         
         #canvas-wrapper { position: relative; flex-grow: 1; background: #fff; touch-action: none; overflow: hidden; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         
-        .controls { height: 110px; display: flex; justify-content: center; gap: 20px; align-items: center; background: #f5f5f7; border-top: 0.5px solid #d2d2d7; }
-        .btn { border: none; border-radius: 18px; padding: 16px 45px; font-size: 1.1rem; font-weight: 600; cursor: pointer; }
+        .controls { height: 100px; display: flex; justify-content: center; gap: 15px; align-items: center; background: #f5f5f7; border-top: 0.5px solid #d2d2d7; }
+        .btn { border: none; border-radius: 16px; padding: 14px 35px; font-size: 1rem; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         #clear-btn { background: #e5e5ea; color: #3a3a3c; }
         #catch-btn { background: #bae6fd; color: #007aff; }
 
         #modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.92); backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(15px);
             display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
         }
     </style>
@@ -103,7 +122,7 @@
     <div id="menu-view" class="view active">
         <div class="map-header">
             <h1 class="map-title">寶可夢學園</h1>
-            <div style="color:#a1a1a6; font-size: 0.8rem; margin-top:5px; font-weight: 600; letter-spacing: 1px;">PREMIUM EDITION</div>
+            <div style="color:#a1a1a6; font-size: 0.75rem; margin-top:5px; font-weight: 700; letter-spacing: 1.5px;">PREMIUM EDITION</div>
         </div>
         <div class="grid-container" id="level-grid"></div>
     </div>
@@ -111,8 +130,8 @@
     <div id="game-view" class="view">
         <header>
             <button id="back-btn">← 返回</button>
-            <span id="current-title" style="font-weight: 700; font-size: 1.3rem; color: var(--text);"></span>
-            <span style="width: 65px;"></span> 
+            <span id="current-title" style="font-weight: 700; font-size: 1.2rem; color: var(--text);"></span>
+            <span style="width: 70px;"></span> 
         </header>
         <div id="canvas-wrapper">
             <canvas id="bgCanvas"></canvas> 
@@ -123,39 +142,34 @@
             <button id="catch-btn" class="btn">寫好了</button>
         </div>
         <div id="modal">
-            <div id="modal-icon" style="width:200px; height:200px; background-size:contain; background-repeat:no-repeat; background-position:center; margin-bottom:20px;"></div>
-            <h2 id="modal-title" style="margin:0; font-size: 1.8rem;">太棒了！</h2>
-            <p id="modal-text" style="color:#86868b; font-size: 1.1rem; margin-top: 10px;"></p>
-            <button class="btn" id="modal-action-btn" style="background:#bae6fd; color:#007aff; margin-top:30px; width: 220px;">繼續學習</button>
+            <div id="modal-icon" style="width:180px; height:180px; background-size:contain; background-repeat:no-repeat; background-position:center; margin-bottom:20px;"></div>
+            <h2 id="modal-title" style="margin:0; font-size: 1.6rem;">太棒了！</h2>
+            <p id="modal-text" style="color:#86868b; font-size: 1rem; margin-top: 8px;"></p>
+            <button class="btn" id="modal-action-btn" style="background:#bae6fd; color:#007aff; margin-top:25px; width: 200px;">繼續學習</button>
         </div>
     </div>
 
 <script>
+    // 名稱資料
     const pokeNames151 = ["","妙蛙種子","妙蛙草","妙蛙花","小火龍","火恐龍","噴火龍","傑尼龜","卡咪龜","水箭龜","綠毛蟲","鐵甲蛹","巴大蝶","獨角蟲","鐵殼蛹","大針蜂","波波","比比鳥","大比鳥","小拉達","拉達","烈雀","大嘴雀","阿柏蛇","阿柏怪","皮卡丘","雷丘","穿山鼠","穿山王","尼多蘭","尼多娜","尼多后","尼多朗","尼多力諾","尼多王","皮皮","皮可西","六尾","九尾","胖丁","胖丁","超音蝠","大嘴蝠","走路草","臭臭花","霸王花","派拉斯","派拉斯特","毛球","摩魯蛾","地鼠","三地鼠","喵喵","貓老大","可達鴨","哥達鴨","猴怪","火爆猴","卡蒂狗","風速狗","蚊香蝌蚪","蚊香君","蚊香泳士","凱西","勇基拉","胡地","腕力","豪力","怪力","喇叭芽","口呆花","大食花","瑪瑙水母","毒刺水母","小拳石","隆隆石","隆隆岩","小火馬","烈焰馬","呆呆獸","呆殼獸","小磁怪","三合一磁怪","大蔥鴨","嘟嘟","嘟嘟利","小海獅","白海獅","臭泥","臭臭泥","大舌貝","刺甲貝","鬼斯","鬼斯通","耿鬼","大岩蛇","催眠貘","引夢貘人","大鉗蟹","巨鉗蟹","霹靂電球","頑皮雷彈","蛋蛋","椰蛋樹","卡拉拉","嘎啦嘎啦","飛腿郎","快拳郎","大舌頭","瓦斯彈","雙彈瓦斯","獨角犀牛","鑽角犀獸","吉利蛋","蔓藤怪","袋獸","墨海馬","海刺龍","角金魚","金魚王","海星星","寶石海星","魔牆人偶","飛天螳螂","迷唇姐","電擊獸","鴨嘴火獸","凱羅斯","肯泰羅","鯉魚王","暴鯉龍","拉普拉斯","百變怪","伊布","水伊布","雷伊布","火伊布","多邊獸","菊石獸","多刺菊石獸","化石盔","鐮刀盔","化石翼龍","卡比獸","急凍鳥","閃電鳥","火焰鳥","迷你龍","哈克龍","快龍","超夢","夢幻"];
 
-    // 重新排列後的注音資料 (參考上傳圖檔)
+    // 注音與關卡資料
     const bpmData = [
-        // --- 聲母 (藍色/粉色/綠色) ---
         ['ㄅ','blue','巴大蝶','12','注音冒險 (聲母)','玻'],['ㄆ','blue','皮卡丘','25',null,'坡'],['ㄇ','blue','喵喵','52',null,'摸'],['ㄈ','blue','鳳王','250',null,'佛'],
         ['ㄉ','pink','呆呆獸','79',null,'得'],['ㄊ','pink','土台龜','389',null,'特'],['ㄋ','pink','尼多王','34',null,'訥'],['ㄌ','pink','拉普拉斯','131',null,'勒'],
         ['ㄍ','green','固拉多','383',null,'哥'],['ㄎ','green','卡比獸','143',null,'科'],['ㄏ','green','火恐龍','5',null,'喝'],
         ['ㄐ','blue','傑尼龜','7',null,'基'],['ㄑ','blue','敲音猴','810',null,'七'],['ㄒ','blue','小火龍','4',null,'西'],
         ['ㄓ','pink','哲爾尼亞斯','716',null,'知'],['ㄔ','pink','超夢','150',null,'吃'],['ㄕ','pink','水箭龜','9',null,'師'],['ㄖ','pink','熱帶龍','357',null,'日'],
         ['ㄗ','green','走路草','43',null,'資'],['ㄘ','green','草苗龜','387',null,'雌'],['ㄙ','green','索爾迦雷歐','791',null,'思'],
-        
-        // --- 介符 (藍色) ---
         ['ㄧ','blue','伊布','133','注音冒險 (介符)','衣'],['ㄨ','blue','烏波','194',null,'屋'],['ㄩ','blue','圓陸鯊','443',null,'迂'],
-
-        // --- 韻母 (橘色/粉色) ---
         ['ㄚ','orange','阿柏蛇','23','注音冒險 (韻母)','阿'],['ㄛ','orange','波克比','175',null,'喔'],['ㄜ','orange','可達鴨','54',null,'鵝'],['ㄝ','orange','椰蛋樹','103',null,'耶'],
         ['ㄞ','orange','愛管侍','876',null,'哀'],['ㄟ','orange','雷丘','26',null,'A'],['ㄠ','orange','傲骨燕','276',null,'凹'],['ㄡ','orange','歐路普','826',null,'歐'],
         ['ㄢ','orange','安瓢蟲','165',null,'安'],['ㄣ','orange','噴火龍','6',null,'恩'],['ㄤ','orange','胖丁','39',null,'昂'],['ㄥ','orange','耿鬼','94',null,'鞥'],['ㄦ','orange','長耳兔','428',null,'兒'],
-
-        // --- 聲調 ---
         [' ','purple','一聲','➖','聲調練習','一聲'],['ˊ','purple','二聲','✈️',null,'二聲'],['ˇ','purple','三聲','✅',null,'三聲'],['ˋ','purple','四聲','↘️',null,'四聲'],['˙','purple','輕聲','•',null,'輕聲'],
         ['0','pokeball','精靈球','🔴','數字森林','零']
     ];
 
+    // 填充數字關卡
     for(let i=1; i<=151; i++) {
         bpmData.push([i.toString(), 'orange', `No.${i} ${pokeNames151[i]}`, i.toString(), i===1?'數字 1-151':null, i.toString()]);
     }
@@ -172,6 +186,7 @@
         return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
     }
 
+    // 初始化選單
     function initMenu() {
         const grid = document.getElementById('level-grid');
         grid.innerHTML = '';
@@ -183,7 +198,9 @@
             btn.className = `level-btn bg-${item[1]} ${item[1]==='pokeball'?'pokeball-btn':''}`;
             const displayText = item[0] === ' ' ? '' : item[0];
             const isDigit = /^\d+$/.test(displayText);
-            btn.style.fontSize = isDigit ? '3.2rem' : '4.5rem';
+            
+            // 響應式調整文字大小
+            btn.style.fontSize = isDigit ? (displayText.length > 2 ? '1.8rem' : '2.5rem') : '3.5rem';
 
             const imgUrl = getImgUrl(item[3]);
             if (imgUrl) {
@@ -193,7 +210,8 @@
             const span = document.createElement('span'); 
             span.innerText = displayText;
             btn.appendChild(span);
-            btn.onclick = () => startGame(index);
+            
+            btn.addEventListener('click', () => startGame(index));
             grid.appendChild(btn);
         });
     }
@@ -214,6 +232,7 @@
 
     function resize() {
         const wrapper = document.getElementById('canvas-wrapper');
+        if (!wrapper) return;
         const w = wrapper.clientWidth;
         const h = wrapper.clientHeight;
         
@@ -224,7 +243,7 @@
         
         ctx.lineCap = 'round'; 
         ctx.lineJoin = 'round'; 
-        ctx.lineWidth = 22; 
+        ctx.lineWidth = 18; 
         ctx.strokeStyle = '#3a3a3c';
     }
 
@@ -232,8 +251,7 @@
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
         const char = bpmData[currentLevel][0];
         const textToDraw = char === ' ' ? '―' : char;
-
-        const fontSize = Math.min(bgCanvas.width, bgCanvas.height) * 0.65;
+        const fontSize = Math.min(bgCanvas.width, bgCanvas.height) * 0.7;
         
         bgCtx.textAlign = 'center'; 
         bgCtx.textBaseline = 'middle';
@@ -247,9 +265,9 @@
         bgCtx.fillText(textToDraw, centerX, centerY);
 
         bgCtx.globalAlpha = 1.0;
-        bgCtx.setLineDash([15, 12]);
+        bgCtx.setLineDash([12, 10]);
         bgCtx.strokeStyle = '#d1d1d6'; 
-        bgCtx.lineWidth = 4;
+        bgCtx.lineWidth = 3;
         bgCtx.strokeText(textToDraw, centerX, centerY);
         bgCtx.setLineDash([]);
     }
@@ -257,39 +275,42 @@
     function speak(text) {
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
-        
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'zh-TW';
-        u.rate = 0.8;
-        u.volume = 1.0;
-        
-        setTimeout(() => {
-            window.speechSynthesis.speak(u);
-        }, 50);
+        u.rate = 0.85;
+        setTimeout(() => { window.speechSynthesis.speak(u); }, 50);
     }
 
     const getPos = (e) => {
         const r = drawCanvas.getBoundingClientRect();
-        const c = e.touches ? e.touches[0] : e;
+        const c = (e.touches && e.touches.length > 0) ? e.touches[0] : e;
         return { x: c.clientX - r.left, y: c.clientY - r.top };
     }
 
-    drawCanvas.onmousedown = drawCanvas.ontouchstart = (e) => {
-        e.preventDefault(); 
+    const startDraw = (e) => {
+        if (e.type === 'touchstart') e.preventDefault();
         isDrawing = true;
         const p = getPos(e); 
         ctx.beginPath(); 
         ctx.moveTo(p.x, p.y);
     };
-    
-    window.onmousemove = window.ontouchmove = (e) => {
+
+    const moveDraw = (e) => {
         if(!isDrawing) return;
+        if (e.cancelable) e.preventDefault();
         const p = getPos(e); 
         ctx.lineTo(p.x, p.y); 
         ctx.stroke();
     };
-    
-    window.onmouseup = window.ontouchend = () => isDrawing = false;
+
+    const stopDraw = () => isDrawing = false;
+
+    drawCanvas.addEventListener('mousedown', startDraw);
+    drawCanvas.addEventListener('touchstart', startDraw, {passive: false});
+    window.addEventListener('mousemove', moveDraw);
+    window.addEventListener('touchmove', moveDraw, {passive: false});
+    window.addEventListener('mouseup', stopDraw);
+    window.addEventListener('touchend', stopDraw);
 
     document.getElementById('clear-btn').onclick = () => ctx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
     
@@ -301,24 +322,20 @@
     document.getElementById('catch-btn').onclick = () => {
         const drawData = ctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height).data;
         const guideData = bgCtx.getImageData(0, 0, bgCanvas.width, bgCanvas.height).data;
-        
         let hits = 0;
         let totalRequired = 0;
-
         for (let i = 3; i < guideData.length; i += 4) {
             if (guideData[i] > 10) { 
                 totalRequired++;
                 if (drawData[i] > 10) hits++; 
             }
         }
-
-        const score = hits / totalRequired;
-        
-        if (score > 0.18) {
+        const score = totalRequired === 0 ? 0 : hits / totalRequired;
+        if (score > 0.15) {
             showSuccess();
         } else {
-            speak("再努力寫寫看喔，要描在虛線上。");
-            alert("再試一次！請依照虛線描寫。");
+            speak("加油，再寫一次！");
+            alert("請依照虛線描寫喔！");
         }
     };
 
@@ -326,12 +343,11 @@
         const data = bpmData[currentLevel];
         const icon = document.getElementById('modal-icon');
         const imgUrl = getImgUrl(data[3]);
-        
         icon.style.backgroundImage = imgUrl ? `url('${imgUrl}')` : '';
         icon.innerText = imgUrl ? '' : '🌟';
         document.getElementById('modal-text').innerText = `順利收服了 ${data[2]}！`;
         document.getElementById('modal').style.display = 'flex';
-        speak("好棒喔！收服成功！");
+        speak("太棒了！收服成功！");
     }
 
     document.getElementById('modal-action-btn').onclick = () => {
@@ -340,6 +356,7 @@
     };
 
     window.onload = initMenu;
+    window.addEventListener('resize', resize);
 </script>
 </body>
 </html>
