@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenAI Codex 完全指南（繁體中文版）</title>
+<style>
+:root{
+  --bg:#f7fafa; --surface:#ffffff; --text:#1f2328; --muted:#6b7280;
+  --accent:#0f766e; --accent-soft:#e3f3f0; --border:#dde5e3;
+  --code-bg:#eef4f2; --quote-bg:#f0f7f5;
+  --tag-intro:#0e7490; --tag-basic:#7c3aed; --tag-case:#059669; --tag-prompt:#b45309;
+  --tag-adv:#dc2626; --tag-money:#ca8a04; --tag-bonus:#64748b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#141a19; --surface:#1c2422; --text:#e6eae8; --muted:#98a5a1;
+    --accent:#5eead4; --accent-soft:#1e2f2b; --border:#2e3a37;
+    --code-bg:#212b28; --quote-bg:#1e2a26;
+    --shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",-apple-system,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.85; font-size:16px;
+}
+.wrap{max-width:880px;margin:0 auto;padding:0 24px}
+nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 24px;scrollbar-width:thin}
+nav a{flex:0 0 auto;font-size:13px;color:var(--muted);text-decoration:none;
+  padding:4px 12px;border-radius:99px;white-space:nowrap;transition:.15s}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+header{padding:72px 0 48px;text-align:center;
+  background:linear-gradient(180deg,var(--accent-soft) 0%,var(--bg) 100%)}
+header .kicker{font-size:13px;letter-spacing:.25em;color:var(--accent);font-weight:700;text-transform:uppercase}
+header h1{font-size:clamp(30px,5vw,44px);font-weight:800;margin:12px 0 20px;letter-spacing:.02em}
+header .lede{max-width:640px;margin:0 auto;color:var(--muted);font-size:16px;
+  border-left:3px solid var(--accent);padding:8px 20px;text-align:left;
+  background:var(--quote-bg);border-radius:0 10px 10px 0}
+header .meta{margin-top:24px;font-size:13px;color:var(--muted)}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:36px 0 8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:18px 18px 16px;box-shadow:var(--shadow);text-decoration:none;color:var(--text);
+  display:flex;flex-direction:column;gap:8px;transition:.15s}
+.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.card .num{font-size:12px;font-weight:700;color:var(--accent)}
+.card h3{font-size:15.5px;font-weight:700;line-height:1.5}
+.card p{font-size:13px;color:var(--muted);line-height:1.7;flex:1}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 9px;border-radius:99px;color:#fff;font-weight:500}
+.t-intro{background:var(--tag-intro)}.t-basic{background:var(--tag-basic)}
+.t-case{background:var(--tag-case)}.t-prompt{background:var(--tag-prompt)}
+.t-adv{background:var(--tag-adv)}.t-money{background:var(--tag-money)}
+.t-bonus{background:var(--tag-bonus)}
+.t-level{background:transparent;color:var(--muted);border:1px solid var(--border)}
+section{padding:56px 0 8px;border-top:1px solid var(--border);margin-top:56px}
+section:first-of-type{border-top:none;margin-top:0}
+.ch-label{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.15em}
+section>.wrap>h2{font-size:28px;font-weight:800;margin:6px 0 10px}
+.ch-summary{color:var(--muted);font-size:14.5px;margin-bottom:28px}
+h3{font-size:20px;font-weight:700;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--accent-soft)}
+h4{font-size:16.5px;font-weight:700;margin:26px 0 8px;color:var(--accent)}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 16px;padding-left:26px}
+li{margin-bottom:8px}
+strong{font-weight:700}
+blockquote{background:var(--quote-bg);border-left:3px solid var(--accent);
+  padding:14px 20px;border-radius:0 10px 10px 0;margin:18px 0}
+a{color:var(--accent)}
+code{background:var(--code-bg);padding:1px 6px;border-radius:5px;font-size:.9em;
+  font-family:"SF Mono",Menlo,Consolas,monospace}
+.tbl{overflow-x:auto;margin:18px 0;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--surface)}
+th{background:var(--accent-soft);color:var(--text);font-weight:700;text-align:left;padding:11px 16px;white-space:nowrap}
+td{padding:11px 16px;border-top:1px solid var(--border);vertical-align:top}
+tbody tr:hover{background:var(--code-bg)}
+.prompt{position:relative;margin:14px 0 10px}
+.prompt pre{background:var(--code-bg);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word;
+  font-family:"Noto Sans TC","PingFang TC",sans-serif}
+.copy-btn{position:absolute;top:10px;right:10px;font-size:12px;padding:4px 12px;
+  border:1px solid var(--border);border-radius:8px;background:var(--surface);
+  color:var(--muted);cursor:pointer;transition:.15s;font-family:inherit}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.use{font-size:13.5px;color:var(--muted);margin-bottom:26px}
+.use b{color:var(--text)}
+.diagram{background:var(--code-bg);border:1px solid var(--border);border-radius:12px;
+  padding:20px 22px;margin:20px 0;overflow-x:auto}
+.diagram .d-title{font-size:12.5px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin-bottom:14px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px;font-weight:500}
+.flow .step{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 16px;box-shadow:var(--shadow)}
+.flow .arr{color:var(--accent);font-weight:700}
+.bars{display:grid;gap:10px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 100px;align-items:center;gap:12px;font-size:13.5px}
+.bar-track{background:var(--surface);border:1px solid var(--border);border-radius:99px;height:14px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#14b8a6);border-radius:99px}
+.bar-row .note{color:var(--muted);font-size:12.5px;text-align:right}
+.tree{display:flex;flex-direction:column;align-items:center;font-size:14px}
+.tree .node{background:var(--surface);border:1.5px solid var(--accent);border-radius:10px;padding:8px 20px;font-weight:700;box-shadow:var(--shadow)}
+.tree .vline{width:2px;height:18px;background:var(--border)}
+.tree .kids{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.tree .kid{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:13px;text-align:center}
+.tree .kid small{display:block;color:var(--muted);font-size:11.5px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+.panel .p-title{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--accent);margin-bottom:8px}
+.panel p{font-size:13.5px;margin-bottom:6px;color:var(--muted)}
+.panel p b{color:var(--text)}
+details{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px 18px;margin:12px 0;box-shadow:var(--shadow)}
+details summary{font-weight:700;cursor:pointer;color:var(--accent)}
+details p{margin:10px 0 4px;font-size:14.5px}
+footer{margin-top:72px;padding:36px 0 48px;border-top:1px solid var(--border);
+  text-align:center;font-size:13px;color:var(--muted)}
+footer a{color:var(--muted)}
+.top-link{display:block;text-align:right;font-size:13px;margin-top:28px}
+.top-link a{text-decoration:none;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+<a href="#ch0">導論</a><a href="#ch1">1 基礎</a><a href="#ch2">2 真實案例</a><a href="#ch3">3 提示詞×20</a><a href="#ch4">4 技巧×15</a><a href="#ch5">5 工具組合</a><a href="#ch6">6 變現</a><a href="#ch7">7 進階案例</a><a href="#ch8">8 常見問題</a><a href="#ch9">9 資源</a>
+</div></nav>
+
+<header id="top">
+<div class="wrap">
+  <div class="kicker">完全指南</div>
+  <h1>OpenAI Codex 完全指南</h1>
+  <div class="lede">掌握 OpenAI Codex 所需的一切：基礎知識、三種工作介面、20 個可直接複製的提示詞、15 個實戰技巧、AGENTS.md 設定心法、與 GitHub／Slack／CI 的整合、5 種變現方法，以及必須避開的錯誤。</div>
+  <div class="meta">繁體中文原創指南・資訊時點：2026 年 7 月・架構仿照《Claude Fable 5 完全指南》</div>
+</div>
+</header>
+
+<div class="wrap">
+<div class="toc-grid">
+  <a class="card" href="#ch0"><span class="num">第 0 章</span><h3>導論：什麼是 OpenAI Codex</h3><p>什麼是 Codex、它從補全工具進化成軟體工程代理的歷程、本指南適合誰，以及你將學到什麼。</p><div class="tags"><span class="tag t-intro">導論</span><span class="tag t-level">入門</span></div></a>
+  <a class="card" href="#ch1"><span class="num">模組 1</span><h3>基礎知識</h3><p>6 大核心概念、基準測試數據、方案價格、三種介面（CLI／IDE／雲端）的差異與適用時機。</p><div class="tags"><span class="tag t-basic">基礎</span><span class="tag t-level">中級</span></div></a>
+  <a class="card" href="#ch2"><span class="num">模組 2</span><h3>真實案例</h3><p>OpenAI 內部團隊與早期採用企業怎麼用 Codex，以及區分「用得好」與「用不好」的關鍵模式。</p><div class="tags"><span class="tag t-case">實際案例</span><span class="tag t-level">不限程度</span></div></a>
+  <a class="card" href="#ch3"><span class="num">模組 3</span><h3>20 個必備提示詞</h3><p>20 個可直接複製的提示詞，分為 5 大類：理解程式碼、修復與重構、建造新功能、品質與審查、自動化交付。</p><div class="tags"><span class="tag t-prompt">提示詞</span><span class="tag t-level">中級</span></div></a>
+  <a class="card" href="#ch4"><span class="num">模組 4</span><h3>15 個實戰技巧</h3><p>心態、AGENTS.md 設定、任務切分與用量管理，讓 Codex 發揮到極致，外加常見錯誤與避開方法。</p><div class="tags"><span class="tag t-adv">進階</span><span class="tag t-level">進階</span></div></a>
+  <a class="card" href="#ch5"><span class="num">模組 5</span><h3>強大的工具組合</h3><p>如何把 Codex 與 GitHub、Slack、CI/CD、MCP、VS Code 和雲端任務結合，讓每個工作流程的成果倍增。</p><div class="tags"><span class="tag t-adv">進階</span><span class="tag t-level">進階</span></div></a>
+  <a class="card" href="#ch6"><span class="num">模組 6</span><h3>如何變現賺錢</h3><p>5 種用 Codex 賺錢的方法：成品開發服務、微型 SaaS、程式碼健檢服務、培訓顧問、自動化代理商。</p><div class="tags"><span class="tag t-money">變現</span><span class="tag t-level">不限程度</span></div></a>
+  <a class="card" href="#ch7"><span class="num">模組 7</span><h3>3 個進階應用案例</h3><p>3 套完整的分步工作流程：舊系統現代化、7 天做出一個 SaaS、團隊級程式碼審查自動化。</p><div class="tags"><span class="tag t-adv">進階</span><span class="tag t-level">進階</span></div></a>
+  <a class="card" href="#ch8"><span class="num">第 8 章</span><h3>常見問題</h3><p>直球回答：跟 Claude Code、Cursor、Copilot 怎麼選、該用哪個模型、用量限制、資料隱私與沙箱安全性。</p><div class="tags"><span class="tag t-bonus">附錄</span><span class="tag t-level">不限程度</span></div></a>
+  <a class="card" href="#ch9"><span class="num">第 9 章</span><h3>資源與下一步</h3><p>OpenAI 官方連結，以及一套 4 週行動計畫，讓你從這週開始把完整開發任務交給 Codex。</p><div class="tags"><span class="tag t-bonus">附錄</span><span class="tag t-level">不限程度</span></div></a>
+</div>
+</div>
+
+<!-- ═══════════════ 第 0 章 導論 ═══════════════ -->
+<section id="ch0"><div class="wrap">
+<div class="ch-label">第 0 章・導論</div>
+<h2>什麼是 OpenAI Codex</h2>
+
+<h3>什麼是 Codex，為什麼它很重要</h3>
+<p>Codex 是 OpenAI 的<strong>自主軟體工程代理（software engineering agent）</strong>。它不是自動補全工具：你給它一個完整的工作單位——「修好結帳流程的失敗測試」、「幫訂單 API 加上分頁」、「把整個專案升級到 React 19」——它會讀懂整個程式碼庫、跨多個檔案撰寫與修改程式、在隔離沙箱中執行測試，最後開出 Pull Request 給你審核。</p>
+<p>核心重點：<strong>Codex 是「一個代理、三種介面」。</strong>同一個代理可以在你的終端機（開源的 Codex CLI）、你的編輯器（VS Code 等 IDE 擴充功能），以及雲端（透過 ChatGPT 網頁、iOS App，甚至 Slack）工作。本機介面適合即時協作，雲端介面則能在背景平行執行多個任務——你下班了它還在寫。</p>
+<p>它重要的原因和所有前緣程式代理相同：<strong>任務越大、越完整，相對於傳統工具的優勢就越明顯。</strong>補全工具幫你省下打字時間；Codex 省下的是「整個任務」的時間。</p>
+
+<h3>從補全模型到工程代理：你該知道的演進史</h3>
+<ul>
+  <li><strong>2021 年：</strong>初代 Codex 模型問世，是 GitHub Copilot 背後的補全引擎——當時它只是「幫你接下一行」。</li>
+  <li><strong>2025 年 4～5 月：</strong>Codex 以全新面貌回歸：開源的 Codex CLI 上線，接著雲端代理版在 ChatGPT 中推出研究預覽。從「補全」正式轉向「代理」。</li>
+  <li><strong>2025 年下半年：</strong>專用模型 GPT-5-Codex、GPT-5.1-Codex 系列陸續登場，VS Code 擴充功能安裝量衝破數百萬。</li>
+  <li><strong>2026 年 2 月 24 日：</strong>GPT-5.3-Codex 發布，速度提升 25%，在 SWE-Bench Pro 與 Terminal-Bench 2.0 創下新紀錄，且比先前任何模型都省 token。</li>
+  <li><strong>2026 年上半年：</strong>OpenAI 將旗艦整併——GPT-5.5 成為 Codex 的建議模型（不再出專用的 5.5-codex 變體），GPT-5.3-Codex 進入退役程序。6 月起 Codex 也登上 Amazon Bedrock。</li>
+</ul>
+<p>這段歷史有一個實務意義：<strong>Codex 的模型與方案更新非常快</strong>，本指南的原則性內容（工作方法、提示詞、整合方式）壽命很長，但具體型號與價格請以官方頁面為準。</p>
+
+<h3>本指南適合誰</h3>
+<ul>
+  <li><strong>職業開發者</strong>——想從「自己寫每一行」升級成「委派整個任務」：修 Bug、加功能、升級框架、補測試，一次交付一整包</li>
+  <li><strong>技術主管與團隊</strong>——想把程式碼審查、CI 失敗分流、重複性維護工作自動化，讓團隊專注在設計決策上</li>
+  <li><strong>獨立開發者與創業者</strong>——想用最小的人力打造真正上線的產品，從 MVP 到營運自動化</li>
+  <li><strong>非工程背景但想做出東西的人</strong>——Codex 的雲端介面讓你用一段描述就能得到可運行的原型，不用碰終端機</li>
+</ul>
+<p>一個簡單的例子幫你定位：如果你的需求是「這行程式什麼意思」，任何聊天模型 30 秒就能回答，用不到 Codex。但如果你的需求是「這個 legacy 專案沒人敢動，改一行要測三天」——<strong>那正是這個代理存在的理由。</strong></p>
+
+<h3>你將學到什麼</h3>
+<p>Codex 如何運作、三種介面各自的適用場景、真實團隊的使用方式、20 個可直接複製的提示詞、15 個實戰技巧、AGENTS.md 的設定心法、與 GitHub／Slack／CI 的整合、5 種變現方法，以及那些燒掉用量額度卻毫無成果的錯誤。</p>
+
+<h3>為什麼任務越完整，優勢越大</h3>
+<div class="diagram">
+  <div class="d-title">CODEX 相對傳統工具的優勢</div>
+  <div class="bars">
+    <div class="bar-row"><span>補一行程式碼</span><div class="bar-track"><div class="bar-fill" style="width:6%"></div></div><span class="note">幾乎無感</span></div>
+    <div class="bar-row"><span>修一個函式</span><div class="bar-track"><div class="bar-fill" style="width:22%"></div></div><span class="note">明顯</span></div>
+    <div class="bar-row"><span>完成一張工單</span><div class="bar-track"><div class="bar-fill" style="width:58%"></div></div><span class="note">巨大</span></div>
+    <div class="bar-row"><span>整個專案遷移</span><div class="bar-track"><div class="bar-fill" style="width:92%"></div></div><span class="note">最大化</span></div>
+  </div>
+</div>
+<p>這張圖是模組 3 的設計依據：那 20 個提示詞每一個都是為「完整的工作單位」而寫，不是零散的程式問題。發任務前先問自己：這件事如果 Copilot 補全就能解決，就把 Codex 的額度留給更大的事。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 1 ═══════════════ -->
+<section id="ch1"><div class="wrap">
+<div class="ch-label">模組 1・基礎</div>
+<h2>基礎知識</h2>
+
+<h3>你需要理解的 6 個概念</h3>
+<p><strong>1. 代理，不是補全。</strong>Codex 接的是「工作單位」：它自己規劃步驟、修改多個檔案、跑測試、驗證結果。你的角色從「打字的人」變成「派工和驗收的人」。</p>
+<p><strong>2. 三種介面，一個代理。</strong><strong>CLI</strong>（終端機，開源）適合本機即時協作與腳本化；<strong>IDE 擴充功能</strong>（VS Code 等）適合邊看邊改；<strong>雲端任務</strong>（ChatGPT 網頁／iOS／Slack）適合「丟出去、背景跑、回來收 PR」。三者共用你的設定與習慣。</p>
+<p><strong>3. AGENTS.md——給代理看的 README。</strong>放在專案根目錄的說明檔，告訴 Codex 怎麼建置、怎麼跑測試、遵守什麼規範。官方經驗法則：<strong>保持精簡（約 150 行內，上限 32 KiB）</strong>。檢驗標準很簡單：任何人打開 Codex 說「跑測試」，第一次就能成功——做不到就代表 AGENTS.md 缺了必要指令。</p>
+<p><strong>4. 沙箱與許可模式。</strong>Codex 在隔離沙箱中執行指令，網路存取與檔案寫入權限由你設定。從「每步確認」到「全自動」有多檔可調，讓你依任務風險決定放多少手。</p>
+<p><strong>5. 平行雲端任務。</strong>雲端版可同時發動多個任務，各自在獨立容器中連上你的 GitHub 儲存庫作業，完成後開 PR。進階使用者的日常：早上派 4 張工單，下午收 4 個 PR 逐一驗收。</p>
+<p><strong>6. 專用模型的世代交替。</strong>Codex 歷代由專用模型驅動（GPT-5-Codex → 5.1 → 5.3-Codex），2026 年中起 OpenAI 建議直接使用旗艦通用模型 GPT-5.5。對使用者的意義：選模型時看官方目前的預設建議即可，不必追型號。</p>
+
+<h3>經過驗證的數據</h3>
+<div class="tbl"><table>
+<thead><tr><th>基準測試</th><th>成績</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td>SWE-bench Verified</td><td>GPT-5.5 約 88.7%・GPT-5.3-Codex 85.0%</td><td>真實 GitHub 議題的自主修復率，GPT-5.5 位居 2026 年中排行榜前段</td></tr>
+<tr><td>Terminal-Bench 2.0</td><td>GPT-5.3-Codex 創當時新高</td><td>衡量代理的終端機操作能力，且以「更少 token」達成——同樣額度能做更多事</td></tr>
+<tr><td>SWE-bench Pro</td><td>發布時的業界新紀錄</td><td>跨四種語言、抗汙染的高難度工程測試（此測試上各家模型分數都明顯低於 Verified）</td></tr>
+</tbody></table></div>
+<p>數據解讀的重點不是排名，而是趨勢：<strong>Codex 系模型的強項是「工程流程的完整執行」</strong>——終端機操作、跑測試、開 PR 這一整條路，而且 token 效率一代比一代好。</p>
+
+<h3>價格與存取方式</h3>
+<p>Codex 不單獨販售，而是<strong>包含在 ChatGPT 訂閱方案內</strong>；方案等級決定你能跑多少任務、跑多快。</p>
+<div class="tbl"><table>
+<thead><tr><th>存取途徑</th><th>細節</th></tr></thead>
+<tbody>
+<tr><td>ChatGPT Plus（$20／月）</td><td>實務上的入門方案：含雲端任務委派、GitHub 程式碼審查、Slack 整合</td></tr>
+<tr><td>ChatGPT Pro 5×（$100／月）</td><td>2026 年 4 月新增的中間層級，用量為 Plus 的 5 倍</td></tr>
+<tr><td>ChatGPT Pro 20×（$200／月）</td><td>原始 Pro 方案，用量為 Plus 的 20 倍；重度使用者適用</td></tr>
+<tr><td>Business／Enterprise</td><td>團隊席次與集中管理，可加購用量額度（credits）</td></tr>
+<tr><td>API</td><td>供自建工作流使用；如 GPT-5.3-Codex 定價為輸入 $1.75、輸出 $14／百萬 token（型號與價格更新快，以官方為準）</td></tr>
+<tr><td>Codex CLI</td><td>開源，用 ChatGPT 帳號登入即可用訂閱額度，或改接 API 金鑰</td></tr>
+<tr><td>Amazon Bedrock</td><td>2026 年 6 月起提供，適合已在 AWS 生態的企業</td></tr>
+</tbody></table></div>
+
+<details><summary>⚠️ 用量管理的注意事項</summary>
+<p>訂閱方案的 Codex 用量按「任務量與複雜度」計，不是無限吃到飽。長時間代理任務（大型重構、整包遷移）消耗得快；用完可等額度重置或加購 credits。<strong>先發動價值最高的任務</strong>，例行小事留給便宜的模型或補全工具。</p>
+</details>
+<details><summary>🔒 安全與隱私注意事項</summary>
+<p>雲端任務會在 OpenAI 的容器中存取你授權的 GitHub 儲存庫——企業導入前先確認資料處理政策與訓練資料退出（opt-out）設定。本機 CLI 的沙箱預設限制網路與寫入範圍，調成全自動模式前，想清楚這個專案值不值得。</p>
+</details>
+
+<h3>三種介面怎麼選</h3>
+<div class="diagram">
+  <div class="d-title">依工作型態選介面</div>
+  <div class="kids" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <div class="kid"><b>Codex CLI</b><small>本機即時協作、腳本化、CI 整合（codex exec）</small></div>
+    <div class="kid"><b>IDE 擴充功能</b><small>邊寫邊審、小步快跑、看得到每個 diff</small></div>
+    <div class="kid"><b>雲端任務</b><small>背景平行跑大任務、手機派工、收 PR 驗收</small></div>
+  </div>
+</div>
+
+<h3>一次雲端任務的生命週期</h3>
+<div class="diagram">
+  <div class="tree">
+    <div class="node">你派出任務（網頁／Slack／iOS）</div>
+    <div class="vline"></div>
+    <div class="kids">
+      <div class="kid">獨立容器啟動<small>載入你的儲存庫</small></div>
+      <div class="kid">讀 AGENTS.md<small>了解建置與測試方式</small></div>
+      <div class="kid">修改＋跑測試<small>在沙箱中反覆驗證</small></div>
+    </div>
+    <div class="vline"></div>
+    <div class="node" style="font-weight:500;font-size:13.5px">開出 Pull Request，附上變更說明與測試結果 → 你驗收合併</div>
+  </div>
+</div>
+<p>這個流程是模組 5 所有整合的基礎：GitHub、Slack、CI 整合的本質，都是把「派任務」和「收結果」接到你已經在用的工具裡。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 2 ═══════════════ -->
+<section id="ch2"><div class="wrap">
+<div class="ch-label">模組 2・實際案例</div>
+<h2>真實案例</h2>
+<p class="ch-summary">以下整理自 OpenAI 官方發布、開發者社群（X、Hacker News）與技術部落格的公開案例。</p>
+
+<h3>指標性的使用案例</h3>
+<h4>OpenAI 內部（吃自己的狗糧）</h4>
+<ul>
+  <li>OpenAI 表示絕大多數內部工程師日常使用 Codex，Codex 團隊本身大量用 Codex 開發 Codex</li>
+  <li>典型內部用法：PR 自動審查先跑一輪，人類審查者只看代理標記的重點；重複性維護工作全面代理化</li>
+  <li>官方數據點：導入後工程師每週合併的 PR 數量顯著上升</li>
+</ul>
+<h4>企業早期採用者</h4>
+<ul>
+  <li><strong>Cisco</strong>：讓工程團隊用 Codex 加速程式碼審查與新專案評估，把數週的評估週期壓縮到數天</li>
+  <li><strong>Instacart、Temporal 等公司</strong>（官方發布的早期客戶）：用雲端任務處理技術債清理、測試覆蓋率提升這類「重要但永遠排不進衝刺」的工作</li>
+  <li>導入模式的共通點：先從低風險的維護任務開始，建立信任後才交付功能開發</li>
+</ul>
+<h4>開發者社群的實際回饋</h4>
+<ul>
+  <li>VS Code 擴充功能安裝量近千萬次，是 2026 年成長最快的 AI 開發工具之一</li>
+  <li>常見的正面模式：「睡前派工、早上收 PR」的非同步工作流；用 Slack 的 <code>@Codex</code> 直接把討論串變成修復任務</li>
+  <li>常見的負面模式：把它當聊天機器人問程式問題（大材小用），或在沒有測試的專案上全自動放行（無法驗收）</li>
+</ul>
+
+<h3>所有案例中不斷重複的模式</h3>
+<blockquote>成功導入的團隊都做了同一件事：先把專案整理到「代理能自己驗證成果」的狀態——測試能跑、AGENTS.md 寫清楚、CI 是綠的——然後才開始委派。失敗的導入幾乎都是反過來：專案一團亂就想靠代理救。</blockquote>
+<p>這給我們的啟示與所有前緣代理相同：<strong>Codex 獎勵的不是會下指令的人，而是能提供「可驗證環境」的人。</strong>測試齊全的專案，代理能自己確認做對了；沒有測試的專案，你付出的驗收時間會吃掉省下的開發時間。</p>
+
+<div class="two-col">
+  <div class="panel">
+    <div class="p-title">環境齊備的團隊</div>
+    <p><b>測試＋AGENTS.md＋明確驗收標準</b></p>
+    <p>→ 派工即收成，PR 品質穩定</p>
+  </div>
+  <div class="panel">
+    <div class="p-title">環境混亂的團隊</div>
+    <p><b>沒測試、沒文件、口頭描述需求</b></p>
+    <p>→ 驗收成本爆炸，怪工具不好用</p>
+  </div>
+</div>
+
+<h3>案例一覽</h3>
+<div class="tbl"><table>
+<thead><tr><th>使用者</th><th>怎麼用</th><th>可衡量的結果</th></tr></thead>
+<tbody>
+<tr><td>OpenAI 內部</td><td>PR 審查前置化、維護工作代理化</td><td>每週合併 PR 數量顯著上升</td></tr>
+<tr><td>Cisco</td><td>程式碼審查與新專案評估加速</td><td>數週的評估週期縮短為數天</td></tr>
+<tr><td>早期企業客戶</td><td>技術債清理、測試覆蓋率提升</td><td>「永遠排不進衝刺」的工作開始有進度</td></tr>
+<tr><td>獨立開發者社群</td><td>夜間派工、Slack 派單、平行雲端任務</td><td>單人維護多專案成為常態</td></tr>
+</tbody></table></div>
+
+<h3>為什麼同一個代理，結果差這麼多</h3>
+<div class="two-col">
+  <div class="panel">
+    <div class="p-title">輸入 A</div>
+    <p><b>「幫我修一下登入的 bug」</b></p>
+    <p>→ 代理靠猜，PR 可能修錯層</p>
+  </div>
+  <div class="panel">
+    <div class="p-title">輸入 B</div>
+    <p><b>重現步驟＋預期行為＋相關測試檔＋驗收標準</b></p>
+    <p>→ 一次到位、附測試證明的 PR</p>
+  </div>
+</div>
+<p>模組 3 存在的目的，就是讓你每次派工都是第二種輸入。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 3 ═══════════════ -->
+<section id="ch3"><div class="wrap">
+<div class="ch-label">模組 3・提示詞</div>
+<h2>20 個必備提示詞</h2>
+<p class="ch-summary">黃金法則：Codex 接的是「工作單位」，所以好的提示詞長得像<strong>一張寫得很好的工單（ticket）</strong>——有背景、有範圍、有驗收標準。以下 20 個提示詞正是依這個邏輯設計的。</p>
+
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step">明確的工作單位</div><div class="arr">→</div>
+    <div class="step">工單式提示詞</div><div class="arr">→</div>
+    <div class="step">CODEX 執行＋自我驗證</div><div class="arr">→</div>
+    <div class="step">PR 驗收</div>
+  </div>
+</div>
+
+<h3>20 個提示詞快速地圖</h3>
+<div class="tbl"><table>
+<thead><tr><th>類別</th><th>提示詞</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>A. 理解程式碼</td><td>1～4</td><td>接手陌生專案、架構分析、技術債盤點</td></tr>
+<tr><td>B. 修復與重構</td><td>5～8</td><td>Bug 修復、重構、依賴升級、效能</td></tr>
+<tr><td>C. 建造新功能</td><td>9～12</td><td>功能開發、原型、API、資料流程</td></tr>
+<tr><td>D. 品質與審查</td><td>13～16</td><td>測試覆蓋、PR 審查、安全健檢、文件</td></tr>
+<tr><td>E. 自動化交付</td><td>17～20</td><td>CI 分流、AGENTS.md、多任務派工、上線</td></tr>
+</tbody></table></div>
+
+<h3>類別 A：理解程式碼</h3>
+<h4>提示詞 1：陌生專案快速上手</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>我剛接手這個專案。請完整探索程式碼庫後給我一份上手報告：1）整體架構與主要模組的職責；2）資料流：一個請求從進入到回應經過哪些層；3）建置、測試、部署的實際指令（親自執行驗證過再寫）；4）你發現的 3 個最可能踩雷的地方。不要修改任何檔案。</pre></div>
+<p class="use"><b>用途：</b>把接手專案的摸索期從數天縮短到一小時。<b>預期結果：</b>一份經過實際驗證的上手文件。</p>
+
+<h4>提示詞 2：技術債盤點與優先排序</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請盤點這個程式碼庫的技術債：重複的邏輯、過時的依賴、沒有測試保護的關鍵路徑、被註解掉的死程式碼。輸出一張表：問題、位置、風險等級（高／中／低）、預估修復規模、建議順序。判斷依據要引用具體檔案與行號。先不要修，我要先跟團隊排優先順序。</pre></div>
+<p class="use"><b>用途：</b>把「感覺很亂」變成可排程的工作清單。<b>預期結果：</b>有依據、可追溯的技術債清單。</p>
+
+<h4>提示詞 3：跨檔案行為追蹤</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請追蹤［某功能，例如：使用者改密碼］在這個程式碼庫的完整路徑：入口在哪、經過哪些函式與服務、寫入哪些資料表、觸發哪些副作用（郵件、快取、事件）。用一張流程清單呈現，每一步附檔案與行號。最後指出這條路徑上沒有被任何測試覆蓋的環節。</pre></div>
+<p class="use"><b>用途：</b>改動前先看清全貌，避免改一處壞三處。<b>預期結果：</b>附行號的完整行為地圖。</p>
+
+<h4>提示詞 4：架構決策評估</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>我們考慮把［現況，例如：單體架構的通知模組］改成［目標，例如：獨立服務］。請基於這個程式碼庫的實際狀況（不是通論）評估：牽動哪些模組、資料遷移的難點、可以分幾個階段安全推進、每階段的回滾方案。結論給我一個明確建議：做、不做、或先做哪一小步。</pre></div>
+<p class="use"><b>用途：</b>用真實程式碼支撐架構決策，不靠白板空想。<b>預期結果：</b>基於實際依賴關係的分階段方案。</p>
+
+<h3>類別 B：修復與重構</h3>
+<h4>提示詞 5：工單式 Bug 修復</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>Bug：［一句話描述］。重現步驟：［步驟］。預期行為：［描述］。實際行為：［描述］。請先寫一個能重現此 bug 的失敗測試，再修復它讓測試轉綠，最後跑完整測試套件確認沒有回歸。PR 說明中要包含：根本原因、為什麼這樣修、還有哪些地方可能有同類問題。</pre></div>
+<p class="use"><b>用途：</b>標準的「測試先行」修復流程，成果可驗證。<b>預期結果：</b>附失敗測試轉綠證明的修復 PR。</p>
+
+<h4>提示詞 6：安全重構</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請重構［目標檔案／模組］：消除重複、拆分過長的函式、改善命名，但外部行為必須完全不變。規則：每一步重構前先確認現有測試通過；若關鍵路徑沒有測試，先補測試再動手；分成多個小 commit，每個 commit 訊息說明該步做了什麼。最後給我重構前後的對照摘要。</pre></div>
+<p class="use"><b>用途：</b>把「不敢動的程式碼」變成可維護的程式碼。<b>預期結果：</b>行為不變、測試護航的重構 PR。</p>
+
+<h4>提示詞 7：依賴與框架升級</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請把這個專案從［目前版本，例如：React 18］升級到［目標版本，例如：React 19］。流程：1）列出所有破壞性變更與受影響檔案；2）逐批修改，每批之後跑建置與測試；3）棄用 API 一併遷移到新寫法；4）交付一份升級記錄：改了什麼、哪裡曾壞掉、怎麼解的。過程中不要改動與升級無關的程式碼。</pre></div>
+<p class="use"><b>用途：</b>Codex 優勢最大的任務類型之一——大範圍、機械性但需要判斷。<b>預期結果：</b>升級完成、測試通過、附完整記錄。</p>
+
+<h4>提示詞 8：效能診斷與優化</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>［某功能／端點］太慢。請先量測再優化：1）加上計時或使用分析工具找出真正的瓶頸，附數據；2）針對前 2 個瓶頸提出修法並實作；3）優化後重新量測，給我前後對比數字；4）明確說明有哪些取捨（記憶體、可讀性、快取失效風險）。沒有數據支持的優化不要做。</pre></div>
+<p class="use"><b>用途：</b>強制「先量測、後優化」，避免憑感覺調校。<b>預期結果：</b>有前後數據對比的優化 PR。</p>
+
+<h3>類別 C：建造新功能</h3>
+<h4>提示詞 9：完整功能開發（工單式）</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>功能需求：［描述使用者故事：作為…我想要…以便…］。驗收標準：［列出 3～5 條可檢驗的條件］。請依這個程式碼庫的既有模式實作（先觀察類似功能怎麼寫），包含：後端邏輯、前端介面、錯誤處理、測試。每個驗收標準都要有對應的測試。完成後在 PR 中逐條對照驗收標準說明。</pre></div>
+<p class="use"><b>用途：</b>一張標準工單直接變成一個可驗收的 PR。<b>預期結果：</b>符合專案風格、驗收標準逐條達成的功能。</p>
+
+<h4>提示詞 10：一段話生出可用原型</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請建造［用 2～3 句話描述工具／App：給誰用、解決什麼問題］。技術選型、架構與 UI 由你決定，但要選最簡單能達成目標的方案。我要的是能直接執行、用起來舒服的成品，不是骨架。請附上啟動指令，並在交付前自己實際跑過主要流程確認可用。</pre></div>
+<p class="use"><b>用途：</b>用最快速度驗證點子，適合雲端任務背景執行。<b>預期結果：</b>可直接啟動試用的原型。</p>
+
+<h4>提示詞 11：API 設計與實作</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請為［資源／功能］設計並實作 REST API：1）先給我端點設計（路徑、方法、請求／回應格式、錯誤碼），等我確認；2）確認後實作，含輸入驗證、權限檢查、分頁；3）每個端點附整合測試；4）產出一份可直接給前端同事看的 API 文件。遵循這個專案既有的 API 慣例。</pre></div>
+<p class="use"><b>用途：</b>設計先行、確認後實作的兩段式流程。<b>預期結果：</b>文件、實作、測試三位一體的 API。</p>
+
+<h4>提示詞 12：資料處理流程建置</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>我需要一個資料流程：從［來源，例如：每日的 CSV 報表］到［目的，例如：清理後寫入資料庫並產生摘要通知］。請建造：擷取、驗證（壞資料要隔離不要中斷）、轉換、載入、執行記錄。用一份真實樣本資料測試整條流程，交付時附上執行方式與失敗時的排查指南。</pre></div>
+<p class="use"><b>用途：</b>把重複的資料雜務變成一條可靠的管線。<b>預期結果：</b>經樣本資料驗證的完整 ETL 流程。</p>
+
+<h3>類別 D：品質與審查</h3>
+<h4>提示詞 13：測試覆蓋率衝刺</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請提升［模組／目錄］的測試覆蓋率：1）先跑覆蓋率工具，找出未覆蓋的關鍵路徑（商業邏輯優先，getter/setter 跳過）；2）為前 10 個最重要的缺口補上測試，包含正常路徑、邊界條件、錯誤處理；3）測試要能抓到真實的錯誤——寫完後試著在原始碼植入一個小錯，確認測試會失敗。交付前後覆蓋率數字。</pre></div>
+<p class="use"><b>用途：</b>補的是「有效測試」，不是灌覆蓋率的假測試。<b>預期結果：</b>覆蓋率提升＋測試有效性驗證。</p>
+
+<h4>提示詞 14：深度 PR 審查</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請審查這個 PR（或分支 diff）：1）邏輯錯誤與未處理的邊界條件（最優先）；2）與程式碼庫既有慣例的不一致；3）效能與安全疑慮；4）測試是否真的覆蓋了變更。每個發現附：位置、嚴重程度、具體修改建議。最後給一個明確結論：可合併／小修後合併／需要重做，以及理由。</pre></div>
+<p class="use"><b>用途：</b>本機版的深度審查；GitHub 整合版可自動跑（見模組 5）。<b>預期結果：</b>有嚴重度分級與明確結論的審查報告。</p>
+
+<h4>提示詞 15：安全健檢</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請對這個程式碼庫做一次防禦性安全健檢：輸入驗證缺口、注入風險、硬編碼的金鑰或密碼、過時且有已知漏洞的依賴、權限檢查遺漏。輸出：問題清單（位置＋風險說明＋修法建議），依嚴重度排序。金鑰類問題直接修（移入環境變數），其他先報告，由我決定修哪些。</pre></div>
+<p class="use"><b>用途：</b>上線前的例行防禦性檢查。<b>預期結果：</b>分級的安全問題清單，高危項目已處理。</p>
+
+<h4>提示詞 16：文件同步更新</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>這個專案的文件（README、API 文件、註解）已經和程式碼脫節。請：1）逐一核對文件描述與實際程式碼行為，列出所有不一致；2）以「程式碼是事實」為原則更新文件；3）安裝與啟動步驟要在乾淨環境親自跑過一遍再寫；4）刪掉描述已不存在功能的段落。交付一份「文件修正對照表」。</pre></div>
+<p class="use"><b>用途：</b>解決「文件永遠是舊的」這個千年問題。<b>預期結果：</b>與程式碼一致、經實測的文件。</p>
+
+<h3>類別 E：自動化交付</h3>
+<h4>提示詞 17：CI 失敗分流</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>CI 掛了，這是失敗記錄：［貼上或附連結］。請：1）判斷失敗類型：真實的程式錯誤、不穩定測試（flaky）、環境問題；2）如果是程式錯誤，定位根因並修復；3）如果是 flaky 測試，找出不穩定的原因（時序、共享狀態、外部依賴）並根治，不要只加重試；4）說明你的判斷依據。目標是讓這條 pipeline 穩定轉綠。</pre></div>
+<p class="use"><b>用途：</b>CI 紅燈的標準處理流程，可搭配 <code>codex exec</code> 自動化。<b>預期結果：</b>轉綠的 pipeline 與根因說明。</p>
+
+<h4>提示詞 18：AGENTS.md 建立或健檢</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請為這個專案［建立／檢修］AGENTS.md：1）親自執行建置、測試、lint 指令，確認寫進去的每一條都真的能跑；2）記錄專案的程式風格慣例（從現有程式碼歸納，不要發明新規則）；3）標注絕對不能動的區域（如自動生成的檔案）；4）保持精簡：目標 150 行內。完成後的檢驗標準：任何人對你說「跑測試」，你第一次就能成功。</pre></div>
+<p class="use"><b>用途：</b>AGENTS.md 是所有委派的地基，這個提示詞讓代理自己打地基。<b>預期結果：</b>精簡、每條指令都驗證過的 AGENTS.md。</p>
+
+<h4>提示詞 19：批次派工計畫</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>這是我的待辦清單：［貼上工單或任務列表］。請幫我規劃平行派工：1）哪些任務彼此獨立、可以同時跑（不會改到同一批檔案）；2）哪些有依賴、必須排序；3）把每個任務改寫成完整的工單式提示詞（背景、範圍、驗收標準）；4）標注每個任務建議用本機還是雲端跑。我要直接照這份計畫發任務。</pre></div>
+<p class="use"><b>用途：</b>把「平行雲端任務」的產能真正用滿。<b>預期結果：</b>可直接執行的派工計畫與現成提示詞。</p>
+
+<h4>提示詞 20：上線前總檢查</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>這個專案準備上線。請做最後總檢查並輸出報告：1）完整測試套件與建置是否通過（實際執行）；2）提示詞 15 的安全健檢快速版；3）設定檔中是否還有開發環境殘留（debug 開關、測試金鑰、localhost）；4）錯誤發生時使用者會看到什麼（實際觸發一個錯誤看看）。每項給通過／不通過，不通過的直接修，改動列入報告。</pre></div>
+<p class="use"><b>用途：</b>發布前的守門員，抓的是「上線才會爆」的問題。<b>預期結果：</b>一份可留檔的上線檢查報告。</p>
+
+<h3>實際應用範例：從提示詞 1 到穩定交付</h3>
+<div class="diagram">
+  <div class="flow" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div class="step">📦 接手一個沒文件的舊專案 → <b>提示詞 1（上手報告）＋提示詞 18（AGENTS.md）</b> → 代理能自己跑測試了</div>
+    <div style="text-align:center" class="arr">↓</div>
+    <div class="step">🧹 開始還債 → <b>提示詞 2（技術債盤點）＋提示詞 13（測試衝刺）</b> → 關鍵路徑有保護了</div>
+    <div style="text-align:center" class="arr">↓</div>
+    <div class="step">🚀 進入快車道 → <b>提示詞 19（批次派工）</b>每天平行跑 3～4 張工單 → 收 PR、驗收、合併</div>
+  </div>
+</div>
+<p>20 個提示詞共通的心法：<strong>先讓代理能驗證自己（測試＋AGENTS.md），再開始大量委派。</strong>順序反了，每個 PR 都要人工細查，省下的時間全吐回去。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 4 ═══════════════ -->
+<section id="ch4"><div class="wrap">
+<div class="ch-label">模組 4・進階</div>
+<h2>15 個實戰技巧</h2>
+
+<h3>心態篇：把它當同事，不當工具</h3>
+<p><strong>1. 派「工作單位」，不派「程式問題」。</strong>官方最佳實踐的第一條：Codex 接完整任務的表現遠勝零碎問答。「修好這張工單」優於「這個函式怎麼寫」。</p>
+<p><strong>2. 把它當一個「需要入職訓練的同事」。</strong>官方說法：與其當一次性助手，不如當一個你會持續設定與改進的隊友。AGENTS.md 是它的入職手冊，skills 是它的標準作業程序，每次糾正都寫回去。</p>
+<p><strong>3. 平行派工，分批驗收。</strong>雲端任務可以同時跑好幾個。進階使用者早上派 3～4 張互不相干的工單，下午統一收 PR。你的瓶頸會從「寫程式的速度」變成「驗收的速度」。</p>
+<p><strong>4. 低風險任務先行，逐步放權。</strong>成功導入的標準路徑：文件更新 → 測試補強 → Bug 修復 → 功能開發。每一級建立信任後才升下一級，許可模式也跟著逐步放寬。</p>
+<p><strong>5. 把心力投資在「工單品質」和「驗收流程」。</strong>模型能力是天花板，你的工單品質是地板。地板太低,天花板再高也沒用。</p>
+
+<h3>設定篇：AGENTS.md 與環境</h3>
+<p><strong>6. AGENTS.md 保持精簡。</strong>官方經驗法則約 150 行（實際上限 32 KiB）。寫太長代理反而抓不到重點。只放三類東西：建置測試指令、專案慣例、禁區。</p>
+<p><strong>7. 用「跑測試」測試你的 AGENTS.md。</strong>檢驗標準：任何人打開 Codex 說「run the tests」，第一次就成功。失敗就代表缺了必要的設定指令——這是官方文件明講的判斷法。</p>
+<p><strong>8. 把重複的工作變成 skills。</strong>同一種任務派過三次（如「按我們的規範出報表」），就把流程沉淀成可重用的技能檔，之後一句話喚起。</p>
+<p><strong>9. 團隊共用審查規範。</strong>把 <code>code_review.md</code> 寫好、從 AGENTS.md 引用，Codex 審 PR 時就會遵循——整個團隊、所有儲存庫的審查標準就此一致。</p>
+<p><strong>10. 用 MCP 接上外部系統。</strong>需要查工單系統、內部文件、資料庫時，接上對應的 MCP 伺服器，讓代理自己取用上下文，而不是你手動貼上。</p>
+
+<h3>執行與成本篇</h3>
+<p><strong>11. 依風險調許可模式。</strong>陌生專案用「每步確認」，測試齊全的專案用「自動編輯、確認執行」，一次性沙箱實驗才開全自動。全自動模式配上沒測試的專案是災難配方。</p>
+<p><strong>12. 大任務切成可驗收的段落。</strong>「整包遷移」聽起來很帥，但一個 200 檔案的 PR 沒人審得動。要求代理分階段交付，每段一個可獨立合併的 PR。</p>
+<p><strong>13. 用量花在刀口上。</strong>訂閱額度按任務量與複雜度消耗。例行補全交給便宜工具，Codex 留給「一張工單以上」規模的事。額度吃緊時優先跑價值最高的任務。</p>
+<p><strong>14. 讓 CI 幫你把關，而不是你自己。</strong>代理開的 PR 一律過完整 CI（測試、lint、型別檢查）。機器能擋掉的問題不要用人眼擋。</p>
+<p><strong>15. 要求「證據式回報」。</strong>永遠加上：「交付時附上測試輸出、實際執行結果，沒驗證過的部分明講。」代理有自我驗證能力，這句話強制它展示證據。</p>
+
+<h3>不斷重演的錯誤（以及如何避免）</h3>
+<ul>
+  <li><strong>把它當聊天機器人</strong>：問「這段程式什麼意思」用一般模型就好，Codex 的價值在完整任務</li>
+  <li><strong>在沒有測試的專案上全自動放行</strong>：代理無法自我驗證，你也無法快速驗收，雙輸</li>
+  <li><strong>AGENTS.md 寫成百科全書</strong>：超過重點容量，代理反而忽略關鍵規則</li>
+  <li><strong>一次派出巨型任務</strong>：不可驗收的 PR 等於沒有 PR</li>
+  <li><strong>糾正完不沉淀</strong>：同一個錯誤糾正三次還沒寫進 AGENTS.md，是你的問題不是它的</li>
+</ul>
+
+<div class="two-col">
+  <div class="panel">
+    <div class="p-title">派工之前</div>
+    <p><b>工單式提示詞、測試能跑、AGENTS.md 就緒</b></p>
+  </div>
+  <div class="panel">
+    <div class="p-title">派工之後</div>
+    <p><b>CI 把關、分批驗收 PR，而不是盯著它跑</b></p>
+  </div>
+</div>
+
+<h3>15 個技巧一覽</h3>
+<div class="tbl"><table>
+<thead><tr><th>類別</th><th>技巧</th><th>解決什麼問題</th></tr></thead>
+<tbody>
+<tr><td>心態</td><td>1～5</td><td>如何框定委託，把代理當隊友經營</td></tr>
+<tr><td>設定</td><td>6～10</td><td>AGENTS.md、skills、MCP 的正確姿勢</td></tr>
+<tr><td>執行與成本</td><td>11～15</td><td>許可模式、任務切分、用量與驗收效率</td></tr>
+</tbody></table></div>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 5 ═══════════════ -->
+<section id="ch5"><div class="wrap">
+<div class="ch-label">模組 5・進階</div>
+<h2>強大的工具組合</h2>
+
+<h3>Codex + GitHub（自動程式碼審查）</h3>
+<p>開啟 GitHub 整合後，Codex 可以在<strong>每個 PR 合併前自動審查</strong>：標記邏輯錯誤與未處理的邊界條件、提出具體修法。也可以被動觸發——在 PR 留言 <code>@Codex</code> 加指示即可。</p>
+<p><strong>實務流程：</strong>先用「僅標記、不阻擋」模式跑兩週建立信任，再把高嚴重度發現設為合併門檻。搭配技巧 9 的 <code>code_review.md</code> 統一標準。</p>
+<p><strong>可衡量收益：</strong>人類審查者只看代理標過的重點，審查週期明顯縮短。</p>
+
+<h3>Codex + Slack（討論串直接變任務）</h3>
+<p>在頻道或討論串中 <code>@Codex</code> 加上需求描述，它會建立雲端任務並把結果回覆到原討論串。Bug 回報、需求討論到修復 PR 之間的距離變成一則訊息。</p>
+<p><strong>實務流程：</strong>在工程頻道建立慣例：可直接委派的訊息用固定格式（現象＋重現步驟＋預期行為），讓任何人都能一鍵派工。</p>
+<p><strong>可衡量收益：</strong>「回報到修復」的流程不再經過工單系統的排隊。</p>
+
+<h3>Codex + CI/CD（codex exec 自動化）</h3>
+<p>CLI 的 <code>codex exec</code> 可以在腳本與 pipeline 中非互動執行，這讓穩定的工作流程可以完全自動化：夜間跑安全掃描、CI 紅燈自動分流（提示詞 17）、每週自動出依賴更新 PR。</p>
+<p><strong>實務流程：</strong>挑一個你已經手動跑過多次、結果穩定的流程（先手動、後自動是官方建議的順序），把它包進排程任務。</p>
+<p><strong>可衡量收益：</strong>例行維護從「有人記得才做」變成「排程保證做」。</p>
+
+<h3>Codex + MCP（接上你的內部系統）</h3>
+<p>MCP 讓 Codex 取用外部上下文：工單系統、內部文件、資料庫、監控面板。代理自己查資料，而不是等你貼上。</p>
+<p><strong>實務流程：</strong>從一個最常查的系統開始（通常是工單系統），設定完成後在 AGENTS.md 註明何時該用哪個工具。</p>
+<p><strong>可衡量收益：</strong>派工時不用再手動整理上下文，工單編號就是完整輸入。</p>
+
+<h3>Codex + IDE（VS Code 擴充功能）</h3>
+<p>近千萬安裝量的主流介面。適合「邊看邊改」的工作型態：你看得到每個 diff、隨時介入，和雲端任務的「全委派」互補。</p>
+<p><strong>實務流程：</strong>白天在 IDE 處理需要即時判斷的工作，需要長時間跑的任務用「移交到雲端」功能丟出去背景執行。</p>
+<p><strong>可衡量收益：</strong>本機與雲端無縫接力，工作不因下班中斷。</p>
+
+<h3>Codex + 行動裝置（iOS App）</h3>
+<p>在手機上派工、看進度、審 PR 摘要。適合通勤時把今天的任務排出去，到公司時已經有初步結果。</p>
+<p><strong>實務流程：</strong>搭配提示詞 19 的批次派工計畫，把「派工」變成早晨例行事務。</p>
+
+<div class="diagram">
+  <div class="tree">
+    <div class="node">CODEX（規劃與執行）</div>
+    <div class="vline"></div>
+    <div class="kids">
+      <div class="kid">GitHub<small>自動審查每個 PR</small></div>
+      <div class="kid">Slack<small>訊息直接變任務</small></div>
+      <div class="kid">CI/CD<small>codex exec 排程自動化</small></div>
+      <div class="kid">MCP<small>接上內部系統</small></div>
+      <div class="kid">IDE<small>即時協作介面</small></div>
+      <div class="kid">iOS<small>隨時隨地派工</small></div>
+    </div>
+  </div>
+</div>
+
+<h3>6 種組合一覽</h3>
+<div class="tbl"><table>
+<thead><tr><th>組合</th><th>Codex 的角色</th><th>工具的角色</th><th>可衡量的收益</th></tr></thead>
+<tbody>
+<tr><td>Codex + GitHub</td><td>合併前審查每個 PR</td><td>觸發點與合併門檻</td><td>審查週期縮短、漏網錯誤減少</td></tr>
+<tr><td>Codex + Slack</td><td>把討論串轉成雲端任務</td><td>派工與回報介面</td><td>回報到修復不再排隊</td></tr>
+<tr><td>Codex + CI/CD</td><td>非互動執行例行流程</td><td>排程與觸發</td><td>維護工作有保證地發生</td></tr>
+<tr><td>Codex + MCP</td><td>自行取用外部上下文</td><td>連接工單／文件／資料庫</td><td>派工零上下文搬運</td></tr>
+<tr><td>Codex + IDE</td><td>即時協作、可隨時介入</td><td>編輯與檢視介面</td><td>本機雲端無縫接力</td></tr>
+<tr><td>Codex + iOS</td><td>背景執行大任務</td><td>行動派工介面</td><td>通勤時間變產出時間</td></tr>
+</tbody></table></div>
+
+<h3>依你的瓶頸選擇正確的組合</h3>
+<div class="diagram">
+  <div class="d-title">你真正的瓶頸是什麼？</div>
+  <div class="kids" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <div class="kid">審查排隊太久<small>→ GitHub 整合</small></div>
+    <div class="kid">回報流程冗長<small>→ Slack 整合</small></div>
+    <div class="kid">維護沒人做<small>→ CI + codex exec</small></div>
+    <div class="kid">上下文搬運累<small>→ MCP</small></div>
+    <div class="kid">工作被下班切斷<small>→ 雲端任務 + iOS</small></div>
+  </div>
+</div>
+<p><strong>實務原則：</strong>第一週不要全上。挑一個解決你「最耗時間的瓶頸」的組合，先把它跑順，再加下一個。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 6 ═══════════════ -->
+<section id="ch6"><div class="wrap">
+<div class="ch-label">模組 6・變現</div>
+<h2>如何變現賺錢</h2>
+<p class="ch-summary">收入區間為市場常見行情的參考值（以美元計），實際依地區、定位與作品集而異。</p>
+
+<h3>方法 1：成品開發服務</h3>
+<p>Codex 讓你賣「交付物」而不是「工時」：一個上線的網站、一個修好的模組、一次完整的框架升級、一套補齊的測試。</p>
+<p><strong>潛在收入：</strong>每個專案 $500～$5,000。每月 3～4 個專案：$1,500～$20,000。</p>
+<p><strong>如何開始：</strong>挑一種你能驗收品質的交付物（這是關鍵——你賣的是你的驗收能力），做 2 個範例當作品集，標固定價格。</p>
+
+<h3>方法 2：微型 SaaS 與利基工具</h3>
+<p>用提示詞 10 把點子變成原型、提示詞 9 把原型變成產品、CI 整合讓維護成本趨近於零——單人維護多個小產品從此可行。</p>
+<p><strong>潛在收入：</strong>利基工具月費 $9～$29。50 位付費使用者：每個工具每月 $450～$1,450 經常性收入。</p>
+<p><strong>如何開始：</strong>找你社群裡重複出現的痛點，一週內做出最小版本，先賣給 10 個人再打磨。</p>
+
+<h3>方法 3：程式碼健檢與救援服務</h3>
+<p>提示詞 1、2、15 的組合就是一個可販售的服務：接手評估、技術債盤點、安全健檢、「沒人敢動的專案」救援。市場上到處都是接手了外包爛尾專案的公司。</p>
+<p><strong>潛在收入：</strong>健檢報告 $800～$3,000；救援專案 $3,000～$15,000。</p>
+<p><strong>如何開始：</strong>用開源專案做一份示範健檢報告，讓潛在客戶看到交付物長什麼樣。</p>
+
+<h3>方法 4：AI 開發流程培訓與顧問</h3>
+<p>大多數團隊買了訂閱卻只把 Codex 當高級補全用。教團隊「工單式委派、AGENTS.md 設定、審查自動化」是現在需求最高的顧問服務。</p>
+<p><strong>潛在收入：</strong>工作坊 $500～$2,000／場；月度顧問每客戶 $1,000～$5,000。</p>
+<p><strong>如何開始：</strong>把模組 3～5 內化成一場 45 分鐘的實演，免費講給 2 家公司聽，換取見證與轉介。</p>
+
+<h3>方法 5：自動化維護代理商</h3>
+<p>結合模組 5：幫客戶架好 GitHub 審查、CI 自動化、Slack 派工，然後收月費維護。企業願意為「持續運轉的工程流程」付經常性費用。</p>
+<p><strong>潛在收入：</strong>建置專案 $2,000～$8,000，另加每客戶每月 $200～$800 維護費。8 個維護客戶：每月 $1,600～$6,400 經常性基本盤。</p>
+<p><strong>如何開始：</strong>先把自己的專案全面自動化，用前後數據當銷售證明。</p>
+
+<div class="tbl"><table>
+<thead><tr><th>方法</th><th>每月潛在收入</th></tr></thead>
+<tbody>
+<tr><td>成品開發服務（×3~4 專案）</td><td>$1,500～$20,000</td></tr>
+<tr><td>微型 SaaS（50 位使用者）</td><td>$450～$1,450</td></tr>
+<tr><td>健檢與救援服務</td><td>$800～$15,000／案</td></tr>
+<tr><td>培訓／顧問</td><td>$1,000～$5,000</td></tr>
+<tr><td>自動化代理商（8 位客戶）</td><td>$1,600～$6,400</td></tr>
+</tbody></table></div>
+
+<h3>5 種方法背後的漏斗</h3>
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step"><b>第 1 個月</b><br><small style="color:var(--muted)">開發服務<br>（快速收入）</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 2～3 個月</b><br><small style="color:var(--muted)">服務中發現的痛點<br>做成微型 SaaS</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 4～6 個月</b><br><small style="color:var(--muted)">教別人你已熟練的流程<br>（經常性收入）</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 6 個月起</b><br><small style="color:var(--muted)">代理商模式<br>（更高經常性收入）</small></div>
+  </div>
+</div>
+
+<h3>一個完整的數字範例</h3>
+<p>以方法 1 為例：一次框架升級專案報價 $1,200。搭配提示詞 7，實際人工時間從 2 天降到「半天的驗收與溝通」。</p>
+<div class="tbl"><table>
+<thead><tr><th>情境</th><th>投入時數</th><th>每有效工時收入</th></tr></thead>
+<tbody>
+<tr><td>沒有 Codex（純手工）</td><td>16 小時</td><td>$75／小時</td></tr>
+<tr><td>有 Codex（派工＋驗收）</td><td>4 小時</td><td><strong>$300／小時</strong></td></tr>
+</tbody></table></div>
+<p>同樣的算法適用於其他 4 種方法：<strong>你賣的不是打字的時間，而是「開出好工單」和「用專家眼光驗收」的判斷力。</strong></p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 7 ═══════════════ -->
+<section id="ch7"><div class="wrap">
+<div class="ch-label">模組 7・進階</div>
+<h2>3 個進階應用案例</h2>
+
+<h3>案例 1：舊系統現代化（Legacy 救援）</h3>
+<p><strong>情境：</strong>一個運行多年、沒文件、沒測試、原開發者已離職的系統，業務還離不開它。</p>
+<p><strong>工作流程：</strong></p>
+<ol>
+  <li>用提示詞 1 產出上手報告，用提示詞 18 建立 AGENTS.md</li>
+  <li>用提示詞 3 追蹤最關鍵的 2～3 條業務路徑，用提示詞 13 為它們補上特徵測試（characterization tests）——先鎖住現有行為</li>
+  <li>用提示詞 2 盤點技術債並排序</li>
+  <li>依提示詞 7 分批升級過時依賴，每批一個 PR</li>
+  <li>最後用提示詞 6 重構核心模組，測試護航</li>
+</ol>
+<p><strong>結果：</strong>「沒人敢動」的系統變成有測試、有文件、可持續維護的系統——這正是方法 3 可以販售的完整服務。</p>
+
+<h3>案例 2：7 天做出一個 SaaS</h3>
+<p><strong>情境：</strong>你有一個利基工具的點子和一週時間。</p>
+<p><strong>工作流程：</strong></p>
+<ol>
+  <li>第 1 天：用提示詞 10 做出核心功能原型，親自試用、砍掉不必要的功能</li>
+  <li>第 2～3 天：用提示詞 9 補齊帳號、付款、資料持久化（每個功能一張工單）</li>
+  <li>第 4 天：用提示詞 13 補測試、提示詞 15 做安全健檢</li>
+  <li>第 5 天：架好 CI 與部署流程，開啟 GitHub 自動審查</li>
+  <li>第 6 天：用提示詞 20 做上線總檢查</li>
+  <li>第 7 天：上線，用提示詞 12 建一條使用數據的日報管線</li>
+</ol>
+<p><strong>結果：</strong>一週從點子到可收費的產品，且維護基礎（測試、CI、審查）從第一天就到位。</p>
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step">第 1 天<br><small style="color:var(--muted)">原型</small></div><div class="arr">→</div>
+    <div class="step">第 2～3 天<br><small style="color:var(--muted)">核心功能</small></div><div class="arr">→</div>
+    <div class="step">第 4 天<br><small style="color:var(--muted)">測試＋安全</small></div><div class="arr">→</div>
+    <div class="step">第 5～6 天<br><small style="color:var(--muted)">CI＋總檢查</small></div><div class="arr">→</div>
+    <div class="step">第 7 天<br><small style="color:var(--muted)">上線</small></div>
+  </div>
+</div>
+
+<h3>案例 3：團隊級審查與維護自動化</h3>
+<p><strong>情境：</strong>5～15 人的工程團隊，PR 審查大排長龍，維護工作永遠排不進衝刺。</p>
+<p><strong>工作流程：</strong></p>
+<ol>
+  <li>制定團隊的 <code>code_review.md</code>，從各儲存庫的 AGENTS.md 引用</li>
+  <li>開啟 GitHub 整合，前兩週採「僅標記」模式建立信任</li>
+  <li>把 CI 紅燈分流（提示詞 17）與每週依賴更新（提示詞 7）用 <code>codex exec</code> 排程化</li>
+  <li>在 Slack 工程頻道建立 <code>@Codex</code> 派工慣例與訊息格式</li>
+  <li>每月回顧：代理審查的準確率、自動 PR 的合併率，據此調整規範</li>
+</ol>
+<p><strong>結果：</strong>人類審查專注在設計決策，例行維護有排程保證，回報到修復的週期以小時計。</p>
+
+<h3>依你的情況選擇案例</h3>
+<div class="diagram">
+  <div class="d-title">你這個月的情況是？</div>
+  <div class="kids" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <div class="kid">被舊系統綁架、動彈不得<small>→ 案例 1：Legacy 救援</small></div>
+    <div class="kid">有點子、有一週空檔<small>→ 案例 2：7 天 SaaS</small></div>
+    <div class="kid">團隊被審查與維護拖垮<small>→ 案例 3：流程自動化</small></div>
+  </div>
+</div>
+
+<h3>各案例的時間與成本估算</h3>
+<div class="tbl"><table>
+<thead><tr><th>案例</th><th>實際人工時間</th><th>取代了什麼</th></tr></thead>
+<tbody>
+<tr><td>案例 1：Legacy 救援</td><td>每天 1～2 小時驗收，跨 2～4 週</td><td>一次要價數萬美元、常常爛尾的重寫專案</td></tr>
+<tr><td>案例 2：7 天 SaaS</td><td>每天 2～3 小時的派工與驗收</td><td>一組前後端＋DevOps 的小團隊</td></tr>
+<tr><td>案例 3：團隊自動化</td><td>建置 1 週＋每月半天回顧</td><td>資深工程師 30% 的審查與救火時間</td></tr>
+</tbody></table></div>
+<p>3 個案例的模式一致：<strong>你的時間集中在「開工單」和「驗收 PR」，而不是中間的執行。</strong></p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 第 8 章 ═══════════════ -->
+<section id="ch8"><div class="wrap">
+<div class="ch-label">第 8 章・附錄</div>
+<h2>常見問題</h2>
+
+<h4>Codex、Claude Code、Cursor、Copilot 怎麼選？</h4>
+<p>它們的定位不同：<strong>Copilot</strong> 核心是編輯器內補全與輔助；<strong>Cursor</strong> 是 AI 優先的編輯器體驗；<strong>Codex 和 Claude Code</strong> 是同一類——完整任務的工程代理，差別主要在生態（前者綁 ChatGPT／GitHub 整合，後者綁 Claude 生態）與模型特性。務實的做法：都在你的真實程式碼庫上試同一張工單，比 PR 品質，不比行銷數字。很多團隊同時用兩家的代理，依任務特性分流。</p>
+
+<h4>該選哪個模型？</h4>
+<p>用官方目前的預設建議即可（2026 年中為 GPT-5.5）。專用 Codex 型號的世代交替很快（5-Codex → 5.1 → 5.3 → 併入旗艦），追型號不如把 AGENTS.md 和工單品質顧好——那才是結果差異的主因。</p>
+
+<h4>我的訂閱額度能跑多少任務？</h4>
+<p>依方案與任務複雜度而定：Plus（$20）適合每天派幾張工單的個人使用；重度使用者選 Pro 5×（$100）或 Pro 20×（$200）；團隊用 Business 加額度。大型重構這類長任務消耗快，先跑價值最高的。</p>
+
+<h4>我的程式碼會被拿去訓練嗎？</h4>
+<p>商業方案（Business／Enterprise）預設不用你的資料訓練；個人方案請檢查資料控制設定中的訓練選項。企業導入前把資料處理政策讀一遍——這是採購流程該做的事，不是可選項。</p>
+
+<h4>沙箱安全嗎？讓它自動執行指令會不會出事？</h4>
+<p>本機沙箱預設限制網路與寫入範圍，雲端任務在隔離容器中執行。真正的風險控制在你手上：許可模式依專案風險調整（技巧 11），危險操作（部署、刪資料、動正式環境）永遠保留人工確認。</p>
+
+<h4>需要會寫程式才能用嗎？</h4>
+<p>雲端任務讓非工程師也能用一段描述得到可運行的原型（提示詞 10）。但要「持續交付可靠的軟體」，你至少需要具備驗收能力——看得懂它做了什麼、判斷得了對不對。這也是為什麼模組 6 說：你賣的是驗收的判斷力。</p>
+
+<h4>什麼時候用本機 CLI、什麼時候用雲端任務？</h4>
+<div class="tbl"><table>
+<thead><tr><th>情境</th><th>建議介面</th></tr></thead>
+<tbody>
+<tr><td>需要即時來回、看著每個 diff</td><td><strong>IDE 擴充功能</strong></td></tr>
+<tr><td>本機環境相依、需要腳本化或接 CI</td><td><strong>Codex CLI</strong></td></tr>
+<tr><td>獨立的大任務、可背景跑、平行派工</td><td><strong>雲端任務</strong></td></tr>
+</tbody></table></div>
+
+<h4>它開的 PR 我全部都要細看嗎？</h4>
+<p>初期是的——這是建立信任的成本。之後讓分層把關接手：CI 擋機械性問題、代理審查（模組 5）擋邏輯問題、你只看設計決策與業務正確性。永遠抽查，永遠不要零審查合併。</p>
+
+<h4>怎麼知道我的任務適不適合交給 Codex？</h4>
+<p>三個檢查點：1）能不能寫成一張有驗收標準的工單？2）成果能不能用測試或實際執行驗證？3）規模是不是「一個函式以上、一次重寫以下」？三個都是，就派。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 第 9 章 ═══════════════ -->
+<section id="ch9"><div class="wrap">
+<div class="ch-label">第 9 章・附錄</div>
+<h2>資源與下一步</h2>
+
+<h3>官方連結</h3>
+<ul>
+  <li>Codex 開發者首頁：<a href="https://developers.openai.com/codex" target="_blank" rel="noopener">developers.openai.com/codex</a></li>
+  <li>官方最佳實踐指南：<a href="https://developers.openai.com/codex/learn/best-practices" target="_blank" rel="noopener">developers.openai.com/codex/learn/best-practices</a></li>
+  <li>AGENTS.md 撰寫指南：<a href="https://developers.openai.com/codex/guides/agents-md" target="_blank" rel="noopener">developers.openai.com/codex/guides/agents-md</a></li>
+  <li>Codex CLI 文件：<a href="https://developers.openai.com/codex/cli" target="_blank" rel="noopener">developers.openai.com/codex/cli</a></li>
+  <li>Slack 整合設定：<a href="https://developers.openai.com/codex/integrations/slack" target="_blank" rel="noopener">developers.openai.com/codex/integrations/slack</a></li>
+  <li>方案與價格：<a href="https://developers.openai.com/codex/pricing" target="_blank" rel="noopener">developers.openai.com/codex/pricing</a></li>
+</ul>
+
+<h3>結語</h3>
+<p>Codex 代表的轉變和所有前緣代理相同：<strong>你從「用 AI 幫你寫程式」變成「把工程任務委派給 AI、自己專注在判斷」。</strong>會開好工單、能建立可驗證環境、驗收有標準的人，得到的是產能的數量級提升；把它當高級補全用的人，只感覺到訂閱變貴了。這本指南把你放進第一種人的行列——下一步，就看你的了。</p>
+
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step"><b>第 1 週</b><br><small style="color:var(--muted)">環境就緒</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 2 週</b><br><small style="color:var(--muted)">完整跑一個案例</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 3 週</b><br><small style="color:var(--muted)">量測時間／品質／成本</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 4 週起</b><br><small style="color:var(--muted)">系統化＋規模化</small></div>
+  </div>
+</div>
+
+<h3>你的行動計畫（含可衡量的目標）</h3>
+<div class="tbl"><table>
+<thead><tr><th>週次</th><th>行動</th><th>產出目標</th></tr></thead>
+<tbody>
+<tr><td>第 1 週</td><td>在你最常動的專案跑提示詞 1 與 18</td><td>代理說「跑測試」第一次就成功</td></tr>
+<tr><td>第 2 週</td><td>完整執行一個模組 7 的案例</td><td>至少 5 個經驗收合併的 PR</td></tr>
+<tr><td>第 3 週</td><td>量測省下的時數與 PR 品質</td><td>具體數字，不是感覺</td></tr>
+<tr><td>第 4 週起</td><td>加上一個模組 5 的整合＋考慮模組 6 的變現</td><td>一條自動化流程上線，或第一位客戶</td></tr>
+</tbody></table></div>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<footer>
+<div class="wrap">
+  <p>本指南為繁體中文原創內容，章節架構仿照 alejo-x 的《Guía Claude Fable 5》。</p>
+  <p>資訊時點：2026 年 7 月。模型型號、方案與價格更新頻繁，請以 <a href="https://developers.openai.com/codex" target="_blank" rel="noopener">OpenAI 官方頁面</a>為準。</p>
+</div>
+</footer>
+
+<script>
+document.querySelectorAll('.copy-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var text=btn.parentElement.querySelector('pre').innerText;
+    navigator.clipboard.writeText(text).then(function(){
+      btn.textContent='已複製 ✓';
+      setTimeout(function(){btn.textContent='複製';},1600);
+    });
+  });
+});
+</script>
+</body>
+</html>
