@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Fable 5 完全指南（繁體中文版）</title>
+<style>
+:root{
+  --bg:#faf9f6; --surface:#ffffff; --text:#1f2328; --muted:#6b7280;
+  --accent:#b45309; --accent-soft:#fef3e2; --border:#e5e1d8;
+  --code-bg:#f5f2ea; --quote-bg:#fbf7ef;
+  --tag-intro:#0e7490; --tag-basic:#7c3aed; --tag-case:#059669; --tag-prompt:#b45309;
+  --tag-adv:#dc2626; --tag-money:#ca8a04; --tag-bonus:#64748b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#16181d; --surface:#1e2128; --text:#e8e6e1; --muted:#9aa0a8;
+    --accent:#f0a35e; --accent-soft:#2e2620; --border:#33373f;
+    --code-bg:#23262e; --quote-bg:#25231e;
+    --shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",-apple-system,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.85; font-size:16px;
+}
+.wrap{max-width:880px;margin:0 auto;padding:0 24px}
+
+/* ── 頂部導覽 ── */
+nav{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--border);
+}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 24px;scrollbar-width:thin}
+nav a{
+  flex:0 0 auto;font-size:13px;color:var(--muted);text-decoration:none;
+  padding:4px 12px;border-radius:99px;white-space:nowrap;transition:.15s;
+}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+
+/* ── Hero ── */
+header{padding:72px 0 48px;text-align:center;
+  background:linear-gradient(180deg,var(--accent-soft) 0%,var(--bg) 100%)}
+header .kicker{font-size:13px;letter-spacing:.25em;color:var(--accent);font-weight:700;text-transform:uppercase}
+header h1{font-size:clamp(30px,5vw,44px);font-weight:800;margin:12px 0 20px;letter-spacing:.02em}
+header .lede{
+  max-width:640px;margin:0 auto;color:var(--muted);font-size:16px;
+  border-left:3px solid var(--accent);padding:8px 20px;text-align:left;
+  background:var(--quote-bg);border-radius:0 10px 10px 0;
+}
+header .meta{margin-top:24px;font-size:13px;color:var(--muted)}
+
+/* ── 章節索引卡片 ── */
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:36px 0 8px}
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:18px 18px 16px;box-shadow:var(--shadow);text-decoration:none;color:var(--text);
+  display:flex;flex-direction:column;gap:8px;transition:.15s;
+}
+.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.card .num{font-size:12px;font-weight:700;color:var(--accent)}
+.card h3{font-size:15.5px;font-weight:700;line-height:1.5}
+.card p{font-size:13px;color:var(--muted);line-height:1.7;flex:1}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 9px;border-radius:99px;color:#fff;font-weight:500}
+.t-intro{background:var(--tag-intro)}.t-basic{background:var(--tag-basic)}
+.t-case{background:var(--tag-case)}.t-prompt{background:var(--tag-prompt)}
+.t-adv{background:var(--tag-adv)}.t-money{background:var(--tag-money)}
+.t-bonus{background:var(--tag-bonus)}
+.t-level{background:transparent;color:var(--muted);border:1px solid var(--border)}
+
+/* ── 內文 ── */
+section{padding:56px 0 8px;border-top:1px solid var(--border);margin-top:56px}
+section:first-of-type{border-top:none;margin-top:0}
+.ch-label{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.15em}
+section>.wrap>h2{font-size:28px;font-weight:800;margin:6px 0 10px}
+.ch-summary{color:var(--muted);font-size:14.5px;margin-bottom:28px}
+h3{font-size:20px;font-weight:700;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--accent-soft)}
+h4{font-size:16.5px;font-weight:700;margin:26px 0 8px;color:var(--accent)}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 16px;padding-left:26px}
+li{margin-bottom:8px}
+strong{font-weight:700}
+blockquote{
+  background:var(--quote-bg);border-left:3px solid var(--accent);
+  padding:14px 20px;border-radius:0 10px 10px 0;margin:18px 0;color:var(--text);
+}
+a{color:var(--accent)}
+code{background:var(--code-bg);padding:1px 6px;border-radius:5px;font-size:.9em;
+  font-family:"SF Mono",Menlo,Consolas,monospace}
+
+/* ── 表格 ── */
+.tbl{overflow-x:auto;margin:18px 0;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--surface)}
+th{background:var(--accent-soft);color:var(--text);font-weight:700;text-align:left;padding:11px 16px;white-space:nowrap}
+td{padding:11px 16px;border-top:1px solid var(--border);vertical-align:top}
+tbody tr:hover{background:var(--code-bg)}
+
+/* ── 提示詞區塊 ── */
+.prompt{position:relative;margin:14px 0 10px}
+.prompt pre{
+  background:var(--code-bg);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word;
+  font-family:"Noto Sans TC","PingFang TC",sans-serif;
+}
+.copy-btn{
+  position:absolute;top:10px;right:10px;font-size:12px;padding:4px 12px;
+  border:1px solid var(--border);border-radius:8px;background:var(--surface);
+  color:var(--muted);cursor:pointer;transition:.15s;font-family:inherit;
+}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.use{font-size:13.5px;color:var(--muted);margin-bottom:26px}
+.use b{color:var(--text)}
+
+/* ── 圖解 ── */
+.diagram{
+  background:var(--code-bg);border:1px solid var(--border);border-radius:12px;
+  padding:20px 22px;margin:20px 0;overflow-x:auto;
+}
+.diagram .d-title{font-size:12.5px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin-bottom:14px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px;font-weight:500}
+.flow .step{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 16px;box-shadow:var(--shadow)}
+.flow .arr{color:var(--accent);font-weight:700}
+.bars{display:grid;gap:10px}
+.bar-row{display:grid;grid-template-columns:130px 1fr 90px;align-items:center;gap:12px;font-size:13.5px}
+.bar-track{background:var(--surface);border:1px solid var(--border);border-radius:99px;height:14px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#e07b39);border-radius:99px}
+.bar-row .note{color:var(--muted);font-size:12.5px;text-align:right}
+.tree{display:flex;flex-direction:column;align-items:center;gap:0;font-size:14px}
+.tree .node{background:var(--surface);border:1.5px solid var(--accent);border-radius:10px;padding:8px 20px;font-weight:700;box-shadow:var(--shadow)}
+.tree .vline{width:2px;height:18px;background:var(--border)}
+.tree .kids{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.tree .kid{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:13px;text-align:center}
+.tree .kid small{display:block;color:var(--muted);font-size:11.5px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+.panel .p-title{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--accent);margin-bottom:8px}
+.panel p{font-size:13.5px;margin-bottom:6px;color:var(--muted)}
+.panel p b{color:var(--text)}
+
+/* ── 提醒框 ── */
+details{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px 18px;margin:12px 0;box-shadow:var(--shadow);
+}
+details summary{font-weight:700;cursor:pointer;color:var(--accent)}
+details p{margin:10px 0 4px;font-size:14.5px}
+.callout{
+  display:flex;gap:12px;background:var(--accent-soft);border:1px solid var(--border);
+  border-radius:12px;padding:14px 18px;margin:18px 0;font-size:14.5px;
+}
+.callout .ico{flex:0 0 auto}
+
+footer{margin-top:72px;padding:36px 0 48px;border-top:1px solid var(--border);
+  text-align:center;font-size:13px;color:var(--muted)}
+footer a{color:var(--muted)}
+.top-link{display:block;text-align:right;font-size:13px;margin-top:28px}
+.top-link a{text-decoration:none;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+<a href="#ch0">導論</a><a href="#ch1">1 基礎</a><a href="#ch2">2 真實案例</a><a href="#ch3">3 提示詞×20</a><a href="#ch4">4 技巧×15</a><a href="#ch5">5 工具組合</a><a href="#ch6">6 變現</a><a href="#ch7">7 進階案例</a><a href="#ch8">8 常見問題</a><a href="#ch9">9 資源</a>
+</div></nav>
+
+<header id="top">
+<div class="wrap">
+  <div class="kicker">完全指南</div>
+  <h1>Claude Fable 5 完全指南</h1>
+  <div class="lede">掌握 Claude Fable 5 所需的一切：基礎知識、使用者真實案例、20 個可直接複製的提示詞、15 個經過驗證的技巧、工具組合、5 種變現方法，以及必須避開的錯誤。</div>
+  <div class="meta">繁體中文版・譯自 alejo-x 的西班牙文原版 Notion 指南</div>
+</div>
+</header>
+
+<div class="wrap">
+<div class="toc-grid">
+  <a class="card" href="#ch0"><span class="num">第 0 章</span><h3>導論：什麼是 Claude Fable 5</h3><p>什麼是 Fable 5、它上市與停售的波折時間軸、本指南適合誰，以及你將學到什麼。</p><div class="tags"><span class="tag t-intro">導論</span><span class="tag t-level">入門</span></div></a>
+  <a class="card" href="#ch1"><span class="num">模組 1</span><h3>基礎知識</h3><p>模型的 6 大核心概念、經過驗證的基準測試數據、價格、存取途徑，以及成本與隱私的注意事項。</p><div class="tags"><span class="tag t-basic">基礎</span><span class="tag t-level">中級</span></div></a>
+  <a class="card" href="#ch2"><span class="num">模組 2</span><h3>真實案例</h3><p>真實使用者（Mollick、Stripe、Krieger、Karpathy、Boris Cherny）在最初幾週打造了什麼，以及區分「用得好」與「用不好」的關鍵模式。</p><div class="tags"><span class="tag t-case">實際案例</span><span class="tag t-level">不限程度</span></div></a>
+  <a class="card" href="#ch3"><span class="num">模組 3</span><h3>20 個必備提示詞</h3><p>20 個可直接複製的提示詞，分為 5 大類：商業策略、文件分析、開發程式、內容行銷、完整專案。</p><div class="tags"><span class="tag t-prompt">提示詞</span><span class="tag t-level">中級</span></div></a>
+  <a class="card" href="#ch4"><span class="num">模組 4</span><h3>15 個經過驗證的技巧</h3><p>心態、技術與成本管理，讓你把 Fable 5 的效益發揮到極致，外加常見錯誤與避開方法。</p><div class="tags"><span class="tag t-adv">進階</span><span class="tag t-level">進階</span></div></a>
+  <a class="card" href="#ch5"><span class="num">模組 5</span><h3>強大的工具組合</h3><p>如何把 Fable 5 與 Claude Code、MCP、Notion、Make、Canva、Beehiiv 結合，讓每個工作流程的成果倍增。</p><div class="tags"><span class="tag t-adv">進階</span><span class="tag t-level">進階</span></div></a>
+  <a class="card" href="#ch6"><span class="num">模組 6</span><h3>如何變現賺錢</h3><p>5 種用 Fable 5 賺錢的方法：成品交付服務、系列數位產品、微型 SaaS、培訓與顧問、微型自動化代理商。</p><div class="tags"><span class="tag t-money">變現</span><span class="tag t-level">不限程度</span></div></a>
+  <a class="card" href="#ch7"><span class="num">模組 7</span><h3>3 個進階應用案例</h3><p>3 套完整的分步工作流程：投資盡職調查、7 天內完成產品上市、多語言內容系統。</p><div class="tags"><span class="tag t-adv">進階</span><span class="tag t-level">進階</span></div></a>
+  <a class="card" href="#ch8"><span class="num">第 8 章</span><h3>常見問題</h3><p>直球回答：相較 Opus 值不值得、為什麼有時候是別的模型回答、資料保存、使用限制，以及 Fable 這個名字的由來。</p><div class="tags"><span class="tag t-bonus">附錄</span><span class="tag t-level">不限程度</span></div></a>
+  <a class="card" href="#ch9"><span class="num">第 9 章</span><h3>資源與下一步</h3><p>Anthropic 官方連結，以及一套 4 步驟行動計畫，讓你從這週開始把完整專案交給 Fable 5。</p><div class="tags"><span class="tag t-bonus">附錄</span><span class="tag t-level">不限程度</span></div></a>
+</div>
+</div>
+
+<!-- ═══════════════ 第 0 章 導論 ═══════════════ -->
+<section id="ch0"><div class="wrap">
+<div class="ch-label">第 0 章・導論</div>
+<h2>什麼是 Claude Fable 5</h2>
+
+<h3>什麼是 Claude Fable 5，為什麼它很重要</h3>
+<p>Claude Fable 5 是 Anthropic 向大眾開放過的最強 AI 模型。它於 2026 年 6 月 9 日推出，是第一個對所有人開放的「Mythos 級」模型。在此之前，這個等級的模型僅保留給 Project Glasswing 計畫核准的組織使用。</p>
+<p>核心重點：<strong>Fable 5 和 Mythos 5 的內部是同一個模型</strong>，差別在於過濾機制。Fable 5 內建分類器，會偵測敏感請求（資安、生物、化學、模型蒸餾），並將其轉交給 Claude Opus 4.8 處理。你一樣會收到回覆，而且這些請求不會按 Fable 的價格計費。</p>
+<p>Fable 5 幾乎稱霸所有基準測試：軟體工程、知識工作、視覺、研究。所有測試都呈現同一個模式：<strong>任務越長、越複雜，它領先其他模型的幅度就越大。</strong></p>
+
+<div class="diagram">
+  <div class="d-title">同一個模型，兩種版本</div>
+  <div class="flow" style="justify-content:center">
+    <div class="step"><b>CLAUDE FABLE 5</b><br><small style="color:var(--muted)">公開版，含過濾機制</small></div>
+    <div class="arr">⟷</div>
+    <div class="step"><b>MYTHOS 5</b><br><small style="color:var(--muted)">Project Glasswing 專用，無過濾</small></div>
+  </div>
+  <p style="text-align:center;margin:12px 0 0;font-size:13px;color:var(--muted)">└── 內部是同一個模型 ──┘</p>
+</div>
+
+<h3>你必須知道的波折歷史</h3>
+<ul>
+  <li><strong>2026 年 6 月 9 日：</strong>全球上市。至 6 月 22 日前，Pro、Max、Team 方案免費內含。</li>
+  <li><strong>6 月 12 日：</strong>Amazon 研究人員發布一份關於繞過安全防護方法的報告後，美國政府實施出口管制。Anthropic 切斷所有使用者的存取權。</li>
+  <li><strong>6 月 30 日：</strong>政府解除管制。Anthropic 訓練了一個新的分類器，可攔截該報告所述技術超過 99% 的嘗試。</li>
+  <li><strong>7 月 1 日：</strong>Fable 5 帶著強化後的防護措施重新於全球上線。至 7 月 7 日前，付費方案內含最多 50% 的每週用量額度；之後改以使用額度（credits）計費。</li>
+</ul>
+<p>這段時間軸有一個實務上的意義：<strong>目前的版本比六月版過濾得更嚴格</strong>。部分涉及安全性主題的日常程式任務，會更頻繁地被轉交給 Opus 4.8。</p>
+
+<h3>本指南適合誰</h3>
+<ul>
+  <li><strong>內容創作者與創業者</strong>——想從一篇一篇地寫，升級成整個專案直接委派：一份完整的名單磁鐵（lead magnet）、一整個月的內容日曆、一套含電子郵件的銷售系統</li>
+  <li><strong>處理大量密集文件的專業人士</strong>：金融、法律、分析、顧問。今天要花 3 小時交叉比對合約與試算表的人，可以把這項工作變成 20 分鐘的複核</li>
+  <li><strong>開發者與非開發者</strong>——想用 AI 打造真正的產品，從原生 App 到整個程式碼庫的遷移</li>
+  <li><strong>任何想知道 Fable 5 的價格對自己的情境到底值不值得的人</strong>，想要的是有數據支撐的答案，而不是直覺</li>
+</ul>
+<p>一個簡單的例子幫你定位：如果你這週的任務用一般聊天模式 2 分鐘就能解決，Fable 5 就是不必要的開銷。但如果你這週的任務已經卡在待辦清單上 3 週，因為沒有人有時間整天坐下來處理它——<strong>那正是這個模型存在的理由。</strong></p>
+
+<h3>你將學到什麼</h3>
+<p>模型如何運作、真實使用者在最初幾週打造了什麼、20 個可直接複製的提示詞、15 個經過驗證的技巧、如何管理成本、與其他工具的組合方式、5 種變現方法，以及那些燒掉額度卻毫無成果的錯誤。</p>
+
+<h3>為什麼任務越長，優勢越大</h3>
+<p>這個模式在所有基準測試和模組 2 的所有案例中不斷重複：<strong>任務越長、越困難，Fable 5 與其他模型的差距就越大</strong>。5 分鐘的任務幾乎感覺不到差別；耗時數小時的任務，這個差距就成了值得付 Fable 價格的商業理由。</p>
+
+<div class="diagram">
+  <div class="d-title">FABLE 5 相對其他模型的優勢</div>
+  <div class="bars">
+    <div class="bar-row"><span>5 分鐘的任務</span><div class="bar-track"><div class="bar-fill" style="width:6%"></div></div><span class="note">幾乎無感</span></div>
+    <div class="bar-row"><span>1 小時的任務</span><div class="bar-track"><div class="bar-fill" style="width:24%"></div></div><span class="note">明顯</span></div>
+    <div class="bar-row"><span>1 天的任務</span><div class="bar-track"><div class="bar-fill" style="width:58%"></div></div><span class="note">巨大</span></div>
+    <div class="bar-row"><span>數天的任務</span><div class="bar-track"><div class="bar-fill" style="width:92%"></div></div><span class="note">最大化</span></div>
+  </div>
+</div>
+
+<p>這張圖正是模組 3 存在的實務理由：那 20 個提示詞每一個都是為「大型委派」而設計，而不是零散的提問。把它當作篩選器：在丟出任何任務之前先問自己——如果一句話加一個回答就能解決，就把額度省下來留給別的事。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 1 ═══════════════ -->
+<section id="ch1"><div class="wrap">
+<div class="ch-label">模組 1・基礎</div>
+<h2>基礎知識</h2>
+
+<h3>你需要理解的 6 個概念</h3>
+<p><strong>1. Mythos 級模型。</strong>Anthropic 有同一個引擎的兩種版本。Mythos 5 過濾較少，供資安防禦與生醫研究領域的核准組織使用；Fable 5 是含安全防護的公開版。對 95% 的一般使用情境而言，兩者表現相同。</p>
+<p><strong>2. 長時程工作（long-horizon）。</strong>這是它與過去所有模型的真正差異。Fable 5 能連續執行任務數小時甚至數天而無需人為介入：分階段規劃、委派給子代理（sub-agents）、驗證自己的成果。在獨立測試中，它曾針對數頁的技術規格連續運作 12 小時而不失焦。</p>
+<p><strong>3. 100 萬 token 的上下文視窗。</strong>約等於 75 萬字的輸入量。你可以在一次對話中丟給它整本書、完整的程式碼庫或數十份 PDF。輸出每次請求最高可達 128,000 token。</p>
+<p><strong>4. 進階視覺能力。</strong>能直接讀取檔案與 PDF 內的圖表、圖形和表格。寫程式時，它會將自己的視覺產出與原始設計比對並自我修正。Instagram 共同創辦人、Anthropic Labs 負責人 Mike Krieger 會把自己工作的螢幕錄影餵給它，讓它找出靜態截圖看不出來的動畫瑕疵。</p>
+<p><strong>5. 子代理。</strong>Fable 5 會啟動較便宜的模型實例（如 Sonnet）來平行處理任務，自己則負責統籌。在一個有記錄的案例中，它啟動子代理調查了超過 2,200 個航班、TGV 與新幹線的時刻表、各國的公路速限——同時自己還在平行寫程式。</p>
+<p><strong>6. 後援（fallback）系統。</strong>如果你的請求觸及敏感領域，分類器會偵測到並改由 Opus 4.8 回答。發生時系統會通知你，且該次回覆不按 Fable 價格計費。發生率低於 5% 的工作階段。</p>
+
+<h3>經過驗證的數據</h3>
+<div class="tbl"><table>
+<thead><tr><th>基準測試</th><th>Fable 5</th><th>Opus 4.8</th><th>GPT-5.5</th></tr></thead>
+<tbody>
+<tr><td>SWE-Bench Pro（程式開發）</td><td><strong>80.3%</strong></td><td>69.2%</td><td>58.6%</td></tr>
+<tr><td>Every 的 Senior Engineer 測試（滿分 100）</td><td><strong>91</strong></td><td>63</td><td>62</td></tr>
+</tbody></table></div>
+<p>在 Hebbia 的資深金融推理基準測試中，Fable 5 拿下所有模型的最高分，圖表與表格判讀能力尤其進步顯著。</p>
+<p>另一個有趣的數據：在卡牌遊戲《Slay the Spire》中，給 Fable 5 持久記憶後，效能提升幅度是 Opus 4.8 的 3 倍，抵達最終章的頻率也高出 3 倍。實務上的意義：<strong>這個模型比前代更能從記憶與累積的上下文中獲益。</strong></p>
+
+<h3>價格與存取方式</h3>
+<div class="tbl"><table>
+<thead><tr><th>存取途徑</th><th>細節</th></tr></thead>
+<tbody>
+<tr><td><a href="https://claude.ai" target="_blank" rel="noopener">Claude.ai</a>（網頁與 App）</td><td>Pro、Max、Team、Enterprise 方案。7 月 7 日前：每週用量上限的 50%；之後改用使用額度</td></tr>
+<tr><td>API</td><td>模型代號 <code>claude-fable-5</code>。輸入 $10／百萬 token，輸出 $50／百萬 token。使用 prompt caching 可享 90% 折扣</td></tr>
+<tr><td>Claude Code</td><td><code>claude --model claude-fable-5</code> 或透過模型選單</td></tr>
+<tr><td>Claude Cowork</td><td>可用於代理式知識工作</td></tr>
+<tr><td>GitHub Copilot</td><td>Pro+ 方案可用</td></tr>
+<tr><td>雲端平台（AWS、Google Cloud、Microsoft Foundry）</td><td>逐步恢復開放中</td></tr>
+</tbody></table></div>
+
+<details><summary>⚠️ 沒有人告訴你的成本警告</summary>
+<p>Fable 5 消耗訂閱用量的速度是 Opus 的兩倍。有使用者回報，在高強度任務中每分鐘燒掉每週上限的 2%。它在高推理強度下速度慢、耗 token 多。<strong>把 Fable 留給真正值得的任務。</strong></p>
+</details>
+<details><summary>🔒 隱私注意事項</summary>
+<p>Fable 5 強制實行 30 天資料保存政策，本模型不提供零資料保存（ZDR）。如果你所處的受監管產業有 ZDR 要求，該類工作請改用 Opus 4.8。</p>
+</details>
+
+<div class="diagram">
+  <div class="d-title">自主性等級</div>
+  <div class="flow" style="justify-content:space-between">
+    <div class="step">低<br><small style="color:var(--muted)">聊天型模型</small></div>
+    <div class="arr">→</div>
+    <div class="step">中<br><small style="color:var(--muted)">Claude Code 代理</small></div>
+    <div class="arr">→</div>
+    <div class="step">極高<br><small style="color:var(--muted)">Fable 5 長時程工作</small></div>
+  </div>
+</div>
+
+<h3>100 萬 token 上下文的實際規模</h3>
+<p>「一百萬 token」很抽象、很難想像。實務上，這是「請它讀一章」與「請它讀完整本書，還附上眉批」之間的差別。</p>
+<div class="diagram">
+  <div class="d-title">1,000,000 個 TOKEN 裝得下什麼</div>
+  <div class="bars" style="font-size:14px">
+    <div class="bar-row" style="grid-template-columns:1fr auto"><span>一份 20 頁的合約</span><span class="note">可放入 200 次</span></div>
+    <div class="bar-row" style="grid-template-columns:1fr auto"><span>一本 400 頁的小說</span><span class="note">可完整放入 2 次</span></div>
+    <div class="bar-row" style="grid-template-columns:1fr auto"><span>一個中型 App 的原始碼</span><span class="note">可完整放入，含版本歷史</span></div>
+    <div class="bar-row" style="grid-template-columns:1fr auto"><span>40 份季度財報</span><span class="note">可一次全部放入</span></div>
+  </div>
+</div>
+<p>對模組 3 的實務意義：使用提示詞 7（多來源研究）和提示詞 9（程式碼遷移）時，你可以上傳<strong>完整的原始資料</strong>而非摘要片段。模型能把相隔數百頁的內容連結起來——這是預先摘要會徹底破壞掉的能力。</p>
+
+<h3>Fable 5 與子代理如何分工</h3>
+<div class="diagram">
+  <div class="tree">
+    <div class="node">FABLE 5（統籌者）</div>
+    <div class="vline"></div>
+    <div class="kids">
+      <div class="kid">子代理 1<small>負責研究</small></div>
+      <div class="kid">子代理 2<small>負責撰寫</small></div>
+      <div class="kid">子代理 3<small>負責驗證</small></div>
+    </div>
+    <div class="vline"></div>
+    <div class="kid" style="border-style:dashed">彙整結果</div>
+    <div class="vline"></div>
+    <div class="node" style="font-weight:500;font-size:13.5px">Fable 5 複核後交付</div>
+  </div>
+</div>
+<p>這就是 Mollick 那個 2,200 個航班案例背後的機制：模型並沒有親自調查每一個航班，而是把搜尋工作委派給較便宜的模型實例，把最終判斷留給自己。這也是提示詞 13（週期性流程自動化）的邏輯：<strong>明確要求它把自己的產能留給困難的決策，其餘的委派出去。</strong></p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 2 ═══════════════ -->
+<section id="ch2"><div class="wrap">
+<div class="ch-label">模組 2・實際案例</div>
+<h2>真實案例</h2>
+<p class="ch-summary">以下是最初幾週人們在 X、Hacker News 和專業電子報上發表的內容——具體的案例，有名有姓、有結果。</p>
+
+<h3>引發討論的案例</h3>
+<h4>Ethan Mollick（華頓商學院教授、AI 領域意見領袖）</h4>
+<ul>
+  <li>在 Claude Code 中各用一個提示詞做出 3 款可玩的電子遊戲：一個帶有隨機事件的貪食蛇複刻版、一款名為 Strata 的下降式遊戲，以及一款以里爾克（Rilke）詩句為基礎的詩意遊戲</li>
+  <li>所有美術與 3D 物件都以數學生成，未使用任何外部素材</li>
+  <li>一張城市間旅行時間地圖：模型啟動子代理調查了 2,200 多個真實航班與火車時刻表</li>
+  <li>Concord——一款給學術研究人員用的校準工具，因缺乏商業可行性而一直沒有人做</li>
+  <li>針對技術規格連續工作長達 12 小時的工作階段</li>
+  <li>他的結論：大幅超越他用過的所有公開模型</li>
+</ul>
+<h4>Stripe（支付平台）</h4>
+<ul>
+  <li>一天內完成 5,000 萬行 Ruby 程式碼庫的完整遷移</li>
+  <li>先前的估算：整個團隊要花超過 2 個月</li>
+  <li>他們的總結：數個月的工程量被壓縮成幾天</li>
+</ul>
+<h4>Mike Krieger（Instagram 共同創辦人、Anthropic Labs）</h4>
+<ul>
+  <li>他的工作流程：Bug 從 Slack 進來，Fable 5 完成修復、發出 Pull Request，幾小時後還會自行追蹤後續</li>
+  <li>他用回歸測試、螢幕錄影和模擬後端來驗證模型的工作</li>
+  <li>他的主張：更多工作在夜間發生——交給它一項複雜任務，人離開，早上就完成了</li>
+</ul>
+<h4>在 X 上發表的個人使用者案例</h4>
+<ul>
+  <li>一位使用者要求一個「用起來極度舒服」的 iOS 卡路里計算器，一個提示詞就得到了可運作的原生 App</li>
+  <li>另一位發表了一次生成、具設計師水準的精美 Landing Page</li>
+  <li>一位沒有技術背景的創作者在幾小時內做出可玩的遊戲：一個提示詞產出原型，再迭代幾次補上關卡、美術和音效</li>
+  <li>一位擁有內部 MCP 權限的 Anthropic 招募人員這樣形容：「腦中的想法」與「世界上實際存在的東西」之間的距離消失了</li>
+</ul>
+<h4>指標性技術人物的評價</h4>
+<ul>
+  <li>Andrej Karpathy 形容這是一次值得「主版本號升級」的躍進，強項在於針對極難問題的長時間工作階段</li>
+  <li>Boris Cherny（Claude Code 的創造者）分享：請它除錯時，模型自己做了量測、加了記錄（logs），並在確認修復有效後才交付——完全沒有人要求它這麼做</li>
+  <li>一位 Hacker News 上的測試者回報：在代理框架（agentic harness）中，它用一半的 token 拿到更好的結果，實際成本接近 Opus 4.8</li>
+</ul>
+
+<h3>所有案例中不斷重複的模式</h3>
+<p>Every 團隊讓 7 個人花一週時間，在程式、寫作、策略、資料分析和成長領域測試它。他們最有用的發現不是技術層面的，而是「採用方式」層面的：</p>
+<blockquote>AI 進階使用者發現它對最困難的任務具有變革性；經驗較少的使用者則不知道該拿它做什麼。</blockquote>
+<p>這給我們的啟示：<strong>Fable 5 獎勵的不是會「下提示詞」的人，而是會「委派」的人。</strong>給它完整委託並附上驗收標準的人，得到截然不同層次的成果；把它當 ChatGPT 用的人感覺不到差異，還付了更多錢。</p>
+
+<div class="two-col">
+  <div class="panel">
+    <div class="p-title">擅長委派的使用者</div>
+    <p><b>完整委託＋驗收標準</b></p>
+    <p>→ 具變革性的成果</p>
+  </div>
+  <div class="panel">
+    <div class="p-title">只會「聊天」的使用者</div>
+    <p><b>零散提示詞，沒有框架</b></p>
+    <p>→ 沒有差別，成本更高</p>
+  </div>
+</div>
+
+<h3>案例一覽</h3>
+<div class="tbl"><table>
+<thead><tr><th>人物／公司</th><th>做了什麼</th><th>可衡量的結果</th></tr></thead>
+<tbody>
+<tr><td>Ethan Mollick</td><td>3 款電子遊戲、用子代理做的旅行時間地圖、Concord 應用程式</td><td>長達 12 小時的工作階段而不失焦</td></tr>
+<tr><td>Stripe</td><td>5,000 萬行 Ruby 程式碼庫的遷移</td><td>1 天完成，原估團隊需 2 個月以上</td></tr>
+<tr><td>Mike Krieger</td><td>從 Slack 的 Bug 到驗證完成的 Pull Request 的完整流程</td><td>夜間完成工作，早上交付並附驗證</td></tr>
+<tr><td>個人使用者</td><td>iOS 卡路里計算 App</td><td>一個提示詞就得到可運作的原生 App</td></tr>
+<tr><td>Andrej Karpathy</td><td>對模型的技術評測</td><td>形容為「長時間工作階段的主版本號級躍進」</td></tr>
+<tr><td>Boris Cherny</td><td>在 Claude Code 中除錯</td><td>主動量測、加記錄並驗證修復，無人要求</td></tr>
+</tbody></table></div>
+
+<h3>為什麼同一個模型，結果差這麼多</h3>
+<p>Every 的發現不只是個趣聞，它是整本指南的關鍵：<strong>「變革性成果」與「平庸成果」之間的差距不在模型，而在你怎麼把工作交出去。</strong></p>
+<div class="two-col">
+  <div class="panel">
+    <div class="p-title">輸入 A</div>
+    <p><b>「幫我寫一封 Email」</b></p>
+    <p>→ 得到跟任何聊天機器人一樣的普通結果</p>
+  </div>
+  <div class="panel">
+    <div class="p-title">輸入 B</div>
+    <p><b>完整簡報＋成功標準＋上下文＋讓它自由決定「怎麼做」</b></p>
+    <p>→ 得到一個團隊要花好幾天才做得出來的成果</p>
+  </div>
+</div>
+<p>模組 3 存在的目的，就是讓你永遠不會丟出第一種輸入——那 20 個提示詞每一個都是按第二種方式打造的。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 3 ═══════════════ -->
+<section id="ch3"><div class="wrap">
+<div class="ch-label">模組 3・提示詞</div>
+<h2>20 個必備提示詞</h2>
+<p class="ch-summary">Anthropic 官方文件證實的黃金法則：成效最好的團隊，都是把 Fable 5 用在<strong>最困難、尚未解決的問題</strong>上。拿它做簡單任務是低估了這個模型。以下提示詞正是依這個邏輯設計的。</p>
+
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step">困難的未解問題</div><div class="arr">→</div>
+    <div class="step">完整簡報</div><div class="arr">→</div>
+    <div class="step">FABLE 5 執行</div><div class="arr">→</div>
+    <div class="step">人工複核</div>
+  </div>
+</div>
+
+<h3>20 個提示詞快速地圖</h3>
+<div class="tbl"><table>
+<thead><tr><th>類別</th><th>提示詞</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>A. 商業與策略</td><td>1～4</td><td>營運健檢、商業決策、盡職調查</td></tr>
+<tr><td>B. 文件與分析</td><td>5～8</td><td>財務 PDF、合約、研究、數據</td></tr>
+<tr><td>C. 開發與程式</td><td>9～13</td><td>程式遷移、完整產品、自動化</td></tr>
+<tr><td>D. 內容與行銷</td><td>14～17</td><td>品牌語氣、內容再利用、內容系統</td></tr>
+<tr><td>E. 完整專案</td><td>18～20</td><td>產品上市、翻譯、品質審查</td></tr>
+</tbody></table></div>
+<p>把這張表存起來當索引。有新任務時，先定位類別，再挑選確切的提示詞。</p>
+
+<h3>類別 A：商業與策略</h3>
+<h4>提示詞 1：完整營運健檢</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請扮演資深商業顧問。我附上了［文件：帳目、網站、報價方案］。請完整分析我的事業：營收模式、定價、銷售漏斗與市場定位。給我一份報告，內含 3 個優先要解決的問題、每個問題的預估經濟影響，以及一份含每週任務的 30 天行動計畫。</pre></div>
+<p class="use"><b>用途：</b>真正的多文件策略顧問分析。<b>預期結果：</b>含診斷、數字與可執行計畫的報告。</p>
+
+<h4>提示詞 2：「值得用 Fable 的任務」偵測器</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>幫我判斷我的工作中哪些部分值得用 Fable 5。先不要執行任何東西。請檢視我的情境：［描述你的角色、專案、週期性任務、使用的工具］。找出強力候選：那些長、複雜或卡住的任務，是自主代理能真正發揮價值的地方。把最好的 3 個轉換成可直接執行的簡報（brief），內含目標、所需上下文、成功標準與人工查核點。</pre></div>
+<p class="use"><b>用途：</b>把額度花在有回報的地方。改編自 Every 團隊的方法。<b>預期結果：</b>3 份排好優先順序、可直接發動的簡報。</p>
+
+<h4>提示詞 3：以數據支持的決策比較</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>我必須在［選項 A］與［選項 B］之間做決定，情境是［說明背景］。請用 2026 年的最新資料研究兩者：實際成本、成功與失敗案例、學習曲線。給我一張依我的優先順序加權的比較表：［列出你的優先順序］。最後給出一個有論據支持的建議。</pre></div>
+<p class="use"><b>用途：</b>用真實研究支撐重要決策。<b>預期結果：</b>加權比較表加上明確建議。</p>
+
+<h4>提示詞 4：收購或投資的盡職調查</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請扮演盡職調查分析師。我附上了［事業／資產］的完整文件：帳目、分析數據、合約。請驗證帳目與各項指標之間的一致性、找出警示訊號、用 3 種不同方法對該資產估值，並給我一個有依據的價格區間。每個結論都要標註信心水準以及支持它的證據。</pre></div>
+<p class="use"><b>用途：</b>投資或收購前的分析，證據可追溯。<b>預期結果：</b>風險報告與含價格區間的估值。</p>
+
+<h3>類別 B：文件與分析</h3>
+<h4>提示詞 5：用視覺能力分析財務 PDF</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>我附上這份年報 PDF。請萃取所有表格與圖表、轉換成結構化資料，並向我說明：1）最重要的 5 個指標；2）內文沒有提到的隱藏趨勢；3）你從數字中察覺到的風險。格式：摘要表格＋短段落分析。</pre></div>
+<p class="use"><b>用途：</b>發揮模型對 PDF 內圖表與巢狀表格的視覺判讀能力——這是 Hebbia 基準測試量測到的強項。<b>預期結果：</b>精準萃取的資料，加上批判性解讀。</p>
+
+<h4>提示詞 6：合約分析</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>附上這份合約 PDF。請找出：對身為［你的角色］的我有風險的條款、有期限的義務、違約罰則，以及缺少但我應該爭取的條款。格式：表格，欄位為「條款、風險等級（高／中／低）、替代文字建議」。這不是法律意見，是給我律師看的前置分析。</pre></div>
+<p class="use"><b>用途：</b>準備談判、省下數小時的律師費。<b>預期結果：</b>風險地圖與替代條款文字。</p>
+
+<h4>提示詞 7：多來源深度研究</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請深入研究［主題／市場／競爭對手］。我要：以 2026 年資料呈現的現況全貌、5 個主要玩家及其數據、尚未開發的機會，以及 3 個有論據的預測。引用所有資料來源。交付前，將每個論斷與其來源比對查核，並標記無法驗證的部分。長度：2,000 字、可直接提交給客戶的報告。</pre></div>
+<p class="use"><b>用途：</b>顧問公司等級、含自我查核的研究。<b>預期結果：</b>有引註、經查核、可直接提交的報告。</p>
+
+<h4>提示詞 8：完整探索性資料分析</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>附上這份含［資料］的 CSV／Excel。請做完整的探索性分析：資料清理與異常值、敘述統計、相關性分析、以商業邏輯進行分群，以及 3 個可付諸行動的結論。接著建立一個互動式 HTML 儀表板，可依［維度］篩選，並包含 4 張回答［問題］的圖表。請驗證所有計算與原始資料一致。</pre></div>
+<p class="use"><b>用途：</b>不會寫程式也能從原始數據做出經過驗證的視覺化工具。<b>預期結果：</b>完整分析加上可運作的 HTML 儀表板。</p>
+
+<h3>類別 C：開發與程式</h3>
+<h4>提示詞 9：Stripe 式程式碼遷移</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>這是我用［語言／框架］寫的程式碼庫，共［N］個檔案。請把它遷移到［目標］，保留所有測試與既有行為。逐檔處理，每批修改後執行測試套件，最後給我一份摘要：哪些變更曾造成損壞、你是怎麼解決的。</pre></div>
+<p class="use"><b>用途：</b>Fable 5 優勢最大的任務類型（SWE-Bench Pro 80.3%）。<b>預期結果：</b>已遷移、已測試的程式碼，附決策記錄。</p>
+
+<h4>提示詞 10：一句話生出完整產品</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請建造［用 2～3 句話描述你的 App／遊戲／工具，包括給誰用、解決什麼問題］。架構、設計與細節由你決定。我要的是完成度高、用起來舒服的成品，不是原型。請自己撰寫測試、將視覺結果與目標比對驗證，並在交付前先修正。</pre></div>
+<p class="use"><b>用途：</b>Mollick 案例與卡路里 App 案例的做法——一個提示詞產出可用的產品。<b>預期結果：</b>功能完整、設計用心的產品。</p>
+
+<h4>提示詞 11：有明確規則的自主代理模式</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>［你的複雜任務］。請自主作業。只在以下情況停下：具破壞性或不可逆的操作、範圍發生實質變更，或只有我才知道的資訊。如果你有工具和權限能完成工作，就不要停在分析階段。回報之前，把每個論斷與本次工作階段中經過驗證的結果比對查核。最後交給我：一句話的結果總結、你做出的重要決策、能證明它可行的證據，以及你無法驗證的部分。</pre></div>
+<p class="use"><b>用途：</b>進階團隊真正用來「委派」的簡報結構。改編自 Every 的提示詞庫。<b>預期結果：</b>完成的工作加上證據報告。</p>
+
+<h4>提示詞 12：稽核你自己的指令檔</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>請從頭到尾閱讀我的指令檔（CLAUDE.md、skills、規則、記憶檔案）。1）哪裡互相矛盾？請引用兩邊的原文。2）哪些規則是為了管理較弱的模型而存在：針對已不存在的缺陷的保護措施、已不需要的配方、過時的內嵌資料？3）你會刪掉什麼、原封不動保留什麼，為什麼？先不要修改任何東西。先給報告，由我決定砍什麼。</pre></div>
+<p class="use"><b>用途：</b>清掉為舊模型寫的、正在拖累 Fable 5 的舊指令。這是 X 上測試者分享度最高的提示詞之一。<b>預期結果：</b>你的設定檔稽核報告與清理建議。</p>
+
+<h4>提示詞 13：週期性流程自動化</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>這個流程我每［頻率］重複一次：［逐步描述它］。請設計並建造能運作的最小版本：流程圖、實作、人工查核點、驗證方法，以及每次執行之間如何保存學到的經驗。例行階段請使用較便宜的模型，把困難的判斷留給你自己。</pre></div>
+<p class="use"><b>用途：</b>把重複性工作變成系統，同時優化成本。<b>預期結果：</b>有文件、可驗證的自動化流程。</p>
+
+<h3>類別 D：內容與行銷</h3>
+<h4>提示詞 14：寫作聲音複製</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>這是我最好的 3 篇文章範例［貼上或附檔］。請研究其中的語氣、句子的節奏，以及我開頭和收尾的方式。然後用同樣的聲音寫一篇［長度］的新文章，主題是［主題］。不要跟我解釋這個聲音是什麼，直接用它寫。</pre></div>
+<p class="use"><b>用途：</b>產出有你的語氣、不走鐘的內容。<b>預期結果：</b>與你親筆寫的難以區分的文章。</p>
+
+<h4>提示詞 15：一次搞定多格式再利用</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>拿這篇［貼文／逐字稿，貼上全文］，把它轉換成：一串 6 則的推文（thread）、一篇 200 字以內的 LinkedIn 貼文，以及一支 60 秒影片的腳本（含分鏡指示）。三種格式的核心論點保持一致，結構則依各平台的慣例調整。</pre></div>
+<p class="use"><b>用途：</b>讓每篇母內容倍增，訊息不失真。<b>預期結果：</b>3 種可直接發布的格式。</p>
+
+<h4>提示詞 16：月度內容系統</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>我是［個人定位］，我的受眾是［描述］。請設計我的 30 天內容系統：30 個內容點子（每個都含鉤子、格式、目標）、分平台的發布日曆，以及 10 個可重複使用的模板。點子請根據我附上的 5 篇最佳文章，以及目前在［你的利基市場］有效的做法。</pre></div>
+<p class="use"><b>用途：</b>從「要一則推文」升級成「要整套系統」。<b>預期結果：</b>完整的內容計畫與模板。</p>
+
+<h4>提示詞 17：逆向工程品牌風格指南</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>這是我現有的 5 篇內容［附檔］。請逆向工程出一頁式風格指南：語氣、該用與該避免的詞彙、句子長度的模式、格式慣例。目標：讓一位新加入的寫手不用看原稿也能寫出和我一樣的風格。</pre></div>
+<p class="use"><b>用途：</b>把你的品牌文件化，以便委派給真人或其他模型。<b>預期結果：</b>一頁可實際操作的風格指南。</p>
+
+<h3>類別 E：完整專案</h3>
+<h4>提示詞 18：數位產品從頭做到尾</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>我想推出關於［主題］、給［受眾］的［電子書／課程／模板］。請執行完整專案：1）驗證切入角度與標題；2）詳細架構；3）撰寫全部內容；4）含文案的銷售頁；5）5 封上市 Email 序列。每完成一個階段就交付、對照目標驗證後，再進行下一階段。</pre></div>
+<p class="use"><b>用途：</b>在一次長工作階段中產出完整可販售的資產。<b>預期結果：</b>產品、銷售頁與 Email 全部就緒。</p>
+
+<h4>提示詞 19：含文化在地化的翻譯</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>附上我的［語言］指南。請翻譯成［語言］，並將範例、文化引用、人名與貨幣調整為［國家］市場。保持結構與語氣完全一致。每一處文化調整都標上［已在地化］，方便我複核。</pre></div>
+<p class="use"><b>用途：</b>多語內容在地化，附品質控管。<b>預期結果：</b>在地化版本，所有更動可追溯。</p>
+
+<h4>提示詞 20：三重視角品質審查</h4>
+<div class="prompt"><button class="copy-btn">複製</button><pre>附上［交付物］。請用 3 種不同角色的眼光審查它：一位要求嚴格的客戶、一位業界技術專家，以及一位毫無背景知識的一般使用者。針對每個角色：他認可什麼、否決什麼、會改什麼。之後由你自己套用優先修正項目，交給我最終版本與修改記錄。</pre></div>
+<p class="use"><b>用途：</b>把模型的自我驗證能力用在你的作品上。<b>預期結果：</b>修正後的交付物與三重審查報告。</p>
+
+<h3>實際應用範例：從提示詞 1 到真實客戶</h3>
+<p>想了解這些提示詞在實務上如何串接，可以參考這個簡短案例：</p>
+<div class="diagram">
+  <div class="flow" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div class="step">💼 業績停滯、找不出原因 → 使用<b>提示詞 1（營運健檢）</b> → 得到 3 個優先問題＋30 天計畫</div>
+    <div style="text-align:center" class="arr">↓</div>
+    <div class="step">🤔 猶豫該自建工具還是外包 → 使用<b>提示詞 3（決策比較）</b> → 得到加權比較表與建議</div>
+    <div style="text-align:center" class="arr">↓</div>
+    <div class="step">🚀 決定打造微型 SaaS → 使用<b>提示詞 10（完整產品）</b> → 一次工作階段交付可用的 App</div>
+  </div>
+</div>
+<p>20 個提示詞共通的心法：<strong>永遠不要孤立地丟出一個提示詞。</strong>隨著專案推進串接 2、3 個，讓每個輸出成為下一個提示詞的上下文。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 4 ═══════════════ -->
+<section id="ch4"><div class="wrap">
+<div class="ch-label">模組 4・進階</div>
+<h2>15 個經過驗證的技巧</h2>
+
+<h3>心態篇：區分「駕馭者」的關鍵轉變</h3>
+<p><strong>1. 把它當非同步代理，不要當聊天機器人。</strong>測試者們一致的結論：給它一個框架完整的委託，讓它自己跑，然後複核結果。快問快答的來回對話是更快、更便宜的模型的地盤。</p>
+<p><strong>2. 給它你懸而未決的難題，而不是日常例行事務。</strong>Anthropic 官方文件：成效最好的團隊都把它用在最困難的問題上。拿它做簡單工作是低估模型，還白燒額度。</p>
+<p><strong>3. 平行發動多個任務。</strong>模型在高推理強度下很慢。進階使用者不會盯著螢幕等：他們準備 3、4 份簡報，一次全部發動，再分批複核結果。你的瓶頸會變成你自己的複核能力。</p>
+<p><strong>4. 別再過度指定。</strong>Fable 5 遵循指令的能力優於前代。一句簡短的指令就能引導過去需要一整串規則才能控制的行為。如果你的提示詞是 Opus 時代留下來的，清一清吧（用提示詞 12）。</p>
+<p><strong>5. 把心力投資在「框架」和「複核」上，不是完美的提示詞。</strong>模型的天花板太高了，你真正的極限在於簡報品質和複核流程。時間要花在那裡。</p>
+
+<h3>技術篇：如何榨出最大效益</h3>
+<p><strong>6. 真正用滿 100 萬 token 的上下文。</strong>上傳整份文件、整個程式碼庫、整段歷史記錄。模型在巨型上下文中維持一致性，還能連結材料中相距很遠的部分。</p>
+<p><strong>7. 要求「附證據的驗證」。</strong>永遠加上這句：「回報前，把每個論斷與本次工作階段中經過驗證的結果比對查核。未經驗證的部分請明講。」模型有自我驗證的能力，這句話能啟動它。</p>
+<p><strong>8. 長工作階段結束時，要求「重新定位摘要」。</strong>自主工作數小時後，模型傾向用內部思路的技術行話做總結。請告訴它：「你的最終訊息是給一個完全沒看過過程的人：先講結果，再講你需要我做什麼。」</p>
+<p><strong>9. 給它視覺驗證工具。</strong>Krieger 的招數：把它自己作品的截圖和錄影餵回去，讓它找出視覺缺陷。適用於前端、簡報和任何視覺交付物。</p>
+<p><strong>10. 不要把 PDF 轉成純文字。</strong>模型的視覺能力可直接讀取圖形、表格和圖解，其中的資訊是文字萃取會丟失的。</p>
+<p><strong>11. 防止它過度規劃。</strong>如果任務有模糊空間，加上：「當你有足夠資訊可以行動時，就行動。給我一個建議，而不是選項清單。」這句話出自官方提示詞指南。</p>
+
+<h3>成本篇：如何不燒光你的額度</h3>
+<p><strong>12. 發動前先算帳。</strong>Fable 對訂閱額度的消耗是 Opus 的兩倍，高強度任務尖峰可達每分鐘燒掉每週上限的 2%。例行性的內容量產，Sonnet 或 Opus 才是划算的選擇。<strong>Fable 是為「品質是瓶頸」的場合準備的，不是「成本是瓶頸」的場合。</strong></p>
+<p><strong>13. 在 API 啟用 prompt caching。</strong>如果你重複使用同一份大型上下文（程式碼庫、手冊、歷史記錄），快取能把輸入成本降低 90%。長期專案省下的是數百美元。</p>
+<p><strong>14. 讓它委派給便宜的子代理。</strong>明確要求它用較經濟的模型處理例行階段，把判斷力留給困難的部分。這是提示詞 13 的模式，直接降低帳單。</p>
+<p><strong>15. 觸發 Opus 4.8 後援時，換句話說再試。</strong>七月重新上線後過濾器變嚴，一些正當的程式任務只因帶有資安相關詞彙就被轉走。你一樣會得到回覆且不付 Fable 價格。如果主題其實不敏感，換掉提示詞裡的用詞再試一次。</p>
+
+<h3>不斷重演的錯誤（以及如何避免）</h3>
+<ul>
+  <li><strong>把它當 ChatGPT 用</strong>：所有測試者公認的頭號錯誤。沒有完整委託就看不出差異，卻多花了錢</li>
+  <li><strong>要求看完整的內部推理</strong>：模型只回傳推理摘要，不給原始思考鏈。這是 Fable／Mythos 全系列的設計</li>
+  <li><strong>監督每一個微小步驟</strong>：複核「附證據的完成品」效益最高，而不是盯著每個動作</li>
+  <li><strong>忽略價格時程</strong>：7 月 7 日前付費方案內含最多 50% 每週用量，之後改用額度計費。大型專案要看著日曆規劃</li>
+  <li><strong>在有 ZDR 要求的場合使用</strong>：30 天資料保存是強制的。受監管產業：請用 Opus 4.8</li>
+</ul>
+
+<div class="two-col">
+  <div class="panel">
+    <div class="p-title">發動之前</div>
+    <p><b>完整簡報、成功標準、所需上下文</b></p>
+  </div>
+  <div class="panel">
+    <div class="p-title">發動之後</div>
+    <p><b>分批複核成果，而不是逐步監督</b></p>
+  </div>
+</div>
+
+<h3>15 個技巧一覽</h3>
+<div class="tbl"><table>
+<thead><tr><th>類別</th><th>技巧</th><th>解決什麼問題</th></tr></thead>
+<tbody>
+<tr><td>心態</td><td>1～5</td><td>如何框定委託，讓模型發揮最大效能</td></tr>
+<tr><td>技術</td><td>6～11</td><td>如何讓上下文、視覺與驗證能力為你所用</td></tr>
+<tr><td>成本</td><td>12～15</td><td>如何不燒光訂閱額度或 API 帳單</td></tr>
+</tbody></table></div>
+
+<h3>每個錯誤的實際代價</h3>
+<div class="tbl"><table>
+<thead><tr><th>錯誤</th><th>實際代價</th></tr></thead>
+<tbody>
+<tr><td>把它當 ChatGPT 用</td><td>付 Fable 的價格，買到便宜模型也給得出的結果</td></tr>
+<tr><td>要求完整內部推理</td><td>浪費時間等一個模型設計上就永遠不會給的東西</td></tr>
+<tr><td>監督每個微小步驟</td><td>抵銷了自主執行的優勢，比自己動手還累</td></tr>
+<tr><td>忽略價格時程</td><td>把付費額度花在 7 月 7 日前本可內含的工作上</td></tr>
+<tr><td>在 ZDR 要求下使用</td><td>讓公司暴露在資料保存合規風險中</td></tr>
+</tbody></table></div>
+<p>把第二張表和你的發動前檢查清單放在一起。每次長工作階段開始前，花 10 秒掃一遍。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 5 ═══════════════ -->
+<section id="ch5"><div class="wrap">
+<div class="ch-label">模組 5・進階</div>
+<h2>強大的工具組合</h2>
+
+<h3>Fable 5 + Claude Code</h3>
+<p>模組 2 幾乎所有案例都是用這個組合打造的。Claude Code 給了 Fable 5 一個能連續執行數小時的環境：分階段規劃、委派給子代理、跑測試、做驗證。</p>
+<p><strong>實務流程：</strong>把完整專案描述寫進一份乾淨的 <code>CLAUDE.md</code>（用提示詞 12 先清理它），用 <code>claude --model claude-fable-5</code> 啟動工作階段，然後只在里程碑時複核。</p>
+<p><strong>具體案例：</strong>Mollick 的 3 款遊戲和 Stripe 的程式碼遷移，都出自這套配置。</p>
+
+<h3>Fable 5 + MCP（真正的倍增器）</h3>
+<p>MCP 把模型連上你真正在用的工具：Notion、Slack、行事曆、CRM。那位形容「想法與現實之間的距離消失了」的 Anthropic 招募人員，用的正是 Fable 5 加內部 MCP 的組合。</p>
+<p><strong>實務流程：</strong>連接你工作所在工具的 MCP，然後給它跨工具的委託：讀取 Drive 的報表、更新 Notion 資料庫、把摘要發到 Slack 通知團隊。</p>
+<p><strong>具體案例：</strong>編輯日曆的完整管理——模型讀取成效數據、提出計畫、寫成文件並排程。</p>
+
+<h3>Fable 5 + Notion</h3>
+<p>Fable 5 產出長篇結構化內容；Notion 把它變成可交付的產品。</p>
+<p><strong>實務流程：</strong>請它做一份完整的主題指南（就像這一份），以資料庫＋畫廊視圖發布到 Notion，當作名單磁鐵使用。</p>
+<p><strong>具體案例：</strong>每週 1 份指南、每月 4 個名單磁鐵，每一個都在餵養你的訂閱名單。</p>
+
+<h3>Fable 5 + Make</h3>
+<p>Fable 5 設計邏輯；Make 免寫程式執行它。</p>
+<p><strong>實務流程：</strong>描述你的手動流程（開發票、發布、追蹤），請它給出逐步的 Make 情境（scenario），精確到模組與欄位映射。</p>
+<p><strong>具體案例：</strong>兩家微型企業之間用 PayPal API 的自動開票流程——由模型設計，一個下午組裝完成。</p>
+
+<h3>Fable 5 + Canva</h3>
+<p>Fable 5 撰寫內容與視覺簡報；Canva 產出設計。</p>
+<p><strong>實務流程：</strong>生成 10 頁輪播貼文的文案，加上每頁的視覺簡報（構圖、層次、配色），再把簡報交給 Canva 執行。</p>
+<p><strong>具體案例：</strong>每週 3 組輪播貼文，從 5 小時縮短為 1 小時完成。</p>
+
+<h3>Fable 5 + Beehiiv</h3>
+<p>Fable 5 把你的電子報當成一個系統來經營。</p>
+<p><strong>實務流程：</strong>上傳你最近 10 期的內容與開信率數據。請它分析什麼有效、產出 20 個主旨備選庫，以及用你的聲音寫好接下來 4 期（搭配提示詞 14）。</p>
+<p><strong>具體案例：</strong>一次工作階段，就用數據依據備好一個月的電子報。</p>
+
+<div class="diagram">
+  <div class="tree">
+    <div class="node">FABLE 5（設計與產出）</div>
+    <div class="vline"></div>
+    <div class="kids">
+      <div class="kid">Claude Code<small>執行與測試</small></div>
+      <div class="kid">MCP<small>連接你的工具</small></div>
+      <div class="kid">Notion<small>交付產品</small></div>
+      <div class="kid">Make<small>免程式自動化</small></div>
+      <div class="kid">Canva<small>產出視覺</small></div>
+      <div class="kid">Beehiiv<small>觸及你的受眾</small></div>
+    </div>
+  </div>
+</div>
+
+<h3>6 種組合一覽</h3>
+<div class="tbl"><table>
+<thead><tr><th>組合</th><th>Fable 5 的角色</th><th>工具的角色</th><th>可衡量的收益</th></tr></thead>
+<tbody>
+<tr><td>Fable 5 + Claude Code</td><td>長時程的規劃與執行</td><td>執行與測試環境</td><td>數天的遷移縮短為數小時</td></tr>
+<tr><td>Fable 5 + MCP</td><td>在真實工具之間統籌</td><td>連接 Notion、Slack、CRM</td><td>App 之間零手動複製貼上</td></tr>
+<tr><td>Fable 5 + Notion</td><td>產出長篇結構化內容</td><td>發布與整理交付物</td><td>每週 1 份完整指南</td></tr>
+<tr><td>Fable 5 + Make</td><td>設計流程邏輯</td><td>免程式執行情境</td><td>一個下午組好自動化</td></tr>
+<tr><td>Fable 5 + Canva</td><td>撰寫文案與視覺簡報</td><td>產出最終設計</td><td>每週 3 組輪播，1 小時完成</td></tr>
+<tr><td>Fable 5 + Beehiiv</td><td>分析數據、用你的聲音寫作</td><td>發送給你的名單</td><td>一次工作階段備好一個月電子報</td></tr>
+</tbody></table></div>
+
+<h3>依你的瓶頸選擇正確的組合</h3>
+<div class="diagram">
+  <div class="d-title">你真正的瓶頸是什麼？</div>
+  <div class="kids" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <div class="kid">開發太慢<small>→ Claude Code</small></div>
+    <div class="kid">工具各自為政<small>→ MCP</small></div>
+    <div class="kid">產品沒發布<small>→ Notion</small></div>
+    <div class="kid">流程靠手動<small>→ Make</small></div>
+    <div class="kid">設計或發布<small>→ Canva／Beehiiv</small></div>
+  </div>
+</div>
+<p><strong>實務原則：</strong>第一週不要 6 種全上。挑一個能解決你「最耗時間的瓶頸」的組合，先把它練熟，再加下一個。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 6 ═══════════════ -->
+<section id="ch6"><div class="wrap">
+<div class="ch-label">模組 6・變現</div>
+<h2>如何變現賺錢</h2>
+
+<h3>方法 1：成品交付服務</h3>
+<p>Fable 5 讓你賣的是「成果」，不是「工時」。提供完整的交付物：營運健檢、網站遷移、90 天內容系統、用提示詞 7 做的市場研究。</p>
+<p><strong>潛在收入：</strong>每個專案 500～3,000 歐元。每月 4 個專案：2,000～12,000 歐元。</p>
+<p><strong>如何開始：</strong>挑一種你熟悉的交付物，做 2 個範例當作品集，標上固定價格公開販售。</p>
+
+<h3>方法 2：系列數位產品</h3>
+<p>用提示詞 18 產出完整的電子書、模板和迷你課程，連銷售頁和 Email 都包含在內。</p>
+<p><strong>潛在收入：</strong>一個 19～47 歐元的產品，即使受眾不大，每次上市可帶來 300～2,000 歐元。累積 5 個產品的目錄後，收入會疊加。</p>
+<p><strong>如何開始：</strong>用問卷驗證主題，一週內做出產品，用模型自己寫的 Email 序列上市。</p>
+
+<h3>方法 3：微型 SaaS 與客製工具</h3>
+<p>卡路里 App 和 Mollick 的遊戲案例指向一門生意：打造解決特定利基問題的小工具。</p>
+<p><strong>潛在收入：</strong>利基工具每位使用者月費 9～29 歐元。50 位付費使用者：每個工具每月經常性收入 450～1,450 歐元。</p>
+<p><strong>如何開始：</strong>找出你社群中不斷重複出現的問題，用提示詞 10 建最小可行版本，先賣給 10 個人再打磨。</p>
+
+<h3>方法 4：AI 培訓與顧問</h3>
+<p>Every 的發現就是你的商機：大多數使用者不知道該拿這種模型怎麼辦。<strong>教人「怎麼委派」是現在需求最高的服務。</strong></p>
+<p><strong>潛在收入：</strong>工作坊 300～1,500 歐元。月度顧問每位客戶 500～2,500 歐元。</p>
+<p><strong>如何開始：</strong>把模組 2 的案例和模組 3 的提示詞練熟，準備一場 45 分鐘的簡報，免費提供給 2 家企業，換取推薦見證。</p>
+
+<h3>方法 5：微型自動化代理商</h3>
+<p>結合模組 5：用 Fable 5 設計，用 Make 和 MCP 組裝。企業願意為「不用再手動做的流程」付錢。</p>
+<p><strong>潛在收入：</strong>專案 800～5,000 歐元，另加每位客戶每月 100～400 歐元的維護費。8 個維護客戶：每月 800～3,200 歐元的經常性基本盤。</p>
+<p><strong>如何開始：</strong>先自動化你自己的業務，用數字記錄前後對比，拿那個案例當銷售證明。</p>
+
+<div class="tbl"><table>
+<thead><tr><th>方法</th><th>每月潛在收入</th></tr></thead>
+<tbody>
+<tr><td>成品交付服務（×4 專案）</td><td>2,000～12,000 歐元</td></tr>
+<tr><td>數位產品（×1 次上市）</td><td>300～2,000 歐元</td></tr>
+<tr><td>微型 SaaS（50 位使用者）</td><td>450～1,450 歐元</td></tr>
+<tr><td>培訓／顧問</td><td>500～2,500 歐元</td></tr>
+<tr><td>微型代理商（8 位客戶）</td><td>800～3,200 歐元</td></tr>
+</tbody></table></div>
+
+<h3>5 種方法背後的漏斗</h3>
+<p>這 5 種方法彼此不衝突，而是隨時間堆疊。實務上通常這樣串接：</p>
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step"><b>第 1 個月</b><br><small style="color:var(--muted)">成品交付服務<br>（快速收入）</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 2～3 個月</b><br><small style="color:var(--muted)">把服務所學做成數位產品<br>（可擴展收入）</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 4～6 個月</b><br><small style="color:var(--muted)">教授你已熟練的內容<br>（經常性收入）</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>第 6 個月起</b><br><small style="color:var(--muted)">用驗證過的流程開代理商<br>（更高的經常性收入）</small></div>
+  </div>
+</div>
+
+<h3>一個完整的數字範例</h3>
+<p>以方法 1（成品交付）為例，一份營運健檢賣 800 歐元。搭配模組 3 的提示詞 1，實際製作時間從一整天降到「2 小時的簡報撰寫＋複核」。每小時獲利的算法變成這樣：</p>
+<div class="tbl"><table>
+<thead><tr><th>情境</th><th>投入時數</th><th>每有效工時收入</th></tr></thead>
+<tbody>
+<tr><td>沒有 Fable 5（純手工）</td><td>8 小時</td><td>100 歐元／小時</td></tr>
+<tr><td>有 Fable 5（簡報＋複核）</td><td>2 小時</td><td><strong>400 歐元／小時</strong></td></tr>
+</tbody></table></div>
+<p>同樣的算法適用於其他 4 種方法：<strong>你賣的不是執行工作的時間，而是「下對簡報」和「用專家眼光複核」的判斷力。</strong></p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 模組 7 ═══════════════ -->
+<section id="ch7"><div class="wrap">
+<div class="ch-label">模組 7・進階</div>
+<h2>3 個進階應用案例</h2>
+
+<h3>案例 1：投資或收購的盡職調查</h3>
+<p><strong>情境：</strong>你想買下一個網站、一個小型 SaaS，或投資一門生意。</p>
+<p><strong>工作流程：</strong></p>
+<ol>
+  <li>蒐集所有資料：帳目、分析數據、合約，若有程式碼也一併納入</li>
+  <li>完整上傳（100 萬 token 的上下文放得下）</li>
+  <li>發動提示詞 4，並要求證據可追溯</li>
+  <li>用提示詞 20（三重審查）做第二輪檢查</li>
+  <li>做決定前，把警示項目交給真人專業人士比對確認</li>
+</ol>
+<p><strong>結果：</strong>一份在顧問公司要價數千歐元的風險與估值報告。</p>
+
+<h3>案例 2：7 天完成完整產品上市</h3>
+<p><strong>情境：</strong>你有一個數位產品的點子和一週的時間。</p>
+<p><strong>工作流程：</strong></p>
+<ol>
+  <li>第 1 天：用提示詞 7 做市場驗證</li>
+  <li>第 2～4 天：用提示詞 18 完成全部製作</li>
+  <li>第 5 天：用提示詞 15 產出銷售素材與社群內容</li>
+  <li>第 6 天：用提示詞 20 做三重審查，加上你的人工複核</li>
+  <li>第 7 天：按模型生成的排程上市</li>
+</ol>
+<p><strong>結果：</strong>一週內產品上市，銷售系統完整到位。</p>
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step">第 1 天<br><small style="color:var(--muted)">驗證</small></div><div class="arr">→</div>
+    <div class="step">第 2～4 天<br><small style="color:var(--muted)">製作</small></div><div class="arr">→</div>
+    <div class="step">第 5 天<br><small style="color:var(--muted)">銷售＋社群</small></div><div class="arr">→</div>
+    <div class="step">第 6 天<br><small style="color:var(--muted)">三重審查</small></div><div class="arr">→</div>
+    <div class="step">第 7 天<br><small style="color:var(--muted)">上市</small></div>
+  </div>
+</div>
+
+<h3>案例 3：多語言內容系統</h3>
+<p><strong>情境：</strong>你經營多種語言的受眾，瓶頸在於在地化改編。</p>
+<p><strong>工作流程：</strong></p>
+<ol>
+  <li>定義你每週的母內容（推文串、影片、電子報）</li>
+  <li>模型用你的聲音以主要語言產出（提示詞 14，餵入你最好的 10 篇作品）</li>
+  <li>用提示詞 19 做各語言的文化在地化</li>
+  <li>用提示詞 15 產出各平台的變體</li>
+  <li>在你的排程工具中排好全部內容，複核所有［已在地化］標記</li>
+</ol>
+<p><strong>結果：</strong>1 篇母內容變成 12 篇以上、跨 3 種語言，每週花費不到 2 小時。</p>
+
+<h3>依你的情況選擇案例</h3>
+<div class="diagram">
+  <div class="d-title">你這週的情況是？</div>
+  <div class="kids" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <div class="kid">要收購或投資，簽約前需要驗證<small>→ 案例 1：盡職調查</small></div>
+    <div class="kid">有產品點子和一週空檔<small>→ 案例 2：7 天上市</small></div>
+    <div class="kid">經營多語受眾、分身乏術<small>→ 案例 3：多語內容</small></div>
+  </div>
+</div>
+
+<h3>各案例的時間與成本估算</h3>
+<div class="tbl"><table>
+<thead><tr><th>案例</th><th>實際人工時間</th><th>取代了什麼</th></tr></thead>
+<tbody>
+<tr><td>案例 1：盡職調查</td><td>半天的人工複核</td><td>一家收費數千歐元、要花數週的顧問公司</td></tr>
+<tr><td>案例 2：7 天上市</td><td>每天 2～3 小時的複核</td><td>一組平行作業的產品、文案與設計團隊</td></tr>
+<tr><td>案例 3：多語內容</td><td>每週不到 2 小時</td><td>每種語言各一位譯者加一位社群小編</td></tr>
+</tbody></table></div>
+<p>3 個案例的模式和整個模組 3 一致：<strong>你的時間集中在「開頭的簡報」和「最後的複核」，而不是中間的執行。</strong></p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 第 8 章 ═══════════════ -->
+<section id="ch8"><div class="wrap">
+<div class="ch-label">第 8 章・附錄</div>
+<h2>常見問題</h2>
+
+<h4>相較 Opus 4.8 或 Sonnet，值得嗎？</h4>
+<p>取決於工作內容。對那些會讓前代模型力不從心的大型高價值委託，成果值得你等待和花費。對日常小任務則是殺雞用牛刀：付兩倍價格買到差不多的結果。測試者們的通則：<strong>完整可委派的工作交給 Fable，旁邊備一個快速模型處理修改和簡答。</strong></p>
+
+<h4>為什麼有時候是 Opus 4.8 代替它回答？</h4>
+<p>安全分類器在你的請求中偵測到敏感內容（資安、生物、化學）。發生率低於 5% 的工作階段，系統會通知你，且不按 Fable 價格計費。七月之後過濾器變得更嚴格。</p>
+
+<h4>我能看到它完整的推理過程嗎？</h4>
+<p>不能。Fable／Mythos 系列只回傳推理摘要，或直接省略。原始思考鏈永遠不會顯示，這是設計使然。</p>
+
+<h4>我的資料會怎麼處理？</h4>
+<p>強制保存 30 天，用於偵測濫用模式。本模型不提供零資料保存（ZDR）。如果你的產業有此要求，請使用 Opus 4.8。</p>
+
+<h4>從來沒有 Fable 1 到 4，為什麼叫 5？</h4>
+<p>Anthropic 沒有官方解釋。最多人引用的假設：這個數字代表 Claude 模型的第五個世代，在概念上接續 Opus 4.x 產品線。</p>
+
+<h4>我的方案額度能撐多久？</h4>
+<p>比你想的短。它對額度的消耗約是 Opus 的兩倍，高強度代理任務時會出現尖峰。<strong>先發動你最高價值的專案。</strong></p>
+
+<h4>什麼時候用 Fable 5、Opus 4.8、Sonnet？</h4>
+<div class="tbl"><table>
+<thead><tr><th>情境</th><th>建議模型</th></tr></thead>
+<tbody>
+<tr><td>耗時數小時或數天的完整委託、高價值</td><td><strong>Fable 5</strong></td></tr>
+<tr><td>有 ZDR 要求或受監管產業的敏感工作</td><td><strong>Opus 4.8</strong></td></tr>
+<tr><td>快速修改、簡短回答、日常任務</td><td><strong>Sonnet</strong></td></tr>
+</tbody></table></div>
+
+<h4>可以在同一個專案裡混用 Fable 5 和便宜的模型嗎？</h4>
+<p>可以，而且這是最進階的測試者們推薦的做法。模組 3 的提示詞 13 做的正是這件事：請 Fable 5 把判斷力留給困難的部分，把例行階段委派給更經濟的子代理。</p>
+
+<h4>需要會寫程式才能發揮它的價值嗎？</h4>
+<p>不需要。模組 2 的案例中就有毫無技術背景、卻做出完整 App 和遊戲的使用者。關鍵不是技術知識，而是你給它的簡報品質——正如模組 2「專家 vs 聊天型使用者」的模式所說明的。</p>
+
+<h4>怎麼知道我的任務夠不夠大、值不值得這個成本？</h4>
+<p>用模組 3 的提示詞 2（「值得用 Fable 的任務」偵測器），它就是為了回答這個疑問而設計的。</p>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<!-- ═══════════════ 第 9 章 ═══════════════ -->
+<section id="ch9"><div class="wrap">
+<div class="ch-label">第 9 章・附錄</div>
+<h2>資源與下一步</h2>
+
+<h3>官方連結</h3>
+<ul>
+  <li>上市公告：<a href="https://anthropic.com/news/claude-fable-5-mythos-5" target="_blank" rel="noopener">anthropic.com/news/claude-fable-5-mythos-5</a></li>
+  <li>七月重新上線說明：<a href="https://anthropic.com/news/redeploying-fable-5" target="_blank" rel="noopener">anthropic.com/news/redeploying-fable-5</a></li>
+  <li>模型頁面：<a href="https://anthropic.com/claude/fable" target="_blank" rel="noopener">anthropic.com/claude/fable</a></li>
+  <li>官方提示詞指南：<a href="https://platform.claude.com/docs" target="_blank" rel="noopener">platform.claude.com/docs</a>（「Prompting Claude Fable 5」章節）</li>
+  <li>支援與方案：<a href="https://support.claude.com" target="_blank" rel="noopener">support.claude.com</a></li>
+</ul>
+
+<h3>結語</h3>
+<p>Fable 5 標誌著一次類別上的躍遷：<strong>你從「向 AI 要文字」變成「把整個專案委派給它」。</strong>採用數據證實了這一點：懂得委派的人得到變革性的成果，把它當聊天機器人用的人感覺不到差別。這本指南把你放進了第一種人的行列——下一步，就看你的了。</p>
+
+<div class="diagram">
+  <div class="flow" style="justify-content:center">
+    <div class="step"><b>第 1 週</b><br><small style="color:var(--muted)">找出高價值任務</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>模組 7 的案例</b><br><small style="color:var(--muted)">完整執行一次</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>量測</b><br><small style="color:var(--muted)">時間／品質／實際成本</small></div>
+    <div class="arr">→</div>
+    <div class="step"><b>系統化</b><br><small style="color:var(--muted)">變成產品或服務</small></div>
+  </div>
+</div>
+
+<h3>每項資源怎麼用</h3>
+<div class="tbl"><table>
+<thead><tr><th>資源</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>上市公告</td><td>模型的完整官方背景與時間軸</td></tr>
+<tr><td>七月重新上線說明</td><td>安全過濾器確切改了什麼的細節</td></tr>
+<tr><td>模型頁面</td><td>最新的技術規格與存取途徑</td></tr>
+<tr><td>官方提示詞指南</td><td>打磨你自己提示詞的技術參考</td></tr>
+<tr><td>支援與方案</td><td>價格、額度與訂閱管理</td></tr>
+</tbody></table></div>
+
+<h3>你的行動計畫（含可衡量的目標）</h3>
+<div class="tbl"><table>
+<thead><tr><th>週次</th><th>行動</th><th>產出目標</th></tr></thead>
+<tbody>
+<tr><td>第 1 週</td><td>對你自己的工作發動提示詞 2</td><td>3 份可直接執行的簡報</td></tr>
+<tr><td>第 2 週</td><td>完整執行一個模組 7 的案例</td><td>一個從頭到尾完成的交付物</td></tr>
+<tr><td>第 3 週</td><td>量測省下的時數、品質與實際成本</td><td>具體數字，不是感覺</td></tr>
+<tr><td>第 4 週起</td><td>用模組 6 把工作流程變成服務或產品</td><td>第一筆銷售或第一位客戶</td></tr>
+</tbody></table></div>
+<p class="top-link"><a href="#top">↑ 回到目錄</a></p>
+</div></section>
+
+<footer>
+<div class="wrap">
+  <p>本頁為繁體中文譯本，譯自 alejo-x 發布於 Notion 的西班牙文原版《Guía Claude Fable 5》。</p>
+  <p>原文連結：<a href="https://app.notion.com/p/alejo-x/Gu-a-Claude-Fable-5-393fb0864cf981818d4ee3065edaed1e" target="_blank" rel="noopener">app.notion.com/p/alejo-x/Guía-Claude-Fable-5</a>・翻譯日期：2026 年 7 月 10 日</p>
+</div>
+</footer>
+
+<script>
+document.querySelectorAll('.copy-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var text=btn.parentElement.querySelector('pre').innerText;
+    navigator.clipboard.writeText(text).then(function(){
+      btn.textContent='已複製 ✓';
+      setTimeout(function(){btn.textContent='複製';},1600);
+    });
+  });
+});
+</script>
+</body>
+</html>
