@@ -22,7 +22,7 @@ async function boot() {
   progress("載入分析程式…");
   const base = new URL("../", self.location.href);            // invest-tracker/
   const get = async path => {
-    const r = await fetch(new URL(path, base));
+    const r = await fetch(new URL(path, base), {cache: "no-cache"});   // 每次向伺服器確認版本（沒變只回 304）
     if (!r.ok) throw new Error(`下載 ${path} 失敗（HTTP ${r.status}）`);
     return [path, await r.text()];
   };

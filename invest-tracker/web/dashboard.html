@@ -368,7 +368,8 @@ function finmindToken() {
 }
 function callWorker(cmd, args) {
   if (!worker) {
-    worker = new Worker("worker.js");
+    // 加時間參數避免瀏覽器用到舊版 worker（GitHub Pages 預設快取 10 分鐘）
+    worker = new Worker(`worker.js?v=${Date.now()}`);
     worker.onmessage = ({data: m}) => {
       if (m.type === "progress") { $("#loading-text").textContent = m.text || "資料載入中…"; return; }
       const p = pending[m.id]; delete pending[m.id];
