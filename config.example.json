@@ -1,0 +1,109 @@
+{
+  "_說明": "複製成 private/config.json 後修改。plans 是定期定額計畫（amounts = 每月金額），policy 是投資政策門檻。",
+  "history_start": "2020-01-01",
+  "plans": {
+    "TW": {
+      "currency": "TWD",
+      "day": 6,
+      "fee_rate": 0.001425,
+      "fee_discount": 1.0,
+      "fee_min": 1,
+      "amounts": {
+        "0050": 10000
+      },
+      "drip": [],
+      "drift_check": false,
+      "drift_note": "範例：台股只扣一檔，不做偏離檢查"
+    },
+    "US": {
+      "currency": "USD",
+      "day": 15,
+      "fee_per_order": 0,
+      "amounts": {
+        "VOO": 60,
+        "QQQM": 40
+      },
+      "drift_check": true
+    }
+  },
+  "categories": {
+    "0050": "台股市值型",
+    "0056": "台股高股息",
+    "00878": "台股高股息",
+    "2330": "台股個股",
+    "VOO": "美股ETF",
+    "QQQM": "美股ETF",
+    "SMH": "美股ETF"
+  },
+  "splits": {
+    "0050": [
+      {
+        "date": "2025-06-18",
+        "ratio": 4
+      }
+    ]
+  },
+  "tax": {
+    "tw_nhi_rate": 0.0211,
+    "tw_nhi_threshold": 20000,
+    "us_withholding": 0.3
+  },
+  "backtest_proxies": {
+    "00919": "0056"
+  },
+  "policy": {
+    "min_us_share": 0.1,
+    "max_high_dividend": 0.4,
+    "max_single_stock": 0.1,
+    "max_plan_sector": 0.5,
+    "max_drift": 0.05,
+    "max_drawdown": -0.3,
+    "us_estate_limit_usd": 60000,
+    "us_estate_warn": 0.85,
+    "max_single_issuer": null,
+    "reconcile_every_days": 95
+  },
+  "policy_notes": {
+    "max_single_issuer": "null 代表只顯示數值，不判定風險；請依自己的投資政策設定"
+  },
+  "names": {
+    "VOO": "Vanguard S&P 500",
+    "QQQM": "Invesco NASDAQ 100",
+    "SMH": "VanEck Semiconductor"
+  },
+  "notify": {
+    "macos": true,
+    "telegram": false,
+    "include_amounts": false
+  },
+  "look_through": {
+    "0050": {
+      "as_of": "2026-10-02",
+      "source": "元大投信官網 0050 持股權重（前五大）",
+      "weights": {
+        "2330": 0.5631,
+        "2454": 0.0671,
+        "2308": 0.0335,
+        "2317": 0.0282,
+        "3711": 0.0218
+      }
+    },
+    "SMH": {
+      "as_of": "2026-10-03",
+      "source": "stockanalysis.com 的 SMH 持股（VanEck 官網無法直接讀取）；TSM 是台積電 ADR，併入 2330 計算",
+      "weights": {
+        "2330": 0.0924
+      }
+    }
+  },
+  "issuer_names": {
+    "2330": "台積電",
+    "2454": "聯發科",
+    "2308": "台達電",
+    "2317": "鴻海",
+    "3711": "日月光投控"
+  },
+  "tracking_start": "2026-01-01",
+  "sec_user_agent": "invest-tracker your-email@example.com",
+  "launchd_prefix": "com.invest-tracker"
+}
