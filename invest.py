@@ -165,7 +165,7 @@ def cmd_publish(cfg, args):
         sys.exit("公開 repo 還有未提交的變更，請先 commit")
     # 個人資料掃描：private/config.json 裡的 email、.env.local 裡的所有金鑰、以及自訂關鍵字
     patterns = list(pub.get("forbidden", []))
-    patterns += [v for v in [cfg.get("sec_user_agent", "").split()[-1:] or [""]][0:1] if v and "@" in v]
+    patterns += [w for w in cfg.get("sec_user_agent", "").split() if "@" in w]
     env = data.ROOT / ".env.local"
     for line in env.read_text().splitlines() if env.exists() else []:
         if "=" in line and len(line.split("=", 1)[1].strip()) >= 12:
