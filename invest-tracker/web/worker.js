@@ -4,7 +4,8 @@
 // - 訊息：{cmd: "analyze"|"fx", id, symbol, refresh, token} → {id, ok, result|error} / {type: "progress", text}
 
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
-const MODULES = ["__init__", "data", "ledger", "report", "risk", "ta", "ta_plus", "us_chips", "scenario", "reconcile", "backup"];
+// __init__.py 由 worker 自己產生：GitHub Pages 的 Jekyll 會隱藏底線開頭的檔案（回 404）
+const MODULES = ["data", "ledger", "report", "risk", "ta", "ta_plus", "us_chips", "scenario", "reconcile", "backup"];
 const ROOT = "/invest";
 let py = null, ready = null;
 
@@ -20,11 +21,14 @@ async function boot() {
   await new Promise(r => FS.syncfs(true, r));                // IndexedDB → 記憶體
   progress("載入分析程式…");
   const base = new URL("../", self.location.href);            // invest-tracker/
-  const files = await Promise.all([
-    ...MODULES.map(m => fetch(new URL(`lib/${m}.py`, base)).then(r => r.text()).then(t => [`lib/${m}.py`, t])),
-    fetch(new URL("config.example.json", base)).then(r => r.text()).then(t => ["config.example.json", t]),
-  ]);
+  const get = async path => {
+    const r = await fetch(new URL(path, base));
+    if (!r.ok) throw new Error(`下載 ${path} 失敗（HTTP ${r.status}）`);
+    return [path, await r.text()];
+  };
+  const files = await Promise.all([...MODULES.map(m => get(`lib/${m}.py`)), get("config.example.json")]);
   for (const [path, text] of files) FS.writeFile(`${ROOT}/${path}`, text);
+  FS.writeFile(`${ROOT}/lib/__init__.py`, "");
   py.runPython(`
 import sys, json, urllib.error
 sys.path.insert(0, "${ROOT}")
