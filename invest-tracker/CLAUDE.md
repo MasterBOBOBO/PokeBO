@@ -134,4 +134,4 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
   HTTP 改用同步 XHR（`data.set_transport`）、沒有執行緒（`data.pmap` 改成依序處理）、不產生個人化的投資參考。
 - 新增網路呼叫時，一律使用 `data.http_get` / `data.http_post` / `data.auth`，不要直接用 urllib，否則網頁版會壞掉。
 - 瀏覽器跨網域限制：FINRA 放空餘額（POST 沒有 CORS）、SEC（代號對照表回 403）在網頁版停用。
-- 選用的 `web/config.js` 可以設定 `window.DEFAULT_FINMIND_TOKEN`；這個檔案預設被 gitignore，公開等於公開 token。
+- `web/config.js` 設定 `window.DEFAULT_FINMIND_TOKEN`（公開的共用 token，請用獨立帳號，不要和本機版共用同一把）。
