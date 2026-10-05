@@ -482,7 +482,6 @@ def us_info(symbol):
 
 def fmp_profile(symbol):
     """FMP 免費方案的公司／ETF 基本資料（Beta、市值、52 週區間）。沒有金鑰或失敗時回傳 None。"""
-    import urllib.request
     key = None
     env = data.ROOT / ".env.local"
     for line in env.read_text().splitlines() if env.exists() else []:
@@ -492,8 +491,7 @@ def fmp_profile(symbol):
         return None
     try:
         url = f"https://financialmodelingprep.com/stable/profile?symbol={symbol}&apikey={key}"
-        with urllib.request.urlopen(url, timeout=20, context=data.SSL_CTX) as r:
-            p = (json.load(r) or [None])[0]
+        p = (json.loads(data.http_get(url, timeout=20)) or [None])[0]
     except Exception:
         return None
     if not p:

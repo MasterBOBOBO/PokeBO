@@ -9,7 +9,6 @@ import json
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
 from . import data
@@ -22,9 +21,9 @@ FINRA_SI = "https://api.finra.org/data/group/otcMarket/name/consolidatedShortInt
 
 
 def _get(url, headers=None, body=None, timeout=30):
-    req = urllib.request.Request(url, body, headers or {})
-    with urllib.request.urlopen(req, timeout=timeout, context=data.SSL_CTX) as r:
-        return r.read()
+    if body is not None:
+        return data.http_post(url, body, headers, timeout)
+    return data.http_get(url, headers, timeout)
 
 
 def _ua():
@@ -60,8 +59,7 @@ def prune_daily(keep_days=120):
 def short_volume(symbol, dates):
     """dates：本檔的交易日（YYYY-MM-DD）。回傳每日放空成交量比例。"""
     ds = [d.replace("-", "") for d in dates]
-    with ThreadPoolExecutor(max_workers=6) as ex:
-        files = dict(zip(ds, ex.map(_daily_file, ds)))
+    files = dict(zip(ds, data.pmap(_daily_file, ds, workers=6)))
     out_d, out_r = [], []
     key = f"|{symbol}|"
     for d in ds:
@@ -174,8 +172,8 @@ def insider(symbol, days=180, max_filings=25):
                         "shares": sh, "price": px, "value": sh * px, "side": "買" if ad == "A" else "賣"})
         return out
 
-    with ThreadPoolExecutor(max_workers=4) as ex:      # SEC 限制每秒 10 次，4 執行緒足夠安全
-        txns = [x for rows in ex.map(parse, filings) for x in rows]
+    # SEC 限制每秒 10 次，4 執行緒足夠安全
+    txns = [x for rows in data.pmap(parse, filings, workers=4) for x in rows]
     txns.sort(key=lambda x: x["date"], reverse=True)
     buys = [x for x in txns if x["code"] == "P"]
     sells = [x for x in txns if x["code"] == "S"]
@@ -196,9 +194,14 @@ def analyze(symbol, dates):
     if cache.exists():
         return json.loads(cache.read_text(encoding="utf-8"))
     out, errors = {}, {}
-    for key, fn in (("short_volume", lambda: short_volume(symbol, dates[-60:])),
-                    ("short_interest", lambda: short_interest(symbol)),
-                    ("insider", lambda: insider(symbol))):
+    days = 20 if data.WEB else 60
+    sources = [("short_volume", lambda: short_volume(symbol, dates[-days:]))]
+    if data.WEB:     # 瀏覽器跨網域限制：FINRA 放空餘額（POST 沒有 CORS）、SEC（代號對照表回 403）
+        out["short_interest"] = out["insider"] = None
+        errors["short_interest"] = errors["insider"] = "網頁版不支援（瀏覽器跨網域限制），請用本機版"
+    else:
+        sources += [("short_interest", lambda: short_interest(symbol)), ("insider", lambda: insider(symbol))]
+    for key, fn in sources:
         try:
             out[key] = fn()
         except Exception as e:      # 單一來源失敗不影響其他

@@ -2,12 +2,16 @@
 import csv
 import json
 import os
-import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, timedelta
 from pathlib import Path
+
+try:                     # 瀏覽器（Pyodide）環境預設沒有 ssl 模組
+    import ssl
+except ImportError:
+    ssl = None
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"                 # 快取（可重新下載）
@@ -15,7 +19,52 @@ PRIVATE = ROOT / "private"           # 個人設定與帳本：不上傳 GitHub�
 API = "https://api.finmindtrade.com/api/v4/data"
 # python.org 版 Python 在 macOS 沒有根憑證，改用系統內建的
 _CA = "/etc/ssl/cert.pem"
-SSL_CTX = ssl.create_default_context(cafile=_CA if os.path.exists(_CA) else None)
+SSL_CTX = ssl.create_default_context(cafile=_CA if os.path.exists(_CA) else None) if ssl else None
+
+# 網頁版（GitHub Pages + Pyodide）會把 WEB 設為 True，並用 set_transport() 換成瀏覽器的 XHR：
+# - FinMind token 改用網址參數（帶 Authorization 標頭會觸發預檢，而 FinMind 預檢回 400）
+# - 不能自訂 User-Agent、沒有執行緒
+WEB = False
+
+
+def _urllib_request(method, url, body=None, headers=None, timeout=30):
+    req = urllib.request.Request(url, body, headers or {}, method=method)
+    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as r:
+        return r.read()
+
+
+_transport = _urllib_request
+
+
+def set_transport(fn):
+    """fn(method, url, body, headers, timeout) -> bytes；HTTP 錯誤要丟 urllib.error.HTTPError。"""
+    global _transport
+    _transport = fn
+
+
+def http_get(url, headers=None, timeout=30):
+    return _transport("GET", url, None, headers, timeout)
+
+
+def http_post(url, body, headers=None, timeout=30):
+    return _transport("POST", url, body, headers, timeout)
+
+
+def auth(url):
+    """回傳 (url, headers)：本機用 Authorization 標頭，網頁版改用 token 網址參數。"""
+    if WEB:
+        return f"{url}{'&' if '?' in url else '?'}token={urllib.parse.quote(_token())}", {}
+    return url, {"Authorization": f"Bearer {_token()}"}
+
+
+def pmap(fn, items, workers=6):
+    """平行處理；瀏覽器沒有執行緒時改成依序處理。"""
+    items = list(items)
+    if WEB:
+        return [fn(x) for x in items]
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        return list(ex.map(fn, items))
 
 
 def load_config():
@@ -34,7 +83,7 @@ def _token():
             if line.startswith("FINMIND_TOKEN="):
                 token = line.split("=", 1)[1].strip()
     if not token:
-        raise SystemExit("找不到 FINMIND_TOKEN，請寫入 .env.local")
+        raise RuntimeError("找不到 FINMIND_TOKEN：本機請寫入 .env.local；網頁版請在頁面上設定 token")
     return token
 
 
@@ -56,9 +105,7 @@ def quota(max_age=30):
     if _quota_cache["v"] and time.time() - _quota_cache["t"] < max_age:
         return _quota_cache["v"]
     try:
-        req = urllib.request.Request(USER_INFO, headers={"Authorization": f"Bearer {_token()}"})
-        with urllib.request.urlopen(req, timeout=15, context=SSL_CTX) as r:
-            u = json.load(r)
+        u = json.loads(http_get(*auth(USER_INFO), timeout=15))
         limit = u.get("api_request_limit_hour") or u.get("api_request_limit")
         v = {"used": u["user_count"], "limit": limit, "level": u.get("level_title"),
              "pct": u["user_count"] / limit if limit else None, "source": "FinMind 官方"}
@@ -102,13 +149,9 @@ def fetch(dataset, data_id, start, end=None):
     params = {"dataset": dataset, "data_id": data_id, "start_date": start}
     if end:
         params["end_date"] = end
-    req = urllib.request.Request(
-        f"{API}?{urllib.parse.urlencode(params)}",
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    url, headers = auth(f"{API}?{urllib.parse.urlencode(params)}")
     try:
-        with urllib.request.urlopen(req, timeout=30, context=SSL_CTX) as r:
-            body = json.load(r)
+        body = json.loads(http_get(url, headers, timeout=30))
     except urllib.error.HTTPError as e:
         if e.code in (402, 429):
             raise QuotaError("FinMind 回報已達每小時呼叫上限，請稍後再試") from e

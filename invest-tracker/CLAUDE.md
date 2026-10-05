@@ -126,3 +126,12 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 ## Health Check 重點（/portfolio）
 台股和美股比例、高股息 ETF 占比、台積電實際曝險（0050 成分股 + 2330 個股）、金融股集中度、
 美股定額偏離、SMH 的半導體集中度，以及資料是否為最新交易日。
+
+## 網頁版（web/worker.js + Pyodide）
+- `web/dashboard.html` 會自動判斷模式：能連到 `/api/quota` 就是 server 模式（本機伺服器），否則是 web 模式（GitHub Pages）；內嵌資料的是 offline 模式。
+- web 模式由 `web/worker.js` 在 Web Worker 裡載入 Pyodide，從 `../lib/*.py` 讀進同一套 Python 程式。
+  `data.WEB = True` 時：FinMind token 改用網址參數（帶 Authorization 標頭會觸發預檢，FinMind 預檢回 400）、
+  HTTP 改用同步 XHR（`data.set_transport`）、沒有執行緒（`data.pmap` 改成依序處理）、不產生個人化的投資參考。
+- 新增網路呼叫時，一律使用 `data.http_get` / `data.http_post` / `data.auth`，不要直接用 urllib，否則網頁版會壞掉。
+- 瀏覽器跨網域限制：FINRA 放空餘額（POST 沒有 CORS）、SEC（代號對照表回 403）在網頁版停用。
+- 選用的 `web/config.js` 可以設定 `window.DEFAULT_FINMIND_TOKEN`；這個檔案預設被 gitignore，公開等於公開 token。

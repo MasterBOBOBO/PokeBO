@@ -21,7 +21,18 @@
 | 自動化 | macOS launchd：每日收盤後更新並通知、每月產出月報、儀表板常駐 |
 | 手機 | 儀表板和月報都支援手機版面；`serve --lan` 讓同一個 Wi-Fi 的手機用通行碼瀏覽 |
 
-## 快速開始
+## 線上網頁版（不用安裝）
+
+**https://masterbobobo.github.io/PokeBO/invest-tracker/web/**
+
+在瀏覽器裡直接執行和本機版相同的 Python 分析程式（使用 [Pyodide](https://pyodide.org/)），手機也能用。
+第一次打開要下載約 10MB，之後瀏覽器會快取；抓到的資料存在瀏覽器的 IndexedDB 裡。
+
+- 按「設定 Token」貼上**你自己的** FinMind token。token 只存在你的瀏覽器（localStorage）。
+- 網頁版提供：個股技術分析的所有分頁、台股法人／融資／當沖、美股大盤、匯率影響、FINRA 每日放空比例（近 20 日）。
+- 只在本機版提供：持倉、記帳、月報、健檢、依投資政策的白話結論、FINRA 放空餘額、SEC 內部人交易（後兩項受瀏覽器跨網域限制）。
+
+## 快速開始（本機版）
 
 ```bash
 git clone <this repo> && cd invest-tracker

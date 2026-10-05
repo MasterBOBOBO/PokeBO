@@ -39,11 +39,7 @@ def stock_info(symbol):
 
 
 def _fetch_info():
-    import urllib.request
-    req = urllib.request.Request(f"{data.API}?dataset=TaiwanStockInfo",
-                                 headers={"Authorization": f"Bearer {data._token()}"})
-    with urllib.request.urlopen(req, timeout=30, context=data.SSL_CTX) as r:
-        return json.load(r)["data"]
+    return json.loads(data.http_get(*data.auth(f"{data.API}?dataset=TaiwanStockInfo"), timeout=30))["data"]
 
 
 # ---------- 指標 ----------
@@ -381,12 +377,15 @@ def analyze(symbol, refresh=False):
     warns = warnings(s, chips, levels)
     trend = _trend(s)
     plus = ta_plus.build(s, chips, extra, levels, warns, trend, pos, market)
-    try:
-        from . import report
-        snap = report.snapshot()
-    except Exception:
-        snap = None
-    plus["guidance"] = ta_plus.guidance(symbol, market, pos, snap, data.load_config(), plus, levels, s)
+    if data.WEB:
+        plus["guidance"] = None        # 網頁版沒有個人持倉與投資政策，不產生投資參考
+    else:
+        try:
+            from . import report
+            snap = report.snapshot()
+        except Exception:
+            snap = None
+        plus["guidance"] = ta_plus.guidance(symbol, market, pos, snap, data.load_config(), plus, levels, s)
     if market == "US":
         plus["us"] = ta_plus.us_extra(rows, s, data.load_config())
         from . import us_chips
@@ -409,6 +408,7 @@ def analyze(symbol, refresh=False):
         "chips": chips, "signals": sig, "warnings": warns,
         "checklist": checks, "trend": trend, "position": pos, "plus": plus, "market_overview": mkt,
         "source": "FinMind（TWSE / TPEx 公開資料，T+1）" if market == "TW" else "FinMind USStockPrice",
+        "web": data.WEB,
     }
     CACHE.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")

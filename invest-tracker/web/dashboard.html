@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>個股技術分析</title>
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<!-- 選用：網頁版預設 token（window.DEFAULT_FINMIND_TOKEN）。檔案不存在時忽略。 -->
+<script src="config.js" onerror="void 0"></script>
 <style>
 :root{
   color-scheme:dark;
@@ -73,6 +75,9 @@ body.scrolling .js-plotly-plot{pointer-events:none}
 .lamp.bull{background:var(--up)}.lamp.neutral,.lamp.risk-mid{background:var(--warn)}.lamp.bear,.lamp.risk-low{background:var(--good)}.lamp.risk-high{background:var(--bad)}
 .bt td.win{font-weight:600}.bt .tag{font-size:11px;color:var(--muted);margin-left:4px}
 .bt .better{color:var(--up)}.bt .worse{color:var(--down)}
+.web-only{display:none}body.web-mode .web-only{display:inline-flex}body.web-mode .server-only{display:none!important}
+.token-box{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:14px 16px;margin-top:10px}
+.token-box .search{margin-top:8px}.token-box input{flex:1;width:auto}
 .quota{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);border-radius:999px;padding:5px 12px}
 .quota .qbar{width:64px;height:6px;border-radius:3px;background:var(--grid);overflow:hidden;display:inline-block}
 .quota .qbar i{display:block;height:100%;background:var(--good)}
@@ -174,6 +179,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 <div class="wrap">
   <div class="top">
     <div class="brand">個股技術分析儀表板<small>FinMind 真實資料 · 指標皆可驗證 · 不含推估分數</small></div>
+    <button class="web-only" id="token-btn" type="button">設定 Token</button>
     <button class="quota" id="quota" type="button" title="FinMind API 本小時用量，點擊查看明細">API —</button>
     <form class="search" id="form">
       <input id="sym" placeholder="代號 例如 2330" autocomplete="off" aria-label="股票代號">
@@ -181,6 +187,14 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
     </form>
   </div>
   <div class="quota-detail" id="quota-detail" hidden></div>
+  <div class="token-box" id="token-box" hidden>
+    <b>FinMind API Token</b>
+    <p class="note">網頁版會用這個 token 直接向 FinMind 抓資料。token 只存在<b>這個瀏覽器</b>（localStorage），不會傳到其他地方。
+      還沒有 token 的話，可以到 <a href="https://finmindtrade.com/" target="_blank" rel="noopener">finmindtrade.com</a> 免費註冊。</p>
+    <div class="search"><input id="token-input" type="password" placeholder="貼上 FinMind token" autocomplete="off" aria-label="FinMind token">
+      <button class="primary" id="token-save" type="button">儲存</button><button id="token-clear" type="button">清除</button></div>
+    <p class="note" id="token-state"></p>
+  </div>
   <div class="chips" id="chips" aria-label="快速選擇"></div>
   <div class="err" id="err" role="alert"></div>
 
@@ -195,7 +209,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
       <button id="dl-csv">下載資料 CSV</button>
       <button id="dl-html">下載離線報告 HTML</button>
       <button id="dl-print">列印 / PDF</button>
-      <button id="go-reports" type="button">月報</button>
+      <button id="go-reports" class="server-only" type="button">月報</button>
     </div>
     <div class="tabs" role="tablist" id="tabs">
       <button class="on" data-tab="overview">綜合分析</button>
@@ -280,7 +294,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 
   <footer>本頁為技術指標整理，僅供參考，不構成投資建議；「技術面偏強／偏弱」描述價格走勢，不代表應加碼或減碼。資料為 T+1 收盤後更新，請以實際成交與官方資訊為準。長期定期定額標的請以配置紀律為主，技術訊號不應影響扣款。</footer>
 </div>
-<div class="loading" id="loading">資料載入中…</div>
+<div class="loading" id="loading"><span id="loading-text">資料載入中…</span></div>
 
 <script>
 window.__DATA__ = null; /*__EMBED__*/
@@ -330,6 +344,69 @@ function candles(yaxis = "y") {
     whiskerwidth: 0.3};
 }
 
+// ---------- 執行模式 ----------
+// server：本機 Python 伺服器（invest.py serve）
+// web：GitHub Pages 等靜態網站，由 worker.js 在瀏覽器裡用 Pyodide 執行同一套 Python 分析程式
+// offline：下載的離線報告（資料已內嵌）
+let MODE = window.__DATA__ ? "offline" : null, worker = null, seq = 0;
+const pending = {};
+const POPULAR = [["0050", "元大台灣50"], ["0056", "元大高股息"], ["00878", "國泰永續高股息"], ["2330", "台積電"], ["2317", "鴻海"],
+  ["2454", "聯發科"], ["2881", "富邦金"], ["VOO", "Vanguard S&P 500"], ["QQQM", "Invesco NASDAQ 100"], ["SMH", "VanEck Semiconductor"]];
+
+async function detectMode() {
+  if (MODE) return MODE;
+  try {
+    const r = await fetch("/api/quota", {cache: "no-store"});
+    MODE = r.ok && (r.headers.get("content-type") || "").includes("json") ? "server" : "web";
+  } catch (e) { MODE = "web"; }
+  document.body.classList.toggle("web-mode", MODE === "web");
+  return MODE;
+}
+function finmindToken() {
+  try { return localStorage.getItem("finmind_token") || window.DEFAULT_FINMIND_TOKEN || ""; }
+  catch (e) { return window.DEFAULT_FINMIND_TOKEN || ""; }
+}
+function callWorker(cmd, args) {
+  if (!worker) {
+    worker = new Worker("worker.js");
+    worker.onmessage = ({data: m}) => {
+      if (m.type === "progress") { $("#loading-text").textContent = m.text || "資料載入中…"; return; }
+      const p = pending[m.id]; delete pending[m.id];
+      if (p) m.ok ? p.resolve(m.result) : p.reject(new Error(m.error));
+    };
+  }
+  return new Promise((resolve, reject) => {
+    const id = ++seq; pending[id] = {resolve, reject};
+    worker.postMessage({cmd, id, token: finmindToken(), ...args});
+  });
+}
+const API = {
+  async stock(sym, refresh) {
+    if (await detectMode() === "web") {
+      if (!finmindToken()) { openToken(); throw new Error("請先設定 FinMind token"); }
+      return callWorker("analyze", {symbol: sym, refresh});
+    }
+    const r = await fetch(`/api/stock?id=${encodeURIComponent(sym)}${refresh ? "&refresh=1" : ""}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    return j;
+  },
+  async fx() {
+    return (await detectMode()) === "web" ? callWorker("fx", {}) : (await fetch("/api/fx")).json();
+  },
+  async quota() {
+    if (await detectMode() !== "web") return (await fetch("/api/quota")).json();
+    const t = finmindToken(); if (!t) return {official: null, local: null};
+    const u = await (await fetch(`https://api.web.finmindtrade.com/v2/user_info?token=${encodeURIComponent(t)}`)).json();
+    const limit = u.api_request_limit_hour || u.api_request_limit;
+    return {official: u.user_count == null ? null : {used: u.user_count, limit, level: u.level_title, pct: limit ? u.user_count / limit : null}, local: null};
+  },
+  async holdings() {
+    if (await detectMode() === "web") return POPULAR.map(([symbol, name]) => ({symbol, name, dca: false}));
+    return (await fetch("/api/holdings")).json();
+  },
+};
+
 // ---------- 載入 ----------
 async function load(sym, refresh = false) {
   sym = (sym || "").trim().toUpperCase();
@@ -337,10 +414,7 @@ async function load(sym, refresh = false) {
   $("#err").style.display = "none";
   $("#loading").classList.add("on");
   try {
-    const r = await fetch(`/api/stock?id=${encodeURIComponent(sym)}${refresh ? "&refresh=1" : ""}`);
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || r.statusText);
-    D = j; refreshQuota(); const tab = new URLSearchParams(location.search).get("tab");
+    D = await API.stock(sym, refresh); refreshQuota(); const tab = new URLSearchParams(location.search).get("tab");
     history.replaceState(null, "", `?id=${sym}${tab ? `&tab=${tab}` : ""}`); render();
   } catch (e) {
     $("#err").textContent = `無法取得 ${sym} 的資料：${e.message}（不會產生任何模擬數據）`;
@@ -351,7 +425,7 @@ async function load(sym, refresh = false) {
 async function loadChips() {
   if (window.__DATA__) return;
   try {
-    const list = await (await fetch("/api/holdings")).json();
+    const list = await API.holdings();
     $("#chips").innerHTML = list.map(h =>
       `<button class="chip" data-sym="${esc(h.symbol)}">${esc(h.symbol)} ${esc(h.name)}${h.dca ? '<span class="tag">定額</span>' : ""}</button>`).join("");
   } catch (e) { /* 離線或伺服器未啟動 */ }
@@ -610,7 +684,7 @@ function renderOverview() {
     ["ATR(14)", `${fmt(L.atr14)}（${pct(L.atr14 / q.close)}）`], ["20 日年化波動度", pct(L.vol20_ann, 1)]];
   $("#levels").innerHTML = lvRows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
   const p = D.position;
-  $("#position").innerHTML = p ? `<div class="kv"><span>持有股數</span><span>${fmt(p.shares, D.market === "TW" ? 0 : 4)}</span>
+  $("#position").innerHTML = D.web ? `<p class="note">網頁版不包含個人持倉。持倉、記帳、月報和健檢只在本機版提供（見 README）。</p>` : p ? `<div class="kv"><span>持有股數</span><span>${fmt(p.shares, D.market === "TW" ? 0 : 4)}</span>
       <span>平均成本</span><span>${fmt(p.avg_cost)}</span><span>未實現報酬</span><span class="${cls(p.pnl_pct)}">${pct(p.pnl_pct)}</span>
       <span>定期定額</span><span>${p.dca ? (p.dca_amount ? `每月 ${D.market === "TW" ? "NT$" : "US$"} ${fmt(p.dca_amount, 0)}` : "是") : "否"}</span></div>
       ${p.dca ? '<p class="note">定期定額標的：技術訊號只當參考，不影響扣款紀律。</p>' : ""}` : `<p class="note">未持有此標的。</p>`;
@@ -618,11 +692,11 @@ function renderOverview() {
   // 18 總評
   $("#verdict").innerHTML = `<div style="margin-bottom:8px"><span class="stance ${V.stance === "偏強" ? "bull" : V.stance === "偏弱" ? "bear" : "neutral"}">技術面${esc(V.stance)}</span></div>
     <ul class="summary">${V.reasons.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="note">${esc(V.note)}</p>
-    <div class="plain"><span class="pk">💬 白話結論</span>${esc(P.guidance.plain)}</div>
+    ${P.guidance ? `<div class="plain"><span class="pk">💬 白話結論</span>${esc(P.guidance.plain)}</div>
     <h4 class="gtitle">投資參考（依你的投資政策）</h4>
     <ul class="guide">${P.guidance.items.map(g => `<li class="${g.kind}"><span class="gk">${GUIDE_TAG[g.kind] || ""}</span>
       <div><b>${esc(g.title)}</b><div class="gd">${esc(g.detail)}</div></div></li>`).join("")}</ul>
-    <p class="note">${esc(P.guidance.disclaimer)}</p>${NOT_ADVICE(true)}`;
+    <p class="note">${esc(P.guidance.disclaimer)}</p>` : `<p class="note">「依投資政策的白話結論」需要個人持倉與投資政策，只在本機版提供。</p>`}${NOT_ADVICE(true)}`;
 }
 
 function renderUS() {
@@ -643,7 +717,7 @@ function renderUS() {
       <span>匯率影響</span><span class="${cls(diff)}">${diff == null ? "—" : (diff >= 0 ? "+" : "") + (diff * 100).toFixed(1) + "pt"}</span>
       <span>美元兌台幣</span><span>${fmt(U.fx_then, 3)} → ${fmt(U.fx_now, 3)}</span></div>
     <p class="note">${diff == null ? "" : diff >= 0 ? "這段期間美元升值，換回台幣的報酬變多。" : "這段期間台幣升值，換回台幣的報酬變少。"}你是用台幣投資，匯率也是報酬的一部分。</p>`;
-  fetch("/api/fx").then(r => r.json()).then(j => {
+  API.fx().then(j => {
     Plotly.react("ch-fx", [{type: "scatter", mode: "lines", x: j.date.map(d => d.slice(5)), y: j.rate, line: {color: C.s4, width: 2},
       hovertemplate: "%{y:.3f}<extra>USD/TWD</extra>"}], baseLayout({margin: {l: 44, r: 8, t: 8, b: 22}, xaxis: {type: "category", nticks: 6, gridcolor: C.grid}}), cfgPlot);
   }).catch(() => { $("#ch-fx").hidden = true; });
@@ -823,9 +897,25 @@ $("#dl-csv").onclick = () => {
 $("#dl-html").onclick = async () => {
   let html;
   if (window.__DATA__) html = "<!doctype html>\n" + document.documentElement.outerHTML;
-  else html = await (await fetch(`/report?id=${encodeURIComponent(D.symbol)}`)).text();
+  else if (MODE === "web") {     // 網頁版：取原始頁面，把分析結果嵌進去
+    const blob = JSON.stringify(D).replace(/<\//g, "<\\/");
+    html = (await (await fetch(location.pathname)).text()).replace("window.__DATA__ = null; /*__EMBED__*/", `window.__DATA__ = ${blob};`);
+  } else html = await (await fetch(`/report?id=${encodeURIComponent(D.symbol)}`)).text();
   save(new Blob([html], {type: "text/html"}), `${D.symbol}_${D.name}_技術分析_${D.quote.date}.html`);
 };
+function openToken() {
+  const own = (() => { try { return localStorage.getItem("finmind_token"); } catch (e) { return null; } })();
+  $("#token-state").textContent = own ? "目前使用你自己設定的 token。" : window.DEFAULT_FINMIND_TOKEN ? "目前使用網站提供的預設 token（額度和所有訪客共用）。" : "尚未設定 token。";
+  $("#token-box").hidden = false; $("#token-input").focus();
+}
+$("#token-btn").onclick = () => { const b = $("#token-box"); b.hidden ? openToken() : (b.hidden = true); };
+$("#token-save").onclick = () => {
+  const v = $("#token-input").value.trim(); if (!v) return;
+  try { localStorage.setItem("finmind_token", v); } catch (e) {}
+  $("#token-input").value = ""; $("#token-box").hidden = true; refreshQuota();
+  const id = new URLSearchParams(location.search).get("id") || $("#sym").value; if (id) load(id);
+};
+$("#token-clear").onclick = () => { try { localStorage.removeItem("finmind_token"); } catch (e) {} openToken(); };
 $("#go-reports").onclick = () => { location.href = "/reports/"; };
 $("#dl-print").onclick = () => { Object.keys(RENDER).forEach(renderTab); setTimeout(() => window.print(), 300); };
 function save(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
@@ -850,25 +940,29 @@ $("#sig-filters").onclick = e => { const b = e.target.closest("[data-k]"); if (b
 async function refreshQuota() {
   if (window.__DATA__) { $("#quota").hidden = true; return; }
   try {
-    const j = await (await fetch("/api/quota")).json(), o = j.official, L = j.local;
+    const j = await API.quota(), o = j.official, L = j.local || {total: 0, by_dataset: {}};
     const el = $("#quota");
-    if (!o) { el.textContent = `API 本機 ${L.total} 次/時`; return; }
+    if (!o) { el.textContent = MODE === "web" ? "API —" : `API 本機 ${L.total} 次/時`; return; }
     const p = o.pct || 0;
     el.className = "quota " + (p >= 0.8 ? "high" : p >= 0.5 ? "mid" : "");
     el.innerHTML = `API ${o.used} / ${o.limit}<span class="qbar" aria-hidden="true"><i style="width:${Math.min(100, p * 100)}%"></i></span>${(p * 100).toFixed(0)}%`;
     el.setAttribute("aria-label", `FinMind 本小時已用 ${o.used} 次，上限 ${o.limit} 次`);
     $("#quota-detail").innerHTML = `<b>FinMind API 本小時用量</b>（${esc(o.level)} 方案）：官方 ${o.used} / ${o.limit} 次，剩餘 ${o.limit - o.used} 次。
-      官方數字可能延遲數分鐘；達 98% 時系統會暫停呼叫。<br>本機近 60 分鐘呼叫 ${L.total} 次：
-      <table><tbody>${Object.entries(L.by_dataset).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v}</td></tr>`).join("") || "<tr><td>無</td></tr>"}</tbody></table>
+      官方數字可能延遲數分鐘；達 98% 時系統會暫停呼叫。${MODE === "web" ? "" : `<br>本機近 60 分鐘呼叫 ${L.total} 次：
+      <table><tbody>${Object.entries(L.by_dataset).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v}</td></tr>`).join("") || "<tr><td>無</td></tr>"}</tbody></table>`}
       <p class="note">分析一檔台股約 7 次呼叫（同一天重複查詢會使用快取，不再呼叫）；大盤資料每天只抓一次。</p>`;
   } catch (e) { /* 伺服器未啟動 */ }
 }
 $("#quota").onclick = () => { const d = $("#quota-detail"); d.hidden = !d.hidden; };
-refreshQuota(); setInterval(refreshQuota, 60000);
 
-loadChips();
-if (window.__DATA__) { D = window.__DATA__; $(".search").hidden = true; render(); }
-else { const id = new URLSearchParams(location.search).get("id"); if (id) load(id).then(openTabFromUrl); }
+(async () => {
+  if (window.__DATA__) { D = window.__DATA__; $(".search").hidden = true; $("#quota").hidden = true; render(); return; }
+  await detectMode();
+  refreshQuota(); setInterval(refreshQuota, 60000);
+  loadChips();
+  if (MODE === "web" && !finmindToken()) openToken();
+  const id = new URLSearchParams(location.search).get("id"); if (id) load(id).then(openTabFromUrl);
+})();
 function openTabFromUrl() {
   const t = new URLSearchParams(location.search).get("tab");
   const b = t && document.querySelector(`.tabs [data-tab="${CSS.escape(t)}"]`);
