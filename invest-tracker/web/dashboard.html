@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>個股技術分析</title>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<style>
+:root{
+  color-scheme:dark;
+  --page:#0b0e16;--panel:#141927;--panel-2:#1a2033;--grid:#232b3d;--axis:#2f3850;
+  --ink:#e8eaf0;--ink-2:#a3abbd;--muted:#6f7890;--ring:rgba(255,255,255,.08);
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s7:#9085e9;
+  --up:#e66767;--down:#0ca30c;--good:#0ca30c;--warn:#fab219;--bad:#d03b3b;
+  --accent:#5b8def;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.55 system-ui,-apple-system,"PingFang TC","Microsoft JhengHei","Segoe UI",sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:16px}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--ring);border-radius:12px;padding:12px 16px}
+.brand{font-weight:700;font-size:16px;margin-right:auto}
+.brand small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.search{display:flex;gap:8px}[hidden]{display:none!important}
+.search input{width:150px;background:var(--page);border:1px solid var(--axis);color:var(--ink);border-radius:8px;padding:8px 12px;font-size:16px;letter-spacing:1px}
+.search input:focus{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--axis);background:var(--panel-2);color:var(--ink);padding:7px 12px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font-size:13px;padding:4px 10px;border-radius:999px}
+.chip .tag{color:var(--muted);font-size:11px;margin-left:4px}
+.quote{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:1px;background:var(--ring);border-radius:12px;overflow:hidden;margin-top:12px;border:1px solid var(--ring)}
+.q{background:var(--panel);padding:10px 12px}
+.q .l{color:var(--muted);font-size:12px}
+.q .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.q.name .v{font-size:16px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.q.name .l{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.up{color:var(--up)}.down{color:var(--down)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.src{color:var(--ink-2);font-size:12px;background:var(--panel);border:1px solid var(--ring);border-radius:999px;padding:4px 12px;margin-right:auto}
+.range button.on{border-color:var(--accent);color:#fff;background:rgba(91,141,239,.18)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--axis);overflow-x:auto}
+.tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--ink-2);padding:10px 14px;white-space:nowrap}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.panel{display:none;padding-top:12px}.panel.on{display:block}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(12,1fr);grid-auto-flow:row dense}
+.card{background:var(--panel);border:1px solid var(--ring);border-radius:12px;padding:14px 16px;min-width:0}
+.card h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}
+.card h3 .no{font-size:11px;color:var(--muted);border:1px solid var(--axis);border-radius:4px;padding:0 5px}
+.card h3 .hint{margin-left:auto;color:var(--muted);font-weight:400;font-size:12px}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}
+@media (max-width:1000px){.c8,.c6,.c4{grid-column:span 12}}
+.chart{width:100%;height:360px;contain:layout paint}.chart.tall{height:520px}.chart.short{height:220px}.chart.mid{height:260px}.chart.xshort{height:140px}
+body.scrolling .js-plotly-plot{pointer-events:none}
+.card h3 .info{margin-left:auto;border:none;background:none;color:var(--muted);padding:0 4px;font-size:14px;cursor:pointer}
+.card h3 .info+.hint{margin-left:8px}
+.card h3 .info:hover{color:var(--ink)}
+.explain{background:var(--panel-2);border:1px solid var(--axis);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--ink-2);margin:0 0 10px;line-height:1.6}
+.foot2{color:var(--ink-2);font-size:12.5px;margin-top:4px}
+.big{font-size:28px;font-weight:700}
+.stance{display:inline-block;padding:4px 14px;border-radius:999px;font-weight:700;font-size:15px;border:1px solid var(--axis)}
+.stance.bull{color:var(--up);border-color:var(--up)}.stance.bear{color:var(--down);border-color:var(--down)}.stance.neutral{color:var(--warn);border-color:var(--warn)}
+.duo{height:14px;border-radius:7px;display:flex;overflow:hidden;gap:2px;margin:8px 0}
+.duo i{display:block;height:100%}.duo .b{background:var(--up)}.duo .s{background:var(--down)}
+.rings{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ring{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:8px}
+.ring svg{width:64px;height:64px}
+.ring .t{font-size:12px;color:var(--ink-2)}.ring .v{font-size:15px;font-weight:600}
+.light{display:grid;grid-template-columns:28px 64px 1fr;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--grid)}
+.light:last-child{border:none}
+.lamp{width:22px;height:22px;border-radius:50%;box-shadow:0 0 0 3px rgba(255,255,255,.04) inset}
+.lamp.bull{background:var(--up)}.lamp.neutral,.lamp.risk-mid{background:var(--warn)}.lamp.bear,.lamp.risk-low{background:var(--good)}.lamp.risk-high{background:var(--bad)}
+.bt td.win{font-weight:600}.bt .tag{font-size:11px;color:var(--muted);margin-left:4px}
+.bt .better{color:var(--up)}.bt .worse{color:var(--down)}
+.quota{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);border-radius:999px;padding:5px 12px}
+.quota .qbar{width:64px;height:6px;border-radius:3px;background:var(--grid);overflow:hidden;display:inline-block}
+.quota .qbar i{display:block;height:100%;background:var(--good)}
+.quota.mid .qbar i{background:var(--warn)}.quota.high .qbar i{background:var(--bad)}.quota.high{color:var(--ink);border-color:var(--bad)}
+.quota-detail{background:var(--panel);border:1px solid var(--ring);border-radius:12px;padding:12px 16px;margin-top:10px;font-size:13px}
+.quota-detail table{max-width:520px}
+.plain{margin:12px 0 4px;padding:12px 14px;border-radius:10px;background:rgba(91,141,239,.10);border:1px solid rgba(91,141,239,.45);
+  font-size:14.5px;line-height:1.7;color:var(--ink)}
+.plain .pk{display:block;font-size:12px;color:var(--ink-2);margin-bottom:2px}
+.gtitle{margin:14px 0 6px;font-size:13px;color:var(--ink)}
+.guide{list-style:none;margin:0;padding:0}
+.guide li{display:grid;grid-template-columns:64px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--grid);font-size:13px}
+.guide li:last-child{border:none}
+.guide .gk{font-size:12px;white-space:nowrap;color:var(--ink-2)}
+.guide .gd{color:var(--ink-2);margin-top:2px;line-height:1.55}
+.guide li.caution b{color:var(--warn)}
+.advice{margin:10px 0 0;padding:8px 10px;border-radius:8px;background:rgba(250,178,25,.08);border:1px solid rgba(250,178,25,.35);
+  color:var(--ink-2);font-size:12.5px;line-height:1.6}
+.advice b{color:var(--ink)}
+.levelkeys{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2);margin:-2px 0 4px}
+.levelkeys i{display:inline-block;width:18px;margin-right:6px;vertical-align:middle}
+.costrow{display:grid;grid-template-columns:120px 1fr 76px;align-items:center;gap:8px;margin:6px 0;font-size:13px}
+.costrow .track{position:relative;height:10px;background:var(--grid);border-radius:5px}
+.costrow .mark{position:absolute;top:-3px;width:3px;height:16px;border-radius:2px;background:var(--s1)}
+.costrow .now{position:absolute;top:-5px;width:2px;height:20px;background:var(--ink)}
+.costrow .n{text-align:right;font-variant-numeric:tabular-nums}
+.check{list-style:none;margin:0;padding:0}
+.check li{display:grid;grid-template-columns:22px 1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid var(--grid)}
+.check li:last-child{border:none}
+.check .d{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.score{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.score b{font-size:32px}
+.meter{height:8px;border-radius:4px;background:rgba(57,135,229,.18);overflow:hidden;margin:4px 0 10px}
+.meter i{display:block;height:100%;background:var(--s1);border-radius:4px}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px;font-variant-numeric:tabular-nums}
+.kv span:nth-child(odd){white-space:nowrap}
+.kv span:nth-child(even){overflow-wrap:anywhere}
+.kv span:nth-child(odd){color:var(--ink-2)}
+.kv span:nth-child(even){text-align:right}
+.trend{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--axis)}
+.summary{margin:0;padding-left:18px}.summary li{margin:4px 0}
+.warn{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px;border-radius:10px;background:var(--panel-2);margin-bottom:8px;border-left:3px solid var(--muted)}
+.warn.alert{border-left-color:var(--bad)}.warn.watch{border-left-color:var(--warn)}.warn.info{border-left-color:var(--good)}
+.warn .lv{font-size:12px;font-weight:600;white-space:nowrap}
+.warn .dt{grid-column:2;color:var(--ink-2);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{position:sticky;top:0;background:var(--panel);text-align:left;color:var(--muted);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--axis)}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+td.n,th.n{text-align:right}
+.tablewrap{max-height:560px;overflow:auto}
+.tone{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.tone.bull{background:var(--up)}.tone.bear{background:var(--down)}.tone.neutral{background:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.filters button{font-size:12px;padding:3px 10px;border-radius:999px}
+.filters button.on{border-color:var(--accent);background:rgba(91,141,239,.18)}
+.note{color:var(--muted);font-size:12px;margin:8px 0 0}
+.empty{text-align:center;padding:72px 16px}
+.empty h1{font-size:26px;margin:0 0 8px;color:var(--accent)}
+.empty p{color:var(--ink-2);max-width:640px;margin:0 auto 20px}
+.loading{position:fixed;inset:0;background:rgba(11,14,22,.75);display:none;align-items:center;justify-content:center;z-index:10;font-size:16px}
+.loading.on{display:flex}
+.err{background:rgba(208,59,59,.12);border:1px solid var(--bad);color:var(--ink);border-radius:10px;padding:10px 14px;margin-top:12px;display:none}
+footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;padding:12px;border-top:1px solid var(--grid)}
+/* ── 手機版 ─────────────────────────────────────── */
+@media (max-width:640px){
+  .wrap{padding:10px}
+  .top{padding:10px 12px;gap:8px}
+  .brand{font-size:15px;width:100%}
+  .brand small{display:none}
+  .search{flex:1}.search input{flex:1;width:auto;min-width:0;font-size:16px}
+  .quota{order:3}
+  .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .chip{white-space:nowrap;flex:none}
+  .quote{grid-template-columns:repeat(3,1fr)}
+  .q{padding:8px}.q .v{font-size:15px}.q .l{font-size:11px}
+  .q.name{grid-column:1/-1}
+  .toolbar{gap:6px}.src{width:100%;margin:0;font-size:11px}
+  .toolbar>button{flex:1 1 calc(50% - 6px);font-size:13px;padding:8px}
+  .range{display:flex;width:100%;overflow-x:auto}.range button{flex:1;padding:8px 4px}
+  .tabs button{padding:10px 12px}
+  .grid{gap:10px}
+  .card{padding:12px}
+  .chart{height:280px}.chart.tall{height:420px}.chart.mid{height:240px}.chart.short{height:200px}.chart.xshort{height:120px}
+  .rings{grid-template-columns:1fr 1fr}
+  .ring{grid-template-columns:52px 1fr}.ring svg{width:52px;height:52px}
+  .costrow{grid-template-columns:96px 1fr 70px}
+  .guide li{grid-template-columns:1fr}
+  .kv{font-size:13px}
+  table{font-size:12px}
+  footer{font-size:11px}
+}
+@media print{
+  body{background:#fff;color:#000}.top .search,.chips,.toolbar button,.tabs{display:none}
+  .panel{display:block!important;break-inside:avoid}.card{border-color:#ccc}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">個股技術分析儀表板<small>FinMind 真實資料 · 指標皆可驗證 · 不含推估分數</small></div>
+    <button class="quota" id="quota" type="button" title="FinMind API 本小時用量，點擊查看明細">API —</button>
+    <form class="search" id="form">
+      <input id="sym" placeholder="代號 例如 2330" autocomplete="off" aria-label="股票代號">
+      <button class="primary" type="submit">分析</button>
+    </form>
+  </div>
+  <div class="quota-detail" id="quota-detail" hidden></div>
+  <div class="chips" id="chips" aria-label="快速選擇"></div>
+  <div class="err" id="err" role="alert"></div>
+
+  <div id="app" hidden>
+    <div class="quote" id="quote"></div>
+    <div class="toolbar">
+      <span class="src" id="src"></span>
+      <span class="range" id="range" role="group" aria-label="顯示區間">
+        <button data-n="1">1 日</button><button data-n="5">5 日</button><button data-n="7">7 日</button><button data-n="60" class="on">60 日</button><button data-n="120">120 日</button><button data-n="250">250 日</button>
+      </span>
+      <button id="dl-png">下載圖表 PNG</button>
+      <button id="dl-csv">下載資料 CSV</button>
+      <button id="dl-html">下載離線報告 HTML</button>
+      <button id="dl-print">列印 / PDF</button>
+      <button id="go-reports" type="button">月報</button>
+    </div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="on" data-tab="overview">綜合分析</button>
+      <button data-tab="alerts">技術警示</button>
+      <button data-tab="kd">K 線 + MA + KD</button>
+      <button data-tab="macd">MACD</button>
+      <button data-tab="chips">籌碼</button>
+      <button data-tab="raw">原始資料</button>
+    </div>
+
+    <section class="panel on" id="p-overview">
+      <div class="grid">
+        <div class="card c8"><h3><span class="no">01</span>主 K 線圖<span class="hint">支撐／壓力／成交均價／法人估算成本</span></h3><div class="levelkeys" id="levelkeys"></div><div class="chart tall" id="ch-main"></div></div>
+        <div class="card c4"><h3><span class="no">02</span>決策摘要<button class="info" data-x="verdict">ⓘ</button></h3><div id="core"></div></div>
+        <div class="card c4"><h3><span class="no">03</span>多維度評分<button class="info" data-x="radar">ⓘ</button></h3><div class="chart mid" id="ch-radar"></div><div id="radar-foot" class="foot2"></div></div>
+        <div class="card c4"><h3><span class="no">04</span>籌碼熱區（價量分布）<button class="info" data-x="profile">ⓘ</button></h3><div class="chart mid" id="ch-profile"></div><div id="profile-foot" class="foot2"></div></div>
+        <div class="card c4"><h3><span class="no">05</span>風險雷達<button class="info" data-x="risk">ⓘ</button></h3><div class="chart mid" id="ch-risk"></div><div id="risk-foot" class="foot2"></div></div>
+        <div class="card c4"><h3><span class="no">06</span>10 日歷史區間<button class="info" data-x="fan">ⓘ</button><span class="hint">統計，非預測</span></h3><div class="chart mid" id="ch-fan"></div><div id="fan-foot" class="foot2"></div></div>
+        <div class="card c4"><h3><span class="no">07</span>成本結構<button class="info" data-x="cost">ⓘ</button></h3><div id="cost"></div></div>
+        <div class="card c4" data-tw><h3><span class="no">08</span>法人行為<span class="hint">近 20 日（張）</span></h3><div class="chart short" id="ch-inst-mini"></div><div id="inst-table"></div></div>
+        <div class="card c4" data-us hidden><h3><span class="no">08</span>美股補充資訊<button class="info" data-x="us">ⓘ</button></h3><div id="us-info"></div></div>
+        <div class="card c4" data-us hidden><h3><span class="no">09</span>匯率影響（USD/TWD）<button class="info" data-x="us">ⓘ</button></h3><div class="chart xshort" id="ch-fx"></div><div id="us-fx"></div></div>
+        <div class="card c4" data-us hidden><h3><span class="no">19</span>美股籌碼（FINRA / SEC）<button class="info" data-x="uschips">ⓘ</button></h3><div id="us-chips-sum"></div></div>
+        <div class="card c4" data-tw><h3><span class="no">09</span>當沖與週轉<button class="info" data-x="daytrade">ⓘ</button></h3><div class="chart xshort" id="ch-daytrade"></div><div class="kv" id="daytrade-kv"></div></div>
+        <div class="card c4"><h3><span class="no">10</span>多空能量<button class="info" data-x="energy">ⓘ</button></h3><div id="energy"></div></div>
+        <div class="card c4"><h3><span class="no">11</span>健康指標</h3><div class="rings" id="rings"></div></div>
+        <div class="card c4"><h3><span class="no">12</span>信號燈<button class="info" data-x="lights">ⓘ</button></h3><div id="lights"></div></div>
+        <div class="card c4"><h3><span class="no">13</span>大盤狀態<button class="info" data-x="market">ⓘ</button></h3><div id="market"></div></div>
+        <div class="card c4"><h3><span class="no">15</span>趨勢檢核<span class="hint">規則式，逐項可驗證</span></h3><div id="checklist"></div></div>
+        <div class="card c8"><h3><span class="no">14</span>訊號歷史勝率<button class="info" data-x="backtest">ⓘ</button><span class="hint">本檔過去約 3 年</span></h3><div id="backtest"></div></div>
+        <div class="card c4"><h3><span class="no">16</span>關鍵價位</h3><div class="kv" id="levels"></div></div>
+        <div class="card c4"><h3><span class="no">17</span>我的持倉</h3><div id="position"></div></div>
+        <div class="card c8"><h3><span class="no">18</span>總評<button class="info" data-x="verdict">ⓘ</button></h3><div id="verdict"></div></div>
+      </div>
+      <p class="note">做不到的面板：券商分點（主力買賣、隔日沖）和股權分散（大戶／散戶）需要 FinMind 付費方案，因此不顯示，也不估算。</p>
+    </section>
+
+    <section class="panel" id="p-alerts">
+      <div class="grid">
+        <div class="card c4"><h3>目前警示</h3><div id="warnings"></div></div>
+        <div class="card c8"><h3>訊號時間軸<span class="hint">近 60 個交易日</span></h3>
+          <div class="filters" id="sig-filters"></div><div class="tablewrap"><table id="sig-table"></table></div>
+          <p class="note" id="sig-count"></p></div>
+      </div>
+    </section>
+
+    <section class="panel" id="p-kd">
+      <div class="card"><h3>K 線 + MA5 / MA10 / MA20 與 KD(9,3,3)</h3>
+        <div class="chart tall" id="ch-kd"></div></div>
+    </section>
+
+    <section class="panel" id="p-macd">
+      <div class="card"><h3>MACD(12,26,9)：DIF / MACD / OSC，含黃金交叉、死亡交叉與柱狀體翻轉標記</h3>
+        <div class="chart tall" id="ch-macd"></div><p class="note" id="macd-note"></p></div>
+    </section>
+
+    <section class="panel" id="p-chips">
+      <div class="grid" id="chips-grid">
+        <div class="card c12"><h3>三大法人每日買賣超（張）</h3><div class="chart" id="ch-inst"></div></div>
+        <div class="card c6"><h3>法人累計買賣超（張）</h3><div class="chart short" id="ch-inst-cum"></div></div>
+        <div class="card c6"><h3>融資餘額（張）</h3><div class="chart short" id="ch-margin"></div></div>
+        <div class="card c6"><h3>融券餘額（張）</h3><div class="chart short" id="ch-short"></div></div>
+        <div class="card c6"><h3>法人統計</h3><div class="kv" id="inst-stats"></div></div>
+      </div>
+      <div class="grid" id="us-chips-grid" hidden>
+        <div class="card c12"><h3>每日放空成交量比例（FINRA）<button class="info" data-x="sv">ⓘ</button><span class="hint">近 60 個交易日</span></h3><div class="chart" id="ch-sv"></div></div>
+        <div class="card c6"><h3>放空餘額與回補天數（FINRA，每月兩次）<button class="info" data-x="si">ⓘ</button></h3><div class="chart short" id="ch-si"></div><div class="kv" id="si-kv"></div></div>
+        <div class="card c6"><h3>內部人交易（SEC Form 4）<button class="info" data-x="ins">ⓘ</button><span class="hint">近 180 天</span></h3><div id="ins"></div></div>
+        <p class="note c12">美股沒有台股的三大法人和融資融券制度。機構持股（13F）每季申報、延遲 45 天，SEC 沒有提供依股票反查的資料，需要另外串接 FMP 這類整理過的資料源。</p>
+      </div>
+    </section>
+
+    <section class="panel" id="p-raw">
+      <div class="card"><h3>原始資料表</h3><div class="tablewrap"><table id="raw-table"></table></div></div>
+    </section>
+  </div>
+
+  <div class="empty" id="empty">
+    <h1>個股技術分析</h1>
+    <p>輸入股票代號後，系統會抓取約 1.5 年的真實日 K 資料（台股另含三大法人與融資融券），計算均線、KD、MACD、RSI、布林通道、支撐壓力與規則式趨勢檢核。上方快速選擇列出你的持股。</p>
+  </div>
+
+  <footer>本頁為技術指標整理，僅供參考，不構成投資建議；「技術面偏強／偏弱」描述價格走勢，不代表應加碼或減碼。資料為 T+1 收盤後更新，請以實際成交與官方資訊為準。長期定期定額標的請以配置紀律為主，技術訊號不應影響扣款。</footer>
+</div>
+<div class="loading" id="loading">資料載入中…</div>
+
+<script>
+window.__DATA__ = null; /*__EMBED__*/
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (v, d = 2) => v == null ? "—" : Number(v).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
+const pct = (v, d = 2) => v == null ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(d) + "%";
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+let D = null, N = 60, sigFilter = "all";
+
+const C = {};
+function colors() {
+  Object.assign(C, {ink: css("--ink"), ink2: css("--ink-2"), muted: css("--muted"), grid: css("--grid"), axis: css("--axis"),
+    panel: css("--panel"), s1: css("--s1"), s2: css("--s2"), s3: css("--s3"), s4: css("--s4"), s7: css("--s7"),
+    up: css("--up"), down: css("--down")});
+}
+
+function baseLayout(extra = {}) {
+  return Object.assign({
+    paper_bgcolor: C.panel, plot_bgcolor: C.panel, font: {color: C.ink2, size: 12, family: "system-ui, -apple-system, PingFang TC, sans-serif"},
+    margin: {l: 56, r: 16, t: 28, b: 32}, hovermode: "x unified", dragmode: "zoom",
+    hoverlabel: {bgcolor: "#1a2033", bordercolor: C.axis, font: {color: C.ink}},
+    legend: {orientation: "h", y: 1.08, x: 0, font: {size: 12}},
+    xaxis: {type: "category", gridcolor: C.grid, linecolor: C.axis, tickfont: {size: 11}, nticks: 10, showspikes: true,
+      spikemode: "across", spikecolor: C.axis, spikethickness: 1, rangeslider: {visible: false}},
+    yaxis: {gridcolor: C.grid, zerolinecolor: C.axis, tickfont: {size: 11}},
+  }, extra);
+}
+// responsive 關閉：改由下方 ResizeObserver 在「寬度真的改變」時才重新排版，避免捲動時整頁重繪
+const TOUCH = matchMedia("(hover: none)").matches;
+const cfgPlot = {displaylogo: false, responsive: false, displayModeBar: TOUCH ? false : "hover", modeBarButtonsToRemove: ["lasso2d", "select2d"],
+  toImageButtonOptions: {format: "png", scale: 2}};
+
+function slice(arr) { return arr ? arr.slice(-N) : []; }
+function S(k) { return slice(D.series[k]); }
+function dates() { return S("date").map(d => d.slice(5)); }
+function fullDates() { return S("date"); }
+
+function line(name, y, color, extra = {}) {
+  return Object.assign({type: "scatter", mode: "lines", name, x: dates(), y, line: {color, width: 2},
+    hovertemplate: "%{y:,.2f}", connectgaps: false}, extra);
+}
+function candles(yaxis = "y") {
+  return {type: "candlestick", name: "K 線", x: dates(), open: S("open"), high: S("high"), low: S("low"), close: S("close"),
+    yaxis, increasing: {line: {color: C.up, width: 1}, fillcolor: C.up}, decreasing: {line: {color: C.down, width: 1}, fillcolor: C.down},
+    whiskerwidth: 0.3};
+}
+
+// ---------- 載入 ----------
+async function load(sym, refresh = false) {
+  sym = (sym || "").trim().toUpperCase();
+  if (!sym) return;
+  $("#err").style.display = "none";
+  $("#loading").classList.add("on");
+  try {
+    const r = await fetch(`/api/stock?id=${encodeURIComponent(sym)}${refresh ? "&refresh=1" : ""}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    D = j; refreshQuota(); const tab = new URLSearchParams(location.search).get("tab");
+    history.replaceState(null, "", `?id=${sym}${tab ? `&tab=${tab}` : ""}`); render();
+  } catch (e) {
+    $("#err").textContent = `無法取得 ${sym} 的資料：${e.message}（不會產生任何模擬數據）`;
+    $("#err").style.display = "block";
+  } finally { $("#loading").classList.remove("on"); }
+}
+
+async function loadChips() {
+  if (window.__DATA__) return;
+  try {
+    const list = await (await fetch("/api/holdings")).json();
+    $("#chips").innerHTML = list.map(h =>
+      `<button class="chip" data-sym="${esc(h.symbol)}">${esc(h.symbol)} ${esc(h.name)}${h.dca ? '<span class="tag">定額</span>' : ""}</button>`).join("");
+  } catch (e) { /* 離線或伺服器未啟動 */ }
+}
+
+// ---------- 渲染 ----------
+// 分頁延遲繪製：只畫目前看得到的分頁，其他分頁在第一次切換時才畫
+const RENDER = {overview: () => renderOverview(), alerts: () => renderAlerts(), kd: () => renderKD(),
+  macd: () => renderMACD(), chips: () => renderChips(), raw: () => renderRaw()};
+let dirty = new Set();
+function render() {
+  colors();
+  $("#empty").hidden = true; $("#app").hidden = false;
+  document.title = `${D.symbol} ${D.name} 技術分析`;
+  $("#sym").value = D.symbol;
+  renderQuote();
+  document.querySelectorAll(".explain").forEach(e => e.remove());
+  dirty = new Set(Object.keys(RENDER));
+  renderTab(activeTab());
+}
+function renderTab(tab) {
+  if (!D || !dirty.has(tab)) return;
+  dirty.delete(tab);
+  RENDER[tab]();
+}
+
+// 寬度改變才重排圖表（忽略只改高度的 resize，例如工具列伸縮），並合併 200ms 內的多次觸發
+let lastW = 0, rT;
+new ResizeObserver(([e]) => {
+  const w = Math.round(e.contentRect.width);
+  if (w === lastW) return;
+  lastW = w; clearTimeout(rT);
+  rT = setTimeout(() => document.querySelectorAll(".panel.on .js-plotly-plot").forEach(el => Plotly.Plots.resize(el)), 200);
+}).observe(document.querySelector(".wrap"));
+
+// 捲動期間暫停圖表滑鼠互動，避免游標掃過圖表時觸發大量 hover 計算
+let sT;
+addEventListener("scroll", () => {
+  document.body.classList.add("scrolling");
+  clearTimeout(sT); sT = setTimeout(() => document.body.classList.remove("scrolling"), 150);
+}, {passive: true});
+
+// ⓘ 公式說明
+document.addEventListener("click", e => {
+  const b = e.target.closest(".info"); if (!b || !D) return;
+  const card = b.closest(".card"), open = card.querySelector(".explain");
+  if (open) return open.remove();
+  const html = EXPLAIN()[b.dataset.x];
+  if (!html) return;
+  const div = document.createElement("div"); div.className = "explain"; div.innerHTML = html;
+  card.querySelector("h3").after(div);
+});
+
+function renderQuote() {
+  const q = D.quote, unit = D.market === "TW" ? "張" : "股";
+  const cells = [
+    ["name", `${D.symbol}`, `${D.name}`],
+    ["", "收盤價", fmt(q.close)],
+    [cls(q.change), "漲跌", (q.change >= 0 ? "+" : "") + fmt(q.change)],
+    [cls(q.change), "漲幅", pct(q.change_pct)],
+    ["", `成交量(${unit})`, fmt(q.volume, 0)],
+    ["", "成交筆數", q.trades == null ? "—" : fmt(q.trades, 0)],
+    ["", "開盤", fmt(q.open)], ["", "最高", fmt(q.high)], ["", "最低", fmt(q.low)],
+    ["", "最新交易日", q.date], ["", "資料筆數", q.rows],
+  ];
+  $("#quote").title = `${D.symbol} ${D.name}`;
+  $("#quote").innerHTML = cells.map(([c, l, v], i) =>
+    `<div class="q ${i === 0 ? "name" : ""}"><div class="l">${esc(i === 0 ? D.industry : l)}</div><div class="v ${i === 0 ? "" : c}">${esc(i === 0 ? (v === l ? l : `${l} ${v}`) : v)}</div></div>`).join("");
+  $("#src").textContent = `資料來源：${D.source} · 顯示 ${Math.min(N, D.series.date.length)} 個交易日 · 產生於 ${D.generated}`
+    + (N < 20 ? "（短區間只影響圖表顯示範圍；指標、檢核與評分仍以完整歷史計算。資料為日 K，沒有盤中分時）" : "");
+}
+
+function renderOverview() {
+  const P = D.plus, L = D.levels, q = D.quote, tw = !!D.chips;
+  document.querySelectorAll("[data-tw]").forEach(el => el.hidden = !tw);
+  document.querySelectorAll("[data-us]").forEach(el => el.hidden = tw);
+  if (!tw) { renderUS(); $("#us-chips-sum").innerHTML = usChipSummary(); }
+
+  // 01 主 K 線：支撐／壓力／成交均價／法人估算成本畫成水平線
+  const lo = Math.min(...S("low")), hi = Math.max(...S("high"));
+  const lv = [["20 日壓力", L.resistance20, C.up, "dash"], ["20 日支撐", L.support20, C.down, "dash"],
+    ["20 日成交均價", L.vwap20 || P.vwap["20"], C.s4, "dot"]];
+  if (P.inst_cost) lv.push(["外資估算成本(20日)", P.inst_cost["20"].foreign.cost, C.s1, "dot"]);
+  const cost = D.position && D.position.avg_cost;
+  if (cost) lv.push(["我的成本", cost, C.s7, "dot"]);
+  const shown = lv.filter(([, v]) => v && v >= lo * 0.97 && v <= hi * 1.03);
+  const hidden = lv.filter(([, v]) => v && !(v >= lo * 0.97 && v <= hi * 1.03));
+  const vol = S("volume"), cl = S("close"), op = S("open");
+  Plotly.react("ch-main", [
+    candles(), line("MA5", S("ma5"), C.s1), line("MA10", S("ma10"), C.s2), line("MA20", S("ma20"), C.s3), line("MA60", S("ma60"), C.s7),
+    {type: "bar", name: "成交量", x: dates(), y: vol, yaxis: "y2", marker: {color: cl.map((c, i) => c >= op[i] ? C.up : C.down), opacity: .55}, hovertemplate: "%{y:,.0f}", showlegend: false},
+  ], baseLayout({
+    yaxis: {domain: [0.3, 1], gridcolor: C.grid}, yaxis2: {domain: [0, 0.22], gridcolor: C.grid},
+    shapes: shown.map(([, v, c, d]) => ({type: "line", xref: "paper", x0: 0, x1: 1, y0: v, y1: v, line: {color: c, width: 1, dash: d}})),
+  }), cfgPlot);
+  $("#levelkeys").innerHTML = lv.filter(([, v]) => v).map(([n, v, c, d]) =>
+    `<span><i style="border-top:2px ${d === "dash" ? "dashed" : "dotted"} ${c}"></i>${esc(n)} ${fmt(v)}${shown.some(x => x[0] === n) ? "" : "（不在圖表區間）"}</span>`).join("");
+
+  // 02 決策摘要
+  const V = P.verdict, R = P.risk, inst = D.chips && D.chips.institutional;
+  const st = P.streak || {};
+  const sTxt = v => v > 0 ? `連買 ${v} 日` : v < 0 ? `連賣 ${-v} 日` : "—";
+  const coreRows = [
+    ["趨勢判斷", D.trend], ["短線狀態", D.series.k.at(-1) > 80 ? "高檔（K>80）" : D.series.k.at(-1) < 20 ? "低檔（K<20）" : "區間"],
+    ["多方能量", `${(P.energy.bull * 100).toFixed(0)}%`], ["風險等級", `${R.level}（${R.total}）`],
+    ["支撐區間", `${fmt(L.support20)} / ${fmt(L.support60)}`], ["壓力區間", `${fmt(L.resistance20)} / ${fmt(L.resistance60)}`],
+  ];
+  if (tw) coreRows.splice(2, 0, ["外資", sTxt(st.foreign)], ["投信", sTxt(st.trust)]);
+  $("#core").innerHTML = `<div style="margin-bottom:8px"><span class="stance ${V.stance === "偏強" ? "bull" : V.stance === "偏弱" ? "bear" : "neutral"}">技術面${esc(V.stance)}</span>
+    <span class="hint" style="margin-left:8px">綜合 ${P.radar.total} 分 · ${P.radar.grade} 級</span></div>${NOT_ADVICE()}
+    <div class="kv">${coreRows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("")}</div>`;
+
+  // 03 / 05 雷達
+  const polar = (id, dims, color, title) => {
+    const th = dims.map(d => d.name), r = dims.map(d => d.score);
+    Plotly.react(id, [{type: "scatterpolar", r: [...r, r[0]], theta: [...th, th[0]], fill: "toself", fillcolor: color + "33",
+      line: {color, width: 2}, marker: {size: 6, color}, hovertemplate: "%{theta}：%{r}<extra></extra>"}],
+      {paper_bgcolor: C.panel, font: {color: C.ink2, size: 11}, margin: {l: 40, r: 40, t: 30, b: 24}, showlegend: false,
+        polar: {bgcolor: C.panel, radialaxis: {range: [0, 100], gridcolor: C.grid, linecolor: C.axis, tickfont: {size: 9}, angle: 90},
+          angularaxis: {gridcolor: C.grid, linecolor: C.axis, tickfont: {size: 12, color: C.ink}}}}, cfgPlot);
+  };
+  polar("ch-radar", P.radar.dims, C.s1);
+  $("#radar-foot").innerHTML = `綜合 <b>${P.radar.total}</b> / 100 · <b>${P.radar.grade}</b> 級`;
+  polar("ch-risk", R.dims, C.s2);
+  $("#risk-foot").innerHTML = `風險指數 <b>${R.total}</b>（${esc(R.level)}）· 最高：${esc(R.dims.reduce((a, b) => a.score > b.score ? a : b).name)}`;
+
+  // 04 價量分布
+  const pf = P.profile;
+  if (pf) {
+    const mids = pf.vol.map((_, k) => (pf.edges[k] + pf.edges[k + 1]) / 2);
+    const zone = m => m > pf.close ? C.up : C.down;
+    Plotly.react("ch-profile", [{type: "bar", orientation: "h", x: pf.vol, y: mids, marker: {color: mids.map(m => m >= pf.va_low && m <= pf.va_high ? zone(m) : zone(m) + "66")},
+      hovertemplate: "價格 %{y:.2f}<br>量 %{x:,.0f}<extra></extra>"}],
+      baseLayout({hovermode: "closest", bargap: .1, margin: {l: 56, r: 12, t: 8, b: 24}, xaxis: {gridcolor: C.grid, showticklabels: false},
+        yaxis: {gridcolor: C.grid}, shapes: [{type: "line", xref: "paper", x0: 0, x1: 1, y0: pf.close, y1: pf.close, line: {color: C.ink, width: 1}}],
+        annotations: [{xref: "paper", x: 1, y: pf.close, text: `現價 ${fmt(pf.close)}`, showarrow: false, xanchor: "right", yanchor: "bottom", font: {size: 11, color: C.ink}}]}), cfgPlot);
+    $("#profile-foot").innerHTML = `最大量區 <b>${fmt(pf.poc)}</b> · 70% 量集中 ${fmt(pf.va_low)}–${fmt(pf.va_high)}<br>上方套牢量 ${(pf.above * 100).toFixed(0)}% · 下方支撐量 ${(pf.below * 100).toFixed(0)}%`;
+  }
+
+  // 06 10 日歷史區間（扇形）
+  const F = P.fan;
+  if (F) {
+    const t = [...Array(F.h + 1).keys()].map(k => k === 0 ? "今天" : `+${k}日`), p = F.path;
+    const band = (lo, hi, op, name) => [{type: "scatter", x: t, y: p[hi], mode: "lines", line: {width: 0}, showlegend: false, hoverinfo: "skip"},
+      {type: "scatter", x: t, y: p[lo], mode: "lines", line: {width: 0}, fill: "tonexty", fillcolor: `rgba(57,135,229,${op})`, name, hoverinfo: "skip"}];
+    Plotly.react("ch-fan", [...band("0.05", "0.95", .12, "5%–95%"), ...band("0.25", "0.75", .28, "25%–75%"),
+      {type: "scatter", x: t, y: p["0.5"], mode: "lines", line: {color: C.s1, width: 2}, name: "中位數", hovertemplate: "%{y:,.2f}"}],
+      baseLayout({xaxis: {gridcolor: C.grid}, margin: {l: 56, r: 12, t: 24, b: 28}, legend: {orientation: "h", y: 1.15, x: 0, font: {size: 11}}}), cfgPlot);
+    $("#fan-foot").innerHTML = `過去 10 日後：上漲 >2% <b>${(F.up * 100).toFixed(0)}%</b> · 持平 ${(F.flat * 100).toFixed(0)}% · 下跌 >2% ${(F.down * 100).toFixed(0)}%（樣本 ${F.n}）`;
+  }
+
+  // 07 成本結構：各成本線相對現價的位置
+  const rows = [["5 日均價", P.vwap["5"]], ["20 日均價", L.vwap20 || P.vwap["20"]], ["60 日均價", P.vwap["60"]]];
+  if (P.inst_cost) {
+    rows.push(["外資成本(20日)", P.inst_cost["20"].foreign.cost], ["外資成本(60日)", P.inst_cost["60"].foreign.cost],
+      ["投信成本(20日)", P.inst_cost["20"].trust.cost], ["投信成本(60日)", P.inst_cost["60"].trust.cost]);
+  }
+  if (cost) rows.push(["我的成本", cost]);
+  const vals = rows.map(r => r[1]).filter(Boolean).concat([q.close]);
+  const mn = Math.min(...vals) * 0.98, mx = Math.max(...vals) * 1.02, pos = v => (v - mn) / (mx - mn) * 100;
+  $("#cost").innerHTML = rows.map(([n, v]) => `<div class="costrow"><span>${esc(n)}</span><span class="track">
+      ${v ? `<i class="mark" style="left:${pos(v)}%"></i>` : ""}<i class="now" style="left:${pos(q.close)}%" title="現價"></i></span>
+      <span class="n">${v ? fmt(v) : "—"}<br><small class="${cls(q.close / v - 1)}">${v ? pct(q.close / v - 1, 1) : ""}</small></span></div>`).join("")
+    + `<p class="note">白線＝現價 ${fmt(q.close)}；百分比＝現價相對該成本的距離。</p>`;
+
+  // 08 法人
+  if (tw) {
+    const k = 20;
+    Plotly.react("ch-inst-mini", ["foreign", "trust", "dealer"].map((g, i) => ({type: "bar", name: ["外資", "投信", "自營商"][i],
+      x: inst.date.slice(-k).map(d => d.slice(5)), y: inst[g].slice(-k), marker: {color: [C.s1, C.s2, C.s3][i]}, hovertemplate: "%{y:,} 張"})),
+      baseLayout({barmode: "group", bargap: .25, margin: {l: 52, r: 8, t: 24, b: 24}}), cfgPlot);
+    const sum = (a, n) => a.slice(-n).reduce((x, y) => x + y, 0);
+    $("#inst-table").innerHTML = `<table><thead><tr><th></th><th class="n">今日</th><th class="n">5 日</th><th class="n">20 日</th><th class="n">連續</th></tr></thead><tbody>` +
+      [["外資", "foreign"], ["投信", "trust"], ["自營商", "dealer"], ["合計", "total"]].map(([n, g]) =>
+        `<tr><td>${n}</td><td class="n ${cls(inst[g].at(-1))}">${fmt(inst[g].at(-1), 0)}</td><td class="n ${cls(sum(inst[g], 5))}">${fmt(sum(inst[g], 5), 0)}</td>
+        <td class="n ${cls(sum(inst[g], 20))}">${fmt(sum(inst[g], 20), 0)}</td><td class="n">${g === "total" ? "" : sTxt(st[g])}</td></tr>`).join("") + "</tbody></table>";
+
+    // 09 當沖與週轉
+    const dt = P.daytrade;
+    Plotly.react("ch-daytrade", [{type: "bar", x: dt.date.slice(-20).map(d => d.slice(5)), y: dt.ratio.slice(-20), marker: {color: C.s2},
+      hovertemplate: "%{y:.1%}<extra>當沖比例</extra>"}], baseLayout({margin: {l: 40, r: 8, t: 8, b: 22}, yaxis: {tickformat: ".0%", gridcolor: C.grid}}), cfgPlot);
+    $("#daytrade-kv").innerHTML = [["20 日當沖比例", pct(P.daytrade_ratio20, 1).replace("+", "")], ["20 日平均週轉率", P.turnover20 == null ? "—" : (P.turnover20 * 100).toFixed(2) + "%"],
+      ["日內振幅（20 日平均）", (P.intraday_range20 * 100).toFixed(2) + "%"], ["外資持股比例", P.foreign_ratio == null ? "—" : (P.foreign_ratio * 100).toFixed(2) + "%"]]
+      .map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join("");
+  }
+
+  // 10 多空能量
+  const E = P.energy, pass = D.checklist.filter(c => c.pass).length;
+  $("#energy").innerHTML = `<div class="kv"><span>多方能量（紅 K 量）</span><span class="up">${(E.bull * 100).toFixed(0)}%</span>
+      <span>空方能量（黑 K 量）</span><span class="down">${(E.bear * 100).toFixed(0)}%</span></div>
+    <div class="duo"><i class="b" style="width:${E.bull * 100}%"></i><i class="s" style="width:${E.bear * 100}%"></i></div>
+    <div class="kv"><span>多空量比</span><span>${E.ratio ? E.ratio.toFixed(2) + " 倍" : "—"}</span>
+      <span>趨勢檢核偏強</span><span>${pass} / ${D.checklist.length} 項</span></div>
+    <div class="duo"><i class="b" style="width:${pass / D.checklist.length * 100}%"></i><i class="s" style="width:${(1 - pass / D.checklist.length) * 100}%"></i></div>`;
+
+  // 11 健康指標（環形）
+  const ring = (label, v, sub) => {
+    const r = 26, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, v / 100));
+    return `<div class="ring"><svg viewBox="0 0 64 64" role="img" aria-label="${esc(label)} ${Math.round(v)}">
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="${C.grid}" stroke-width="6"/>
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="${C.s1}" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="${c * f} ${c}" transform="rotate(-90 32 32)"/>
+      <text x="32" y="37" text-anchor="middle" fill="${C.ink}" font-size="15" font-weight="600">${Math.round(v)}</text></svg>
+      <div><div class="v">${esc(label)}</div><div class="t">${esc(sub)}</div></div></div>`;
+  };
+  $("#rings").innerHTML = P.radar.dims.map(d => ring(d.name, d.score, "0–100，越高越好")).join("");
+
+  // 12 信號燈
+  $("#lights").innerHTML = P.lights.items.map(x => `<div class="light"><span class="lamp ${x.tone}" aria-hidden="true"></span><b>${esc(x.name)}</b>
+      <span class="muted">${esc({bull: "偏強", neutral: "中性", bear: "偏弱", "risk-high": "高", "risk-mid": "中", "risk-low": "低"}[x.tone])} · ${esc(x.value)}</span></div>`).join("")
+    + `<p class="note">紅＝偏強、黃＝中性、綠＝偏弱（台股慣例）；風險燈：紅＝高。燈號描述走勢，不是買賣訊號。</p>`;
+
+  // 13 大盤（台股：加權指數；美股：S&P 500 / Nasdaq / 費半 / VIX）
+  const M = D.market_overview || {};
+  const stCls = x => x === "偏強" ? "bull" : x === "偏弱" ? "bear" : "neutral";
+  document.querySelector("#market").closest(".card").querySelector("h3").childNodes[1].textContent = M.kind === "US" ? "大盤狀態（美股）" : "大盤狀態（台股）";
+  if (M.error) $("#market").innerHTML = `<p class="note">大盤資料暫時無法取得：${esc(M.error)}</p>`;
+  else if (M.kind === "US") {
+    const I = M.indices, spx = I["^GSPC"];
+    $("#market").innerHTML = `<div style="display:flex;align-items:baseline;gap:10px"><span class="hint">S&P 500</span>
+        <span class="big">${fmt(spx.close)}</span><span class="${cls(spx.chg)}">${pct(spx.chg)}</span>
+        <span class="stance ${stCls(M.state)}" style="margin-left:auto">${esc(M.state)}</span></div>
+      <div class="kv" style="margin-top:8px">
+        ${["^IXIC", "^SOX"].map(k => `<span>${esc(I[k].name)}</span><span>${fmt(I[k].close)} <small class="${cls(I[k].chg)}">${pct(I[k].chg)}</small></span>`).join("")}
+        <span>S&P 500 vs 月線</span><span>${pct(spx.close / spx.ma20 - 1)}</span>
+        <span>VIX 恐慌指數</span><span>${fmt(I["^VIX"].close)}（${esc(M.vix_level)}）</span>
+        <span>美元兌台幣</span><span>${fmt(M.fx.now, 3)}（20 日 ${pct(M.fx.chg20)}）</span>
+        <span>資料日</span><span>${esc(M.date)}</span></div>`;
+  } else {
+    $("#market").innerHTML = `<div style="display:flex;align-items:baseline;gap:10px"><span class="hint">加權指數</span>
+        <span class="big">${fmt(M.taiex)}</span><span class="${cls(M.taiex_chg)}">${pct(M.taiex_chg)}</span>
+        <span class="stance ${stCls(M.state)}" style="margin-left:auto">${esc(M.state)}</span></div>
+      <div class="kv" style="margin-top:8px"><span>加權指數 vs 月線</span><span>${pct(M.taiex / M.taiex_ma20 - 1)}</span>
+        <span>法人合計 今日 / 5 日</span><span>${fmt(M.inst_today, 0)} / ${fmt(M.inst_5d, 0)} 億</span>
+        <span>全市場融資餘額</span><span>${fmt(M.margin_money, 0)} 億（5 日 ${pct(M.margin_chg5, 1)}）</span>
+        <span>資料日</span><span>${esc(M.date)}</span></div>`;
+  }
+
+  // 14 訊號回測
+  const B = P.backtest;
+  $("#backtest").innerHTML = `<table class="bt"><thead><tr><th>訊號</th><th class="n">次數</th><th class="n">10 日後上漲比例</th><th class="n">平均報酬</th><th class="n">vs 基準 ${(B.base_win * 100).toFixed(0)}%</th></tr></thead><tbody>` +
+    B.rows.map(r => {
+      const d = r.win == null ? null : r.win - B.base_win;
+      return `<tr><td>${esc(r.signal)}${r.enough ? "" : '<span class="tag">樣本不足</span>'}</td><td class="n">${r.n}</td>
+        <td class="n win">${r.win == null ? "—" : (r.win * 100).toFixed(0) + "%"}</td><td class="n ${cls(r.avg)}">${r.avg == null ? "—" : pct(r.avg, 1)}</td>
+        <td class="n ${d == null ? "" : d > 0.05 ? "better" : d < -0.05 ? "worse" : ""}">${d == null ? "—" : (d > 0 ? "+" : "") + (d * 100).toFixed(0) + "pt"}</td></tr>`;
+    }).join("") + `</tbody></table><p class="note">高於基準 5pt 以上才標紅；勝率接近或低於基準，代表這個訊號對本檔沒有額外參考價值。</p>`;
+
+  // 15 檢核、16 價位、17 持倉
+  const ck = D.checklist;
+  $("#checklist").innerHTML = `<div class="score"><b>${pass}</b><span>/ ${ck.length} 項偏強</span><span class="trend" style="margin-left:auto">${esc(D.trend)}</span></div>
+    <div class="meter"><i style="width:${pass / ck.length * 100}%"></i></div>
+    <ul class="check">${ck.map(c => `<li><span>${c.pass ? "✅" : "⬜"}</span><span>${esc(c.name)}</span><span class="d">${esc(c.detail)}</span></li>`).join("")}</ul>`;
+  const lvRows = [["20 日支撐 / 壓力", `${fmt(L.support20)} / ${fmt(L.resistance20)}`], ["60 日支撐 / 壓力", `${fmt(L.support60)} / ${fmt(L.resistance60)}`],
+    ["52 週低 / 高", `${fmt(L.low52)} / ${fmt(L.high52)}`], ["距 52 週高點", pct(q.close / L.high52 - 1)], ["月線乖離率", pct(L.bias20)],
+    ["ATR(14)", `${fmt(L.atr14)}（${pct(L.atr14 / q.close)}）`], ["20 日年化波動度", pct(L.vol20_ann, 1)]];
+  $("#levels").innerHTML = lvRows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
+  const p = D.position;
+  $("#position").innerHTML = p ? `<div class="kv"><span>持有股數</span><span>${fmt(p.shares, D.market === "TW" ? 0 : 4)}</span>
+      <span>平均成本</span><span>${fmt(p.avg_cost)}</span><span>未實現報酬</span><span class="${cls(p.pnl_pct)}">${pct(p.pnl_pct)}</span>
+      <span>定期定額</span><span>${p.dca ? (p.dca_amount ? `每月 ${D.market === "TW" ? "NT$" : "US$"} ${fmt(p.dca_amount, 0)}` : "是") : "否"}</span></div>
+      ${p.dca ? '<p class="note">定期定額標的：技術訊號只當參考，不影響扣款紀律。</p>' : ""}` : `<p class="note">未持有此標的。</p>`;
+
+  // 18 總評
+  $("#verdict").innerHTML = `<div style="margin-bottom:8px"><span class="stance ${V.stance === "偏強" ? "bull" : V.stance === "偏弱" ? "bear" : "neutral"}">技術面${esc(V.stance)}</span></div>
+    <ul class="summary">${V.reasons.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="note">${esc(V.note)}</p>
+    <div class="plain"><span class="pk">💬 白話結論</span>${esc(P.guidance.plain)}</div>
+    <h4 class="gtitle">投資參考（依你的投資政策）</h4>
+    <ul class="guide">${P.guidance.items.map(g => `<li class="${g.kind}"><span class="gk">${GUIDE_TAG[g.kind] || ""}</span>
+      <div><b>${esc(g.title)}</b><div class="gd">${esc(g.detail)}</div></div></li>`).join("")}</ul>
+    <p class="note">${esc(P.guidance.disclaimer)}</p>${NOT_ADVICE(true)}`;
+}
+
+function renderUS() {
+  const U = D.plus.us, I = D.us_info || {}, q = D.quote;
+  const capV = I.market_cap || I.fmp_market_cap;
+  const cap = capV ? (capV >= 1e12 ? `US$${(capV / 1e12).toFixed(2)} 兆` : `US$${(capV / 1e9).toFixed(1)} 十億`) : "—";
+  $("#us-info").innerHTML = `<div class="kv"><span>名稱</span><span>${esc(D.name)}</span><span>類別／產業</span><span>${esc(I.sector || "—")}</span>
+      <span>${I.is_etf ? "資產規模" : "市值"}</span><span>${cap}</span>
+      <span>Beta（相對大盤波動）</span><span>${I.beta == null ? "—" : fmt(I.beta) + (I.beta > 1.2 ? "（比大盤波動大）" : I.beta < 0.8 ? "（比大盤穩）" : "（接近大盤）")}</span>
+      <span>近 12 月配息（${U.dividends.length} 次）</span><span>US$${fmt(U.dps12, 3)}</span>
+      <span>殖利率（稅前）</span><span>${pct(U.yield).replace("+", "")}</span>
+      <span>殖利率（扣 ${(U.withholding * 100).toFixed(0)}% 預扣稅）</span><span>${pct(U.yield_net).replace("+", "")}</span>
+      <span>距 52 週高點</span><span>${pct(q.close / D.levels.high52 - 1)}</span></div>
+    <p class="note">美股沒有三大法人、融資融券、當沖統計（台股特有的揭露制度），所以這兩格改放美股資訊。</p>`;
+  const diff = U.ret_twd == null ? null : U.ret_twd - U.ret_usd;
+  $("#us-fx").innerHTML = `<div class="kv"><span>${esc(U.since)} 起報酬（美元）</span><span class="${cls(U.ret_usd)}">${pct(U.ret_usd)}</span>
+      <span>同期換算台幣報酬</span><span class="${cls(U.ret_twd)}">${pct(U.ret_twd)}</span>
+      <span>匯率影響</span><span class="${cls(diff)}">${diff == null ? "—" : (diff >= 0 ? "+" : "") + (diff * 100).toFixed(1) + "pt"}</span>
+      <span>美元兌台幣</span><span>${fmt(U.fx_then, 3)} → ${fmt(U.fx_now, 3)}</span></div>
+    <p class="note">${diff == null ? "" : diff >= 0 ? "這段期間美元升值，換回台幣的報酬變多。" : "這段期間台幣升值，換回台幣的報酬變少。"}你是用台幣投資，匯率也是報酬的一部分。</p>`;
+  fetch("/api/fx").then(r => r.json()).then(j => {
+    Plotly.react("ch-fx", [{type: "scatter", mode: "lines", x: j.date.map(d => d.slice(5)), y: j.rate, line: {color: C.s4, width: 2},
+      hovertemplate: "%{y:.3f}<extra>USD/TWD</extra>"}], baseLayout({margin: {l: 44, r: 8, t: 8, b: 22}, xaxis: {type: "category", nticks: 6, gridcolor: C.grid}}), cfgPlot);
+  }).catch(() => { $("#ch-fx").hidden = true; });
+}
+
+function usChipSummary() {
+  const U = D.plus.us_chips || {}, sv = U.short_volume, si = U.short_interest, ins = U.insider;
+  const zTxt = z => z == null ? "—" : z > 1 ? "明顯增加" : z < -1 ? "明顯減少" : "接近平常";
+  const rows = [];
+  if (sv) rows.push(["放空比例 近 5 日 / 60 日", `${(sv.avg5 * 100).toFixed(1)}% / ${(sv.avg60 * 100).toFixed(1)}%`],
+                    ["相對平常（z 值）", `${sv.z == null ? "—" : sv.z.toFixed(2)}（${zTxt(sv.z)}）`]);
+  if (si) rows.push(["放空餘額（" + si.last_date.slice(5) + "）", `${fmt(si.last, 0)} 股（${pct(si.chg, 1)}）`],
+                    ["回補天數", `${fmt(si.days_to_cover, 2)} 天`]);
+  rows.push(["內部人（180 天）", ins ? `買進 ${ins.buy_n} 筆 · 賣出 ${ins.sell_n} 筆` : "不適用（ETF）"]);
+  if (ins && (ins.buy_value || ins.sell_value)) {
+    const net = (ins.buy_value - ins.sell_value) / 1e6;
+    rows.push(["公開市場淨額", `${net < 0 ? "−" : "+"}US$${fmt(Math.abs(net), 1)} 百萬（${net < 0 ? "淨賣出" : "淨買進"}）`]);
+  }
+  const err = Object.keys(U.errors || {});
+  return `<div class="kv">${rows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("")}</div>`
+    + (err.length ? `<p class="note">部分資料暫時無法取得：${esc(err.join("、"))}</p>` : "")
+    + `<p class="note">放空比例平常就有 40–60%（包含造市商），要看和自己平常相比的變化。詳細圖表在「籌碼」分頁。</p>`;
+}
+
+function renderUSChips() {
+  const U = D.plus.us_chips || {}, sv = U.short_volume, si = U.short_interest, ins = U.insider;
+  if (sv) Plotly.react("ch-sv", [
+    {type: "bar", name: "每日放空比例", x: sv.date.map(d => d.slice(5)), y: sv.ratio, marker: {color: C.s2}, hovertemplate: "%{y:.1%}"},
+    line("60 日平均", sv.date.map(() => sv.avg60), C.ink2, {x: sv.date.map(d => d.slice(5)), line: {color: C.ink2, width: 1.5, dash: "dash"}, hovertemplate: "%{y:.1%}"}),
+  ], baseLayout({yaxis: {tickformat: ".0%", gridcolor: C.grid, range: [0, Math.max(0.8, ...sv.ratio) * 1.05]}}), cfgPlot);
+  if (si) {
+    Plotly.react("ch-si", [{type: "bar", name: "放空股數", x: si.date.map(d => d.slice(2)), y: si.shares, marker: {color: C.s1}, hovertemplate: "%{y:,} 股"}],
+      baseLayout({margin: {l: 64, r: 12, t: 12, b: 28}}), cfgPlot);
+    $("#si-kv").innerHTML = [["最新結算日", si.last_date], ["放空股數", fmt(si.last, 0) + " 股"], ["較上期", pct(si.chg, 1)],
+      ["回補天數", fmt(si.days_to_cover, 2) + " 天"], ["平均日成交量", fmt(si.adv, 0) + " 股"]].map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join("");
+  }
+  $("#ins").innerHTML = !ins ? `<p class="note">ETF 沒有董事和高階主管，因此沒有 Form 4 內部人申報。</p>` :
+    `<div class="kv"><span>公開市場買進（P）</span><span class="up">${ins.buy_n} 筆 · US$${fmt(ins.buy_value / 1e6, 2)} 百萬</span>
+      <span>公開市場賣出（S）</span><span class="down">${ins.sell_n} 筆 · US$${fmt(ins.sell_value / 1e6, 2)} 百萬</span></div>
+     <div class="tablewrap" style="max-height:300px;margin-top:8px"><table><thead><tr><th>日期</th><th>申報人</th><th>職位</th><th>類型</th><th class="n">股數</th><th class="n">價格</th></tr></thead><tbody>
+     ${ins.txns.map(t => `<tr><td>${t.date}</td><td>${esc(t.owner)}</td><td>${esc(t.role)}</td><td>${esc(t.code)} ${esc(t.code_name)}</td>
+       <td class="n ${t.side === "買" ? "up" : "down"}">${t.side === "買" ? "+" : "−"}${fmt(t.shares, 0)}</td><td class="n">${t.price ? fmt(t.price) : "—"}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+const GUIDE_TAG = {keep: "✅ 維持", ok: "✅ 符合", caution: "⚠️ 注意", candidate: "💡 候選", timing: "⏱ 執行", info: "ℹ️ 資訊"};
+
+// 「偏強／偏弱」的說明：描述走勢，不是加減碼建議
+function NOT_ADVICE(full) {
+  const B = D.plus.backtest, kd = B.rows.find(r => r.signal === "KD 黃金交叉");
+  const ev = kd && kd.win != null ? `以本檔為例，KD 黃金交叉後 10 日上漲比例 ${(kd.win * 100).toFixed(0)}%，任一天買進的基準是 ${(B.base_win * 100).toFixed(0)}%。` : "";
+  return `<div class="advice"><b>這不是買賣建議。</b>「偏強／偏弱」描述近期價格走勢，對未來報酬的預測力有限。${full ? ev : ""}
+    加減碼請依<b>月報健檢</b>的配置政策決定；定期定額照原設定扣款。</div>`;
+}
+
+const EXPLAIN = () => ({
+  radar: D.plus.radar.explain + "<br>" + D.plus.radar.dims.map(d => `<b>${d.name} ${d.score}</b>：${d.explain}`).join("<br>"),
+  risk: D.plus.risk.explain + "<br>" + D.plus.risk.dims.map(d => `<b>${d.name} ${d.score}</b>：${d.explain}`).join("<br>"),
+  profile: D.plus.profile && D.plus.profile.explain, fan: D.plus.fan && D.plus.fan.explain,
+  energy: D.plus.energy.explain, lights: D.plus.lights.explain, backtest: D.plus.backtest.explain,
+  verdict: D.plus.verdict.explain, market: D.market_overview && D.market_overview.explain,
+  cost: "N 日均價＝近 N 日成交量加權的收盤價（20 日用實際成交金額 ÷ 成交量）。法人估算成本＝近 N 日中，有買超的日子以買超張數加權的收盤價；只是估算，不是法人的真實持股成本。",
+  us: D.plus.us && D.plus.us.explain,
+  uschips: D.plus.us_chips && ["short_volume", "short_interest", "insider"].map(k => D.plus.us_chips[k] && D.plus.us_chips[k].explain).filter(Boolean).join("<br><br>"),
+  sv: D.plus.us_chips && D.plus.us_chips.short_volume && D.plus.us_chips.short_volume.explain,
+  si: D.plus.us_chips && D.plus.us_chips.short_interest && D.plus.us_chips.short_interest.explain,
+  ins: D.plus.us_chips && D.plus.us_chips.insider ? D.plus.us_chips.insider.explain : "ETF 沒有內部人申報。",
+  daytrade: "當沖比例＝當沖成交股數 ÷ 總成交股數；週轉率＝日成交股數 ÷ 發行股數；日內振幅＝(最高−最低) ÷ 收盤。資料：FinMind TaiwanStockDayTrading、TaiwanStockShareholding。",
+});
+
+function renderAlerts() {
+  const lv = {alert: "🔴 Alert", watch: "🟡 Watch", info: "🟢 OK"};
+  $("#warnings").innerHTML = D.warnings.map(w =>
+    `<div class="warn ${w.level}"><span class="lv">${lv[w.level]}</span><b>${esc(w.title)}</b><span class="dt">${esc(w.detail)}</span></div>`).join("");
+  const kinds = {all: "全部", kd: "KD", macd: "MACD", osc: "柱狀體", ma: "均線", vol: "成交量", rsi: "RSI"};
+  const counts = {}; D.signals.forEach(s => counts[s.kind] = (counts[s.kind] || 0) + 1);
+  $("#sig-filters").innerHTML = Object.entries(kinds).filter(([k]) => k === "all" || counts[k]).map(([k, v]) =>
+    `<button data-k="${k}" class="${sigFilter === k ? "on" : ""}">${v} ${k === "all" ? D.signals.length : counts[k]}</button>`).join("");
+  const rows = D.signals.filter(s => sigFilter === "all" || s.kind === sigFilter).slice().reverse();
+  $("#sig-table").innerHTML = `<thead><tr><th>日期</th><th>訊號</th><th>數值</th></tr></thead><tbody>` +
+    rows.map(s => `<tr><td>${s.date}</td><td><span class="tone ${s.tone}" aria-hidden="true"></span>${esc(s.label)}</td><td>${esc(s.detail)}</td></tr>`).join("") + "</tbody>";
+  const bull = D.signals.filter(s => s.tone === "bull").length, bear = D.signals.filter(s => s.tone === "bear").length;
+  $("#sig-count").textContent = `近 60 日：偏強訊號 ${bull} 個、偏弱訊號 ${bear} 個。●紅點 = 偏強、●綠點 = 偏弱、●灰點 = 中性（台股慣例紅漲綠跌）。`;
+}
+
+function renderKD() {
+  Plotly.react("ch-kd", [
+    candles(), line("MA5", S("ma5"), C.s1), line("MA10", S("ma10"), C.s2), line("MA20", S("ma20"), C.s3),
+    line("K 值", S("k"), C.s4, {yaxis: "y2"}), line("D 值", S("d"), C.s7, {yaxis: "y2"}),
+  ], baseLayout({
+    yaxis: {domain: [0.36, 1], gridcolor: C.grid, title: {text: "價格", font: {size: 11}}},
+    yaxis2: {domain: [0, 0.28], range: [0, 100], gridcolor: C.grid, tickvals: [0, 20, 50, 80, 100], title: {text: "KD", font: {size: 11}}},
+    shapes: [80, 20].map(v => ({type: "line", xref: "paper", yref: "y2", x0: 0, x1: 1, y0: v, y1: v, line: {color: v > 50 ? C.up : C.down, width: 1, dash: "dash"}})),
+    annotations: [80, 20].map(v => ({xref: "paper", yref: "y2", x: 1, y: v, text: v > 50 ? "超買 80" : "超賣 20", showarrow: false,
+      xanchor: "right", yanchor: "bottom", font: {size: 11, color: C.ink2}})),
+  }), cfgPlot);
+}
+
+function renderMACD() {
+  const x = dates(), fd = fullDates(), osc = S("osc");
+  const idx = Object.fromEntries(fd.map((d, i) => [d, i]));
+  const sig = D.signals.filter(s => (s.kind === "macd" || s.kind === "osc") && idx[s.date] != null);
+  const mk = (kind, tone) => sig.filter(s => s.kind === kind && s.tone === tone);
+  const pts = (arr, key) => ({x: arr.map(s => x[idx[s.date]]), y: arr.map(s => S(key)[idx[s.date]])});
+  const g = mk("macd", "bull"), d = mk("macd", "bear"), op = mk("osc", "bull"), on = mk("osc", "bear");
+  const marker = (name, arr, key, symbol, color, ax) => Object.assign({type: "scatter", mode: "markers", name, yaxis: ax,
+    marker: {symbol, size: 11, color, line: {color: C.panel, width: 2}}, hovertemplate: name}, pts(arr, key));
+  Plotly.react("ch-macd", [
+    line("收盤價", S("close"), C.ink), line("MA20", S("ma20"), C.s3, {line: {color: C.s3, width: 1.5, dash: "dot"}}),
+    {type: "bar", name: "OSC 柱狀體", x, y: osc, yaxis: "y2", marker: {color: osc.map(v => v >= 0 ? C.up : C.down)}, hovertemplate: "%{y:.2f}"},
+    line("DIF", S("dif"), C.s1, {yaxis: "y2"}), line("MACD（訊號線）", S("macd"), C.s2, {yaxis: "y2"}),
+    marker("黃金交叉 ▲", g, "dif", "triangle-up", C.up, "y2"), marker("死亡交叉 ▼", d, "dif", "triangle-down", C.down, "y2"),
+    marker("柱狀體翻正 ●", op, "osc", "circle", C.up, "y2"), marker("柱狀體翻負 ●", on, "osc", "circle", C.down, "y2"),
+  ], baseLayout({
+    yaxis: {domain: [0.5, 1], gridcolor: C.grid, title: {text: "價格", font: {size: 11}}},
+    yaxis2: {domain: [0, 0.44], gridcolor: C.grid, zerolinecolor: C.axis, title: {text: "MACD", font: {size: 11}}},
+    bargap: .3,
+    shapes: [...g, ...d].map(s => ({type: "line", xref: "x", yref: "paper", x0: x[idx[s.date]], x1: x[idx[s.date]], y0: 0, y1: 1,
+      line: {color: s.tone === "bull" ? C.up : C.down, width: 1, dash: "dash"}, opacity: .6})),
+  }), cfgPlot);
+  const all = D.signals.filter(s => idx[s.date] != null);
+  const c = (k, t) => all.filter(s => s.kind === k && s.tone === t);
+  const dl = a => a.map(s => s.date.slice(5)).join("、");
+  $("#macd-note").textContent = `顯示區間內：黃金交叉 ${c("macd", "bull").length} 次（${dl(c("macd", "bull")) || "無"}）；死亡交叉 ${c("macd", "bear").length} 次（${dl(c("macd", "bear")) || "無"}）；柱狀體翻正 ${c("osc", "bull").length} 次、翻負 ${c("osc", "bear").length} 次。訊號列表只涵蓋近 60 日。`;
+}
+
+function renderChips() {
+  const has = !!D.chips;
+  $("#chips-grid").hidden = !has; $("#us-chips-grid").hidden = has;
+  if (!has) return renderUSChips();
+  const I = D.chips.institutional, M = D.chips.margin, k = Math.min(N, I.date.length);
+  const xd = I.date.slice(-k).map(d => d.slice(5));
+  const names = ["外資", "投信", "自營商"], keys = ["foreign", "trust", "dealer"], cs = [C.s1, C.s2, C.s3];
+  Plotly.react("ch-inst", keys.map((g, i) => ({type: "bar", name: names[i], x: xd, y: I[g].slice(-k), marker: {color: cs[i]}, hovertemplate: "%{y:,} 張"})),
+    baseLayout({barmode: "group", bargap: .2}), cfgPlot);
+  const cum = a => a.slice(-k).reduce((acc, v) => (acc.push((acc.at(-1) || 0) + v), acc), []);
+  Plotly.react("ch-inst-cum", keys.map((g, i) => line(names[i], cum(I[g]), cs[i], {x: xd, hovertemplate: "%{y:,} 張"})),
+    baseLayout({margin: {l: 64, r: 16, t: 28, b: 28}}), cfgPlot);
+  const mk = M.date.length, km = Math.min(N, mk), xm = M.date.slice(-km).map(d => d.slice(5));
+  Plotly.react("ch-margin", [line("融資餘額", M.margin.slice(-km), C.s1, {x: xm, showlegend: false, fill: "tozeroy", fillcolor: "rgba(57,135,229,.1)", hovertemplate: "%{y:,} 張"})],
+    baseLayout({margin: {l: 64, r: 16, t: 12, b: 28}}), cfgPlot);
+  Plotly.react("ch-short", [line("融券餘額", M.short.slice(-km), C.s2, {x: xm, showlegend: false, fill: "tozeroy", fillcolor: "rgba(217,89,38,.1)", hovertemplate: "%{y:,} 張"})],
+    baseLayout({margin: {l: 64, r: 16, t: 12, b: 28}}), cfgPlot);
+  const sum = (a, n) => a.slice(-n).reduce((x, y) => x + y, 0);
+  const rows = [];
+  keys.forEach((g, i) => rows.push([`${names[i]} 5 日 / 20 日`, `${fmt(sum(I[g], 5), 0)} / ${fmt(sum(I[g], 20), 0)}`]));
+  rows.push(["三大法人 20 日合計", fmt(sum(I.total, 20), 0)]);
+  if (mk >= 6) rows.push(["融資 5 日增減", `${fmt(M.margin.at(-1) - M.margin.at(-6), 0)} 張`]);
+  if (M.margin.at(-1)) rows.push(["券資比", pct(M.short.at(-1) / M.margin.at(-1))]);
+  $("#inst-stats").innerHTML = rows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
+}
+
+const RAW_COLS = [["date", "日期", 0], ["open", "開", 2], ["high", "高", 2], ["low", "低", 2], ["close", "收", 2], ["volume", "量", 0],
+  ["ma5", "MA5", 2], ["ma20", "MA20", 2], ["ma60", "MA60", 2], ["k", "K", 1], ["d", "D", 1], ["dif", "DIF", 2], ["macd", "MACD", 2],
+  ["osc", "OSC", 2], ["rsi", "RSI", 1]];
+function renderRaw() {
+  const n = S("date").length;
+  let h = `<thead><tr>${RAW_COLS.map(([, l], i) => `<th class="${i ? "n" : ""}">${l}</th>`).join("")}</tr></thead><tbody>`;
+  for (let i = n - 1; i >= 0; i--)
+    h += `<tr>${RAW_COLS.map(([k, , d], j) => `<td class="${j ? "n" : ""}">${j ? fmt(S(k)[i], d) : S(k)[i]}</td>`).join("")}</tr>`;
+  $("#raw-table").innerHTML = h + "</tbody>";
+}
+
+// ---------- 下載 ----------
+function activeTab() { return document.querySelector(".tabs .on").dataset.tab; }
+$("#dl-png").onclick = () => {
+  renderTab(activeTab());
+  document.querySelectorAll(`#p-${activeTab()} .js-plotly-plot`).forEach((el, i) => {
+    if (el.offsetParent) Plotly.downloadImage(el, {format: "png", scale: 2, width: el.clientWidth, height: el.clientHeight,
+      filename: `${D.symbol}_${D.name}_${activeTab()}_${i + 1}_${D.quote.date}`});
+  });
+};
+$("#dl-csv").onclick = () => {
+  const n = S("date").length, lines = [RAW_COLS.map(c => c[1]).join(",")];
+  for (let i = 0; i < n; i++) lines.push(RAW_COLS.map(([k]) => S(k)[i] ?? "").join(","));
+  save(new Blob(["﻿" + lines.join("\n")], {type: "text/csv"}), `${D.symbol}_${D.name}_${D.quote.date}.csv`);
+};
+$("#dl-html").onclick = async () => {
+  let html;
+  if (window.__DATA__) html = "<!doctype html>\n" + document.documentElement.outerHTML;
+  else html = await (await fetch(`/report?id=${encodeURIComponent(D.symbol)}`)).text();
+  save(new Blob([html], {type: "text/html"}), `${D.symbol}_${D.name}_技術分析_${D.quote.date}.html`);
+};
+$("#go-reports").onclick = () => { location.href = "/reports/"; };
+$("#dl-print").onclick = () => { Object.keys(RENDER).forEach(renderTab); setTimeout(() => window.print(), 300); };
+function save(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+
+// ---------- 互動 ----------
+$("#form").onsubmit = e => { e.preventDefault(); load($("#sym").value); };
+$("#chips").onclick = e => { const b = e.target.closest("[data-sym]"); if (b) load(b.dataset.sym); };
+$("#tabs").onclick = e => {
+  const b = e.target.closest("[data-tab]"); if (!b) return;
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === `p-${b.dataset.tab}`));
+  renderTab(b.dataset.tab);
+  document.querySelectorAll(`#p-${b.dataset.tab} .js-plotly-plot`).forEach(el => Plotly.Plots.resize(el));
+};
+$("#range").onclick = e => {
+  const b = e.target.closest("[data-n]"); if (!b || !D) return;
+  N = +b.dataset.n; document.querySelectorAll("#range button").forEach(x => x.classList.toggle("on", x === b)); render();
+};
+$("#sig-filters").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { sigFilter = b.dataset.k; renderAlerts(); } };
+
+// ---------- FinMind 用量 ----------
+async function refreshQuota() {
+  if (window.__DATA__) { $("#quota").hidden = true; return; }
+  try {
+    const j = await (await fetch("/api/quota")).json(), o = j.official, L = j.local;
+    const el = $("#quota");
+    if (!o) { el.textContent = `API 本機 ${L.total} 次/時`; return; }
+    const p = o.pct || 0;
+    el.className = "quota " + (p >= 0.8 ? "high" : p >= 0.5 ? "mid" : "");
+    el.innerHTML = `API ${o.used} / ${o.limit}<span class="qbar" aria-hidden="true"><i style="width:${Math.min(100, p * 100)}%"></i></span>${(p * 100).toFixed(0)}%`;
+    el.setAttribute("aria-label", `FinMind 本小時已用 ${o.used} 次，上限 ${o.limit} 次`);
+    $("#quota-detail").innerHTML = `<b>FinMind API 本小時用量</b>（${esc(o.level)} 方案）：官方 ${o.used} / ${o.limit} 次，剩餘 ${o.limit - o.used} 次。
+      官方數字可能延遲數分鐘；達 98% 時系統會暫停呼叫。<br>本機近 60 分鐘呼叫 ${L.total} 次：
+      <table><tbody>${Object.entries(L.by_dataset).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v}</td></tr>`).join("") || "<tr><td>無</td></tr>"}</tbody></table>
+      <p class="note">分析一檔台股約 7 次呼叫（同一天重複查詢會使用快取，不再呼叫）；大盤資料每天只抓一次。</p>`;
+  } catch (e) { /* 伺服器未啟動 */ }
+}
+$("#quota").onclick = () => { const d = $("#quota-detail"); d.hidden = !d.hidden; };
+refreshQuota(); setInterval(refreshQuota, 60000);
+
+loadChips();
+if (window.__DATA__) { D = window.__DATA__; $(".search").hidden = true; render(); }
+else { const id = new URLSearchParams(location.search).get("id"); if (id) load(id).then(openTabFromUrl); }
+function openTabFromUrl() {
+  const t = new URLSearchParams(location.search).get("tab");
+  const b = t && document.querySelector(`.tabs [data-tab="${CSS.escape(t)}"]`);
+  if (b) b.click();
+}
+</script>
+</body>
+</html>

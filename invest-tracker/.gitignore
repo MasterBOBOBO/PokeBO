@@ -1,0 +1,12 @@
+# ── 個人資料：永遠不上傳 ──────────────────────────
+.env.local
+private/
+CLAUDE.local.md
+# 快取、報告、日誌（含個人資產數字，可重新產生）
+data/
+reports/
+logs/
+# launchd 設定檔含本機路徑，用 `python3 invest.py launchd` 產生
+launchd/
+__pycache__/
+.DS_Store
