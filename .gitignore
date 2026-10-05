@@ -10,3 +10,5 @@ logs/
 launchd/
 __pycache__/
 .DS_Store
+# 網頁版預設 token（若要公開，需明確決定後才 git add -f）
+web/config.js
