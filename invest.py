@@ -152,6 +152,51 @@ def cmd_launchd(cfg, args):
         print("加上 --install 會複製到 ~/Library/LaunchAgents 並啟用")
 
 
+def cmd_publish(cfg, args):
+    """把公開 repo 的最新提交同步到 GitHub 上的子資料夾。推送前會先做個人資料掃描，發現可疑內容就中止。"""
+    import re
+    import subprocess
+    pub = cfg.get("publish", {})
+    target, prefix = pub.get("repo_dir"), pub.get("prefix", "invest-tracker")
+    if not target:
+        sys.exit("請在 private/config.json 設定 publish.repo_dir（GitHub repo 的本機路徑）")
+    git = lambda *a, cwd=data.ROOT: subprocess.run(["git", *a], cwd=cwd, capture_output=True, text=True)
+    if git("status", "--porcelain").stdout.strip():
+        sys.exit("公開 repo 還有未提交的變更，請先 commit")
+    # 個人資料掃描：private/config.json 裡的 email、.env.local 裡的所有金鑰、以及自訂關鍵字
+    patterns = list(pub.get("forbidden", []))
+    patterns += [v for v in [cfg.get("sec_user_agent", "").split()[-1:] or [""]][0:1] if v and "@" in v]
+    env = data.ROOT / ".env.local"
+    for line in env.read_text().splitlines() if env.exists() else []:
+        if "=" in line and len(line.split("=", 1)[1].strip()) >= 12:
+            patterns.append(line.split("=", 1)[1].strip())
+    hits = []
+    for f in git("ls-files").stdout.split():
+        try:
+            text = (data.ROOT / f).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, FileNotFoundError):
+            continue
+        hits += [f"{f}：{p[:6]}…" for p in patterns if p and p in text]
+    hits += [f"{f}：屬於個人資料路徑" for f in git("ls-files").stdout.split()
+             if re.match(r"(private/|CLAUDE\.local\.md|\.env|data/|reports/)", f)]
+    if hits:
+        print("⚠️ 發現疑似個人資料，已中止推送：")
+        print("\n".join("  " + h for h in hits))
+        sys.exit(1)
+    print(f"✅ 個人資料掃描通過（{len(patterns)} 個關鍵字）")
+    r = git("subtree", "pull", "-q", "--prefix", prefix, str(data.ROOT), "main", "-m",
+            f"更新 {prefix}", cwd=target)
+    if r.returncode:
+        sys.exit(r.stderr.strip())
+    if args.dry_run:
+        print("（dry-run：已合併到本機的 GitHub repo，尚未推送）")
+        return
+    r = git("push", "origin", "main", cwd=target)
+    print(r.stderr.strip() or "已推送")
+    if r.returncode:
+        sys.exit(1)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -188,6 +233,8 @@ def main():
     c.add_argument("file")
     c.add_argument("--apply-cost", action="store_true", help="股數一致時，以券商成本校正期初均價")
     sub.add_parser("quota", help="查詢 FinMind API 本小時已用次數")
+    pb = sub.add_parser("publish", help="個人資料掃描後，把程式碼同步到 GitHub repo 的子資料夾")
+    pb.add_argument("--dry-run", action="store_true")
     l = sub.add_parser("launchd", help="產生（並安裝）macOS 排程：每日更新、每月月報、常駐儀表板")
     l.add_argument("--install", action="store_true")
     args = p.parse_args()
@@ -195,7 +242,8 @@ def main():
     {"update": cmd_update, "buy": cmd_buy, "backfill": cmd_backfill,
      "report": cmd_report, "html": cmd_html, "simulate": cmd_simulate,
      "serve": cmd_serve, "ta": cmd_ta, "backup": cmd_backup, "job": cmd_job,
-     "reconcile": cmd_reconcile, "quota": cmd_quota, "launchd": cmd_launchd}[args.cmd](cfg, args)
+     "reconcile": cmd_reconcile, "quota": cmd_quota, "launchd": cmd_launchd,
+     "publish": cmd_publish}[args.cmd](cfg, args)
 
 
 if __name__ == "__main__":
