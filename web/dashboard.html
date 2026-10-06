@@ -305,7 +305,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 
   <div class="empty" id="empty">
     <h1>個股技術分析</h1>
-    <p>輸入股票代號後，系統會抓取約 1.5 年的真實日 K 資料（台股另含三大法人與融資融券），計算均線、KD、MACD、RSI、布林通道、支撐壓力與規則式趨勢檢核。上方快速選擇列出你的持股。</p>
+    <p>輸入股票代號後，系統會抓取約 3 年的真實日 K 資料（台股另含三大法人與融資融券），計算均線、KD、MACD、RSI、布林通道、支撐壓力與規則式趨勢檢核。上方快速選擇列出你的持股。</p>
   </div>
 
   <footer>本頁為技術指標整理，僅供參考，不構成投資建議；「技術面偏強／偏弱」描述價格走勢，不代表應加碼或減碼。資料為 T+1 收盤後更新，請以實際成交與官方資訊為準。長期定期定額標的請以配置紀律為主，技術訊號不應影響扣款。</footer>
@@ -538,7 +538,7 @@ function renderQuote() {
     ["", `成交量(${unit})`, fmt(q.volume, 0)],
     ["", "成交筆數", q.trades == null ? "—" : fmt(q.trades, 0)],
     ["", "開盤", fmt(q.open)], ["", "最高", fmt(q.high)], ["", "最低", fmt(q.low)],
-    ["", "最新交易日", q.date], ["", "資料筆數", q.rows],
+    ["", "最新交易日", q.date], ["", "資料筆數(交易日)", q.rows],
   ];
   $("#quote").title = `${D.symbol} ${D.name}`;
   $("#quote").innerHTML = cells.map(([c, l, v], i) =>
