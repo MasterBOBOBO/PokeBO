@@ -12,14 +12,15 @@ let py = null, ready = null;
 const progress = text => postMessage({type: "progress", text});
 
 async function boot() {
-  progress("載入 Python 執行環境（第一次約 10MB，之後會快取）…");
-  importScripts(PYODIDE + "pyodide.js");
+  progress("步驟 1/3：載入 Python 執行環境（第一次約 10MB，之後會快取）…");
+  try { importScripts(PYODIDE + "pyodide.js"); }
+  catch (e) { throw new Error("無法從 CDN（cdn.jsdelivr.net）下載 Python 執行環境，請確認網路或公司防火牆後重試"); }
   py = await loadPyodide({indexURL: PYODIDE});
   const FS = py.FS;
   for (const d of [ROOT, ROOT + "/lib", ROOT + "/data"]) try { FS.mkdir(d); } catch (e) {}
   FS.mount(py.FS.filesystems.IDBFS, {}, ROOT + "/data");
   await new Promise(r => FS.syncfs(true, r));                // IndexedDB → 記憶體
-  progress("載入分析程式…");
+  progress("步驟 2/3：載入分析程式…");
   const base = new URL("../", self.location.href);            // invest-tracker/
   const get = async path => {
     const r = await fetch(new URL(path, base), {cache: "no-cache"});   // 每次向伺服器確認版本（沒變只回 304）
@@ -49,7 +50,7 @@ def _xhr(method, url, body=None, headers=None, timeout=30):
 data.WEB = True
 data.set_transport(_xhr)
 `);
-  progress("");
+  postMessage({type: "ready"});                               // 主畫面據此把逾時從「啟動」切換成「分析」
 }
 
 function run(code) {
@@ -59,13 +60,14 @@ function run(code) {
 
 self.onmessage = async ({data: msg}) => {
   try {
+    const first = !ready;
     ready = ready || boot();
-    await ready;
+    try { await ready; } catch (e) { ready = null; throw e; }   // 啟動失敗時允許下次重試，不要永遠卡在失敗的 Promise
     py.globals.set("TOKEN", msg.token || "");
     py.runPython(`import os; os.environ["FINMIND_TOKEN"] = TOKEN`);
     let result;
     if (msg.cmd === "analyze") {
-      progress(`抓取 ${msg.symbol} 資料並計算指標…`);
+      progress(`${first ? "步驟 3/3：" : ""}抓取 ${msg.symbol} 資料並計算指標…`);
       py.globals.set("SYM", msg.symbol);
       py.globals.set("REFRESH", !!msg.refresh);
       result = run(`
