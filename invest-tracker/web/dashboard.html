@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>個股技術分析</title>
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"
+  integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
 <!-- 選用：網頁版預設 token（window.DEFAULT_FINMIND_TOKEN）。檔案不存在時忽略。 -->
 <script src="config.js" onerror="void 0"></script>
 <style>
@@ -29,7 +30,8 @@ button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--axis
 button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;scrollbar-width:thin;scrollbar-color:var(--axis) transparent}
+.chips::-webkit-scrollbar{height:4px}.chips::-webkit-scrollbar-thumb{background:var(--axis);border-radius:2px}
 .chip{font-size:13px;padding:4px 10px;border-radius:999px}
 .chip .tag{color:var(--muted);font-size:11px;margin-left:4px}
 .quote{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:1px;background:var(--ring);border-radius:12px;overflow:hidden;margin-top:12px;border:1px solid var(--ring)}
@@ -52,7 +54,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .card h3 .no{font-size:11px;color:var(--muted);border:1px solid var(--axis);border-radius:4px;padding:0 5px}
 .card h3 .hint{margin-left:auto;color:var(--muted);font-weight:400;font-size:12px}
 .c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}
-@media (max-width:1000px){.c8,.c6,.c4{grid-column:span 12}}
+@media (max-width:1000px){.c8,.c6,.c4{grid-column:span 12}.card.first-narrow{order:-1}}
 .chart{width:100%;height:360px;contain:layout paint}.chart.tall{height:520px}.chart.short{height:220px}.chart.mid{height:260px}.chart.xshort{height:140px}
 body.scrolling .js-plotly-plot{pointer-events:none}
 .card h3 .info{margin-left:auto;border:none;background:none;color:var(--muted);padding:0 4px;font-size:14px;cursor:pointer}
@@ -137,8 +139,17 @@ td.n,th.n{text-align:right}
 .empty{text-align:center;padding:72px 16px}
 .empty h1{font-size:26px;margin:0 0 8px;color:var(--accent)}
 .empty p{color:var(--ink-2);max-width:640px;margin:0 auto 20px}
-.loading{position:fixed;inset:0;background:rgba(11,14,22,.75);display:none;align-items:center;justify-content:center;z-index:10;font-size:16px}
+/* 載入狀態列：放在頁面內容裡，不遮住 Token、搜尋和說明 */
+.loading{display:none;align-items:center;gap:10px;margin-top:12px;padding:10px 14px;border-radius:10px;background:var(--panel-2);border:1px solid var(--accent);font-size:14px}
 .loading.on{display:flex}
+.loading #loading-text{flex:1;min-width:0;overflow-wrap:anywhere}
+.loading #loading-time{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.loading .spin{width:16px;height:16px;border:2px solid var(--axis);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.loading .spin{animation:none}}
+body.busy #app{opacity:.55;transition:opacity .2s}
+.err button{margin-left:8px;padding:3px 12px}
+.remember{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:var(--ink-2)}
 .err{background:rgba(208,59,59,.12);border:1px solid var(--bad);color:var(--ink);border-radius:10px;padding:10px 14px;margin-top:12px;display:none}
 footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;padding:12px;border-top:1px solid var(--grid)}
 /* ── 手機版 ─────────────────────────────────────── */
@@ -147,8 +158,8 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
   .top{padding:10px 12px;gap:8px}
   .brand{font-size:15px;width:100%}
   .brand small{display:none}
-  .search{flex:1}.search input{flex:1;width:auto;min-width:0;font-size:16px}
-  .quota{order:3}
+  .search{flex:1 1 100%;min-width:0;order:4}.search input{flex:1;width:auto;min-width:0;font-size:16px}
+  .quota{order:3;margin-left:auto}
   .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
   .chip{white-space:nowrap;flex:none}
   .quote{grid-template-columns:repeat(3,1fr)}
@@ -178,7 +189,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="brand">個股技術分析儀表板<small>FinMind 真實資料 · 指標皆可驗證 · 不含推估分數</small></div>
+    <div class="brand">個股技術分析儀表板<small>FinMind 真實資料 · 指標皆可驗證 · 分數皆由公開規則計算，不含 AI 預測</small></div>
     <button class="web-only" id="token-btn" type="button">設定 Token</button>
     <button class="quota" id="quota" type="button" title="FinMind API 本小時用量，點擊查看明細">API —</button>
     <form class="search" id="form">
@@ -189,14 +200,17 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
   <div class="quota-detail" id="quota-detail" hidden></div>
   <div class="token-box" id="token-box" hidden>
     <b>FinMind API Token</b>
-    <p class="note">網頁版會用這個 token 直接向 FinMind 抓資料。token 只存在<b>這個瀏覽器</b>（localStorage），不會傳到其他地方。
-      還沒有 token 的話，可以到 <a href="https://finmindtrade.com/" target="_blank" rel="noopener">finmindtrade.com</a> 免費註冊。</p>
+    <p class="note">網頁版會用這個 token 直接向 FinMind 抓資料：token 只會傳送給 FinMind，本站沒有伺服器，不會代收。
+      勾選「記住」時存在這個瀏覽器的 localStorage，同一網域（masterbobobo.github.io）的頁面都讀得到；不勾選則只保存到關閉分頁為止。
+      共用電腦請不要勾選，用完按「清除」。還沒有 token 的話，可以到 <a href="https://finmindtrade.com/" target="_blank" rel="noopener">finmindtrade.com</a> 免費註冊。</p>
     <div class="search"><input id="token-input" type="password" placeholder="貼上 FinMind token" autocomplete="off" aria-label="FinMind token">
       <button class="primary" id="token-save" type="button">儲存</button><button id="token-clear" type="button">清除</button></div>
+    <label class="remember"><input type="checkbox" id="token-remember">記住在這台裝置</label>
     <p class="note" id="token-state"></p>
   </div>
   <div class="chips" id="chips" aria-label="快速選擇"></div>
   <div class="err" id="err" role="alert"></div>
+  <div class="loading" id="loading" role="status" aria-live="polite"><span class="spin" aria-hidden="true"></span><span id="loading-text">資料載入中…</span><span id="loading-time"></span></div>
 
   <div id="app" hidden>
     <div class="quote" id="quote"></div>
@@ -223,7 +237,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
     <section class="panel on" id="p-overview">
       <div class="grid">
         <div class="card c8"><h3><span class="no">01</span>主 K 線圖<span class="hint">支撐／壓力／成交均價／法人估算成本</span></h3><div class="levelkeys" id="levelkeys"></div><div class="chart tall" id="ch-main"></div></div>
-        <div class="card c4"><h3><span class="no">02</span>決策摘要<button class="info" data-x="verdict">ⓘ</button></h3><div id="core"></div></div>
+        <div class="card c4 first-narrow"><h3><span class="no">02</span>決策摘要<button class="info" data-x="verdict">ⓘ</button></h3><div id="core"></div></div>
         <div class="card c4"><h3><span class="no">03</span>多維度評分<button class="info" data-x="radar">ⓘ</button></h3><div class="chart mid" id="ch-radar"></div><div id="radar-foot" class="foot2"></div></div>
         <div class="card c4"><h3><span class="no">04</span>籌碼熱區（價量分布）<button class="info" data-x="profile">ⓘ</button></h3><div class="chart mid" id="ch-profile"></div><div id="profile-foot" class="foot2"></div></div>
         <div class="card c4"><h3><span class="no">05</span>風險雷達<button class="info" data-x="risk">ⓘ</button></h3><div class="chart mid" id="ch-risk"></div><div id="risk-foot" class="foot2"></div></div>
@@ -294,7 +308,6 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 
   <footer>本頁為技術指標整理，僅供參考，不構成投資建議；「技術面偏強／偏弱」描述價格走勢，不代表應加碼或減碼。資料為 T+1 收盤後更新，請以實際成交與官方資訊為準。長期定期定額標的請以配置紀律為主，技術訊號不應影響扣款。</footer>
 </div>
-<div class="loading" id="loading"><span id="loading-text">資料載入中…</span></div>
 
 <script>
 window.__DATA__ = null; /*__EMBED__*/
@@ -362,22 +375,40 @@ async function detectMode() {
   document.body.classList.toggle("web-mode", MODE === "web");
   return MODE;
 }
-function finmindToken() {
-  try { return localStorage.getItem("finmind_token") || window.DEFAULT_FINMIND_TOKEN || ""; }
-  catch (e) { return window.DEFAULT_FINMIND_TOKEN || ""; }
+// 使用者自己的 token：勾選「記住」存 localStorage，否則存 sessionStorage（關閉分頁就清除）
+function ownToken() {
+  try { return localStorage.getItem("finmind_token") || sessionStorage.getItem("finmind_token"); } catch (e) { return null; }
+}
+function finmindToken() { return ownToken() || window.DEFAULT_FINMIND_TOKEN || ""; }
+
+// 多久「沒有任何進度訊息」就判定失敗：第一次要下載約 10MB 的 Python 執行環境，給比較長的時間
+const WORKER_TIMEOUT = {boot: 90000, run: 60000};
+let booted = false;
+function resetWorker(reason) {
+  if (worker) worker.terminate();
+  worker = null; booted = false;
+  Object.values(pending).forEach(p => { p.done(); p.reject(new Error(reason)); });
 }
 function callWorker(cmd, args) {
   if (!worker) {
     // 加時間參數避免瀏覽器用到舊版 worker（GitHub Pages 預設快取 10 分鐘）
     worker = new Worker(`worker.js?v=${Date.now()}`);
     worker.onmessage = ({data: m}) => {
-      if (m.type === "progress") { $("#loading-text").textContent = m.text || "資料載入中…"; return; }
-      const p = pending[m.id]; delete pending[m.id];
-      if (p) m.ok ? p.resolve(m.result) : p.reject(new Error(m.error));
+      if (m.type === "progress") { setLoading(m.text); Object.values(pending).forEach(p => p.kick()); return; }
+      if (m.type === "ready") { booted = true; return; }
+      const p = pending[m.id]; if (!p) return;
+      p.done(); m.ok ? p.resolve(m.result) : p.reject(new Error(m.error));
     };
+    // worker.js 下載失敗、CDN 被擋、WASM 不支援等錯誤，原本會讓 Promise 永遠不結束
+    worker.onerror = e => { e.preventDefault(); resetWorker(`分析引擎啟動失敗（${e.message || "可能是網路或瀏覽器限制"}）`); };
+    worker.onmessageerror = () => resetWorker("分析引擎回傳的資料無法讀取");
   }
   return new Promise((resolve, reject) => {
-    const id = ++seq; pending[id] = {resolve, reject};
+    const id = ++seq, limit = booted ? WORKER_TIMEOUT.run : WORKER_TIMEOUT.boot;
+    let t;
+    const kick = () => { clearTimeout(t); t = setTimeout(() => resetWorker(`超過 ${limit / 1000} 秒沒有回應，可能是網路太慢或 CDN 無法連線`), limit); };
+    pending[id] = {resolve, reject, kick, done: () => { clearTimeout(t); delete pending[id]; }};
+    kick();
     worker.postMessage({cmd, id, token: finmindToken(), ...args});
   });
 }
@@ -409,18 +440,32 @@ const API = {
 };
 
 // ---------- 載入 ----------
+let loadSeq = 0, loadTimer = null;
+function setLoading(text) { $("#loading-text").textContent = text || "資料載入中…"; }
+function busy(on) {
+  clearInterval(loadTimer);
+  $("#loading").classList.toggle("on", on); document.body.classList.toggle("busy", on);
+  if (!on) return;
+  const t0 = Date.now(); $("#loading-time").textContent = "";
+  loadTimer = setInterval(() => { $("#loading-time").textContent = `${Math.round((Date.now() - t0) / 1000)} 秒`; }, 1000);
+}
 async function load(sym, refresh = false) {
   sym = (sym || "").trim().toUpperCase();
   if (!sym) return;
+  const my = ++loadSeq;      // 連續點選時只採用最後一次的結果
   $("#err").style.display = "none";
-  $("#loading").classList.add("on");
+  setLoading(""); busy(true);
   try {
-    D = await API.stock(sym, refresh); refreshQuota(); const tab = new URLSearchParams(location.search).get("tab");
+    const d = await API.stock(sym, refresh);
+    if (my !== loadSeq) return;
+    D = d; refreshQuota(); const tab = new URLSearchParams(location.search).get("tab");
     history.replaceState(null, "", `?id=${sym}${tab ? `&tab=${tab}` : ""}`); render();
   } catch (e) {
-    $("#err").textContent = `無法取得 ${sym} 的資料：${e.message}（不會產生任何模擬數據）`;
+    if (my !== loadSeq) return;
+    $("#err").innerHTML = `無法取得 ${esc(sym)} 的資料：${esc(e.message)}（不會產生任何模擬數據）<button type="button" id="retry">重試</button>`;
     $("#err").style.display = "block";
-  } finally { $("#loading").classList.remove("on"); }
+    $("#retry").onclick = () => load(sym, refresh);
+  } finally { if (my === loadSeq) busy(false); }
 }
 
 async function loadChips() {
@@ -444,6 +489,7 @@ function render() {
   $("#sym").value = D.symbol;
   renderQuote();
   document.querySelectorAll(".explain").forEach(e => e.remove());
+  document.querySelectorAll(".info[aria-expanded]").forEach(b => b.setAttribute("aria-expanded", "false"));
   dirty = new Set(Object.keys(RENDER));
   renderTab(activeTab());
 }
@@ -473,11 +519,11 @@ addEventListener("scroll", () => {
 document.addEventListener("click", e => {
   const b = e.target.closest(".info"); if (!b || !D) return;
   const card = b.closest(".card"), open = card.querySelector(".explain");
-  if (open) return open.remove();
+  if (open) { b.setAttribute("aria-expanded", "false"); return open.remove(); }
   const html = EXPLAIN()[b.dataset.x];
   if (!html) return;
   const div = document.createElement("div"); div.className = "explain"; div.innerHTML = html;
-  card.querySelector("h3").after(div);
+  card.querySelector("h3").after(div); b.setAttribute("aria-expanded", "true");
 });
 
 function renderQuote() {
@@ -905,18 +951,24 @@ $("#dl-html").onclick = async () => {
   save(new Blob([html], {type: "text/html"}), `${D.symbol}_${D.name}_技術分析_${D.quote.date}.html`);
 };
 function openToken() {
-  const own = (() => { try { return localStorage.getItem("finmind_token"); } catch (e) { return null; } })();
-  $("#token-state").textContent = own ? "目前使用你自己設定的 token。" : window.DEFAULT_FINMIND_TOKEN ? "目前使用網站提供的預設 token（額度和所有訪客共用）。" : "尚未設定 token。";
+  const remembered = (() => { try { return !!localStorage.getItem("finmind_token"); } catch (e) { return false; } })();
+  $("#token-state").textContent = ownToken() ? `目前使用你自己設定的 token（${remembered ? "已記住在這台裝置" : "關閉分頁後清除"}）。`
+    : window.DEFAULT_FINMIND_TOKEN ? "目前使用網站提供的預設 token：它是公開的共用帳號，額度和所有訪客共用。" : "尚未設定 token。";
+  $("#token-remember").checked = remembered;
   $("#token-box").hidden = false; $("#token-input").focus();
 }
 $("#token-btn").onclick = () => { const b = $("#token-box"); b.hidden ? openToken() : (b.hidden = true); };
 $("#token-save").onclick = () => {
   const v = $("#token-input").value.trim(); if (!v) return;
-  try { localStorage.setItem("finmind_token", v); } catch (e) {}
+  const keep = $("#token-remember").checked;
+  try {
+    (keep ? localStorage : sessionStorage).setItem("finmind_token", v);
+    (keep ? sessionStorage : localStorage).removeItem("finmind_token");
+  } catch (e) {}
   $("#token-input").value = ""; $("#token-box").hidden = true; refreshQuota();
   const id = new URLSearchParams(location.search).get("id") || $("#sym").value; if (id) load(id);
 };
-$("#token-clear").onclick = () => { try { localStorage.removeItem("finmind_token"); } catch (e) {} openToken(); };
+$("#token-clear").onclick = () => { try { localStorage.removeItem("finmind_token"); sessionStorage.removeItem("finmind_token"); } catch (e) {} openToken(); };
 $("#go-reports").onclick = () => { location.href = "/reports/"; };
 $("#dl-print").onclick = () => { Object.keys(RENDER).forEach(renderTab); setTimeout(() => window.print(), 300); };
 function save(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
@@ -924,13 +976,37 @@ function save(blob, name) { const a = document.createElement("a"); a.href = URL.
 // ---------- 互動 ----------
 $("#form").onsubmit = e => { e.preventDefault(); load($("#sym").value); };
 $("#chips").onclick = e => { const b = e.target.closest("[data-sym]"); if (b) load(b.dataset.sym); };
-$("#tabs").onclick = e => {
-  const b = e.target.closest("[data-tab]"); if (!b) return;
-  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+function selectTab(b) {
+  document.querySelectorAll(".tabs button").forEach(x => {
+    const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1;
+  });
   document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === `p-${b.dataset.tab}`));
   renderTab(b.dataset.tab);
   document.querySelectorAll(`#p-${b.dataset.tab} .js-plotly-plot`).forEach(el => Plotly.Plots.resize(el));
+}
+$("#tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if (b) selectTab(b); };
+// 鍵盤：左右鍵切換分頁，Home／End 跳到第一個／最後一個
+$("#tabs").onkeydown = e => {
+  const tabs = [...document.querySelectorAll(".tabs button")], i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  const j = {ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1}[e.key];
+  if (j == null) return;
+  e.preventDefault();
+  const b = tabs[(j + tabs.length) % tabs.length]; b.focus(); selectTab(b);
 };
+// 補上分頁與 ⓘ 按鈕的無障礙語意
+(function initA11y() {
+  document.querySelectorAll(".tabs button").forEach(b => {
+    const on = b.classList.contains("on"), panel = $(`#p-${b.dataset.tab}`);
+    Object.assign(b, {id: `tab-${b.dataset.tab}`, tabIndex: on ? 0 : -1});
+    b.setAttribute("role", "tab"); b.setAttribute("aria-selected", on); b.setAttribute("aria-controls", panel.id);
+    panel.setAttribute("role", "tabpanel"); panel.setAttribute("aria-labelledby", b.id);
+  });
+  document.querySelectorAll(".info").forEach(b => {
+    const title = [...b.closest("h3").childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").trim();
+    b.type = "button"; b.setAttribute("aria-label", `查看「${title}」的計算方式`); b.setAttribute("aria-expanded", "false");
+  });
+})();
 $("#range").onclick = e => {
   const b = e.target.closest("[data-n]"); if (!b || !D) return;
   N = +b.dataset.n; document.querySelectorAll("#range button").forEach(x => x.classList.toggle("on", x === b)); render();
