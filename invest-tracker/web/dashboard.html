@@ -74,7 +74,9 @@ body.scrolling .js-plotly-plot{pointer-events:none}
 .light{display:grid;grid-template-columns:28px 64px 1fr;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--grid)}
 .light:last-child{border:none}
 .lamp{width:22px;height:22px;border-radius:50%;box-shadow:0 0 0 3px rgba(255,255,255,.04) inset}
-.lamp.bull{background:var(--up)}.lamp.neutral,.lamp.risk-mid{background:var(--warn)}.lamp.bear,.lamp.risk-low{background:var(--good)}.lamp.risk-high{background:var(--bad)}
+.lamp.bull{background:var(--up)}.lamp.neutral{background:var(--warn)}.lamp.bear{background:var(--down)}
+/* 風險燈：方形＋紫色深淺，避免和走勢燈的「紅＝偏強、綠＝偏弱」混淆 */
+.lamp[class*="risk-"]{border-radius:5px}.lamp.risk-low{background:rgba(144,133,233,.28)}.lamp.risk-mid{background:rgba(144,133,233,.62)}.lamp.risk-high{background:var(--s7)}
 .bt td.win{font-weight:600}.bt .tag{font-size:11px;color:var(--muted);margin-left:4px}
 .bt .better{color:var(--up)}.bt .worse{color:var(--down)}
 .web-only{display:none}body.web-mode .web-only{display:inline-flex}body.web-mode .server-only{display:none!important}
@@ -464,9 +466,15 @@ async function load(sym, refresh = false) {
     history.replaceState(null, "", `?id=${sym}${tab ? `&tab=${tab}` : ""}`); render();
   } catch (e) {
     if (my !== loadSeq) return;
-    $("#err").innerHTML = `無法取得 ${esc(sym)} 的資料：${esc(e.message)}（不會產生任何模擬數據）<button type="button" id="retry">重試</button>`;
+    const quota = /QuotaError|呼叫上限|已暫停呼叫/.test(e.message), shared = MODE === "web" && !ownToken();
+    $("#err").innerHTML = (!quota ? `無法取得 ${esc(sym)} 的資料：${esc(e.message)}（不會產生任何模擬數據）`
+      : shared ? "網站提供的共用 token 本小時額度已用完（所有訪客共用每小時 600 次）。可以過一段時間（最多約 1 小時）再試，或改用自己免費註冊的 FinMind token，額度就不會和其他人共用。"
+      : MODE === "web" ? "你的 FinMind token 本小時額度已用完，請過一段時間（最多約 1 小時）再試。"
+      : "FinMind 本小時額度快用完了，系統已暫停呼叫，避免影響每日排程。請過一段時間（最多約 1 小時）再試。")
+      + `${quota && shared ? '<button type="button" id="use-own">使用自己的 token</button>' : ""}<button type="button" id="retry">重試</button>`;
     $("#err").style.display = "block";
     $("#retry").onclick = () => load(sym, refresh);
+    if ($("#use-own")) $("#use-own").onclick = openToken;
   } finally { if (my === loadSeq) busy(false); }
 }
 
@@ -552,6 +560,8 @@ function renderOverview() {
   document.querySelectorAll("[data-tw]").forEach(el => el.hidden = !tw);
   document.querySelectorAll("[data-us]").forEach(el => el.hidden = tw);
   if (!tw) { renderUS(); $("#us-chips-sum").innerHTML = usChipSummary(); }
+  let no = 0;     // 依實際顯示的卡片重新編號（台股、美股顯示的卡片不同）
+  document.querySelectorAll("#p-overview .card .no").forEach(el => { if (!el.closest(".card").hidden) el.textContent = String(++no).padStart(2, "0"); });
 
   // 01 主 K 線：支撐／壓力／成交均價／法人估算成本畫成水平線
   const lo = Math.min(...S("low")), hi = Math.max(...S("high"));
@@ -584,7 +594,7 @@ function renderOverview() {
   ];
   if (tw) coreRows.splice(2, 0, ["外資", sTxt(st.foreign)], ["投信", sTxt(st.trust)]);
   $("#core").innerHTML = `<div style="margin-bottom:8px"><span class="stance ${V.stance === "偏強" ? "bull" : V.stance === "偏弱" ? "bear" : "neutral"}">技術面${esc(V.stance)}</span>
-    <span class="hint" style="margin-left:8px">綜合 ${P.radar.total} 分 · ${P.radar.grade} 級</span></div>${NOT_ADVICE()}
+    <span class="hint" style="margin-left:8px">多維度綜合 ${P.radar.total} / 100</span></div>${NOT_ADVICE()}
     <div class="kv">${coreRows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("")}</div>`;
 
   // 03 / 05 雷達
@@ -597,7 +607,7 @@ function renderOverview() {
           angularaxis: {gridcolor: C.grid, linecolor: C.axis, tickfont: {size: 12, color: C.ink}}}}, cfgPlot);
   };
   polar("ch-radar", P.radar.dims, C.s1);
-  $("#radar-foot").innerHTML = `綜合 <b>${P.radar.total}</b> / 100 · <b>${P.radar.grade}</b> 級`;
+  $("#radar-foot").innerHTML = `綜合 <b>${P.radar.total}</b> / 100（各維度平均，不是投資評等）`;
   polar("ch-risk", R.dims, C.s2);
   $("#risk-foot").innerHTML = `風險指數 <b>${R.total}</b>（${esc(R.level)}）· 最高：${esc(R.dims.reduce((a, b) => a.score > b.score ? a : b).name)}`;
 
@@ -685,7 +695,7 @@ function renderOverview() {
   // 12 信號燈
   $("#lights").innerHTML = P.lights.items.map(x => `<div class="light"><span class="lamp ${x.tone}" aria-hidden="true"></span><b>${esc(x.name)}</b>
       <span class="muted">${esc({bull: "偏強", neutral: "中性", bear: "偏弱", "risk-high": "高", "risk-mid": "中", "risk-low": "低"}[x.tone])} · ${esc(x.value)}</span></div>`).join("")
-    + `<p class="note">紅＝偏強、黃＝中性、綠＝偏弱（台股慣例）；風險燈：紅＝高。燈號描述走勢，不是買賣訊號。</p>`;
+    + `<p class="note">圓燈：紅＝偏強、黃＝中性、綠＝偏弱（台股慣例）；方燈（風險）：紫色越深風險越高。燈號描述走勢，不是買賣訊號。</p>`;
 
   // 13 大盤（台股：加權指數；美股：S&P 500 / Nasdaq / 費半 / VIX）
   const M = D.market_overview || {};

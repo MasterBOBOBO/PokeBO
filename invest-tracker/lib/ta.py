@@ -14,7 +14,7 @@ CACHE = data.DATA / "ta_cache"
 INFO = data.DATA / "stock_info.csv"
 LOOKBACK_DAYS = 1100     # 約 3 年：MA60 / MACD 暖機，並提供訊號回測樣本
 SHOW = 260               # 回傳最近 260 個交易日給前端切換 60/120/250 日
-CACHE_VERSION = 9        # 分析結果的欄位有變動時加 1，讓舊快取自動失效
+CACHE_VERSION = 10       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
 
 
 # ---------- 基本資料 ----------

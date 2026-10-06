@@ -252,9 +252,8 @@ def radar(s, chips, extra, levels, market_kind):
         add("流動性", (math.log10(max(money, 1)) - 7) / 3 * 100,
             f"20 日平均成交金額 US${money / 1e6:,.0f} 百萬，以對數換算（1 千萬美元 = 0 分，100 億美元 = 100 分）。")
     total = sum(d["score"] for d in dims) / len(dims)
-    grade = "A" if total >= 80 else "B" if total >= 60 else "C" if total >= 40 else "D"
-    return {"dims": dims, "total": round(total), "grade": grade,
-            "explain": "總分 = 各維度平均；A ≥ 80、B ≥ 60、C ≥ 40、D < 40。"
+    return {"dims": dims, "total": round(total),
+            "explain": "綜合分數 = 各維度平均（0–100），只是把各維度濃縮成一個數字，不是投資評等。"
                        + ("" if chips else "美股沒有三大法人與融資融券制度的資料，所以不算法人，共 4 個維度。")}
 
 
@@ -305,14 +304,14 @@ def lights(s, chips, warnings, radar_r):
     out.append({"name": "風險", "tone": "risk-high" if alerts else "risk-mid" if watch else "risk-low",
                 "value": f"{alerts} 警示 / {watch} 留意"})
     return {"items": out, "explain": "趨勢、動能、籌碼燈號取自多維度分數：≥ 60 紅燈（偏強）、40–59 黃燈、< 40 綠燈（偏弱）。"
-                                     "籌碼 = (法人 + 籌碼) ÷ 2。風險燈依技術警示數量：有 Alert 為高、只有 Watch 為中。"}
+                                     "籌碼 = (法人 + 籌碼) ÷ 2。風險燈（方形）依技術警示數量：有 Alert 為高、只有 Watch 為中，紫色越深風險越高。"}
 
 
 def verdict(trend, radar_r, risk_r, energy_r, chips, position):
     """總評：依分數組合產生的規則式結論。"""
     t = radar_r["total"]
     stance = "偏強" if t >= 60 and risk_r["level"] != "高" else "偏弱" if t < 40 else "中性"
-    reasons = [f"{trend}，綜合分數 {t}（{radar_r['grade']} 級）", f"多方能量 {energy_r['bull']:.0%}",
+    reasons = [f"{trend}，綜合分數 {t} / 100", f"多方能量 {energy_r['bull']:.0%}",
                f"風險指數 {risk_r['total']}（{risk_r['level']}）"]
     if chips:
         f = streak(chips["institutional"]["foreign"])
@@ -583,7 +582,6 @@ def add_us_chip_scores(plus, levels):
                    f"（回補天數 {dtc:.1f}）。"})
     plus["radar"]["total"] = round(sum(d["score"] for d in plus["radar"]["dims"]) / len(plus["radar"]["dims"]))
     t = plus["radar"]["total"]
-    plus["radar"]["grade"] = "A" if t >= 80 else "B" if t >= 60 else "C" if t >= 40 else "D"
     plus["radar"]["explain"] = plus["radar"]["explain"].replace("共 4 個維度", "籌碼改用 FINRA 放空資料，共 5 個維度")
     plus["risk"]["dims"].append({"name": "放空壓力", "score": round(clip(max(0, z) * 30 + dtc * 8 + max(0, chg) * 150)),
         "explain": f"放空比例 z 值 {z:+.2f}（只算增加）× 30 + 回補天數 {dtc:.1f} × 8 + 放空餘額增幅 {chg:+.1%}（只算增加）× 150。"})
