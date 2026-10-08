@@ -181,17 +181,19 @@ def range_fan(s, h=10):
 
 def signal_backtest(s, h=10):
     """本檔歷史上各訊號出現後 h 日的表現，對照所有交易日的基準。"""
-    from .ta import _cross
+    from .ta import _cross, quiet_then_surge, sma
     close, n = s["close"], len(s["close"])
     base = forward_returns(close, h)
     vol20 = [None] * n
     for i in range(20, n):
         vol20[i] = sum(s["volume"][i - 20:i]) / 20
+    v20 = sma(s["volume"], 20)
     tests = {
         "KD 黃金交叉": lambda i: _cross(s["k"], s["d"], i) == 1,
         "MACD 黃金交叉": lambda i: _cross(s["dif"], s["macd"], i) == 1,
         "站上 MA20": lambda i: _cross(close, s["ma20"], i) == 1,
         "爆量上漲": lambda i: vol20[i] and s["volume"][i] > 2 * vol20[i] and close[i] > close[i - 1],
+        "量縮後帶量上漲": lambda i: quiet_then_surge(s, v20, i),
         "KD 死亡交叉": lambda i: _cross(s["k"], s["d"], i) == -1,
         "跌破 MA20": lambda i: _cross(close, s["ma20"], i) == -1,
     }
