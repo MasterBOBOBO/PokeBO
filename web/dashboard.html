@@ -12,6 +12,7 @@
   integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
 <!-- 選用：網頁版預設 token（window.DEFAULT_FINMIND_TOKEN）。檔案不存在時忽略。 -->
 <script src="config.js" onerror="void 0"></script>
+<script>/* 深淺色：沒有手動選過就跟系統設定 */try{var t=localStorage.getItem("it-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
 :root{
   color-scheme:dark;
@@ -55,7 +56,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .up{color:var(--up)}.down{color:var(--down)}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
 .src{color:var(--ink-2);font-size:12px;background:var(--panel);border:1px solid var(--ring);border-radius:999px;padding:4px 12px;margin-right:auto}
-.range button.on{border-color:var(--accent);color:#fff;background:rgba(91,141,239,.18)}
+.range button.on{border-color:var(--accent);color:var(--ink);background:rgba(91,141,239,.18)}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--axis);overflow-x:auto}
 .tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--ink-2);padding:10px 14px;white-space:nowrap}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
@@ -211,12 +212,16 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
   body{background:#fff;color:#000}.top .search,.chips,.toolbar button,.tabs{display:none}
   .panel{display:block!important;break-inside:avoid}.card{border-color:#ccc}
 }
+:root[data-theme="light"]{color-scheme:light;--page:#f3f4f7;--panel:#ffffff;--panel-2:#eef0f5;--grid:#e4e7ee;--axis:#cdd3df;--ink:#151a28;--ink-2:#495165;--muted:#6b7387;--ring:rgba(15,23,42,.10);--s1:#2a78d6;--s2:#d4571f;--s3:#199e70;--s4:#a86f00;--s7:#6f60d8;--up:#d03b3b;--down:#0a7f0a;--good:#0a7f0a;--warn:#a86400;--bad:#c62828;--accent:#2f6fde}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){color-scheme:light;--page:#f3f4f7;--panel:#ffffff;--panel-2:#eef0f5;--grid:#e4e7ee;--axis:#cdd3df;--ink:#151a28;--ink-2:#495165;--muted:#6b7387;--ring:rgba(15,23,42,.10);--s1:#2a78d6;--s2:#d4571f;--s3:#199e70;--s4:#a86f00;--s7:#6f60d8;--up:#d03b3b;--down:#0a7f0a;--good:#0a7f0a;--warn:#a86400;--bad:#c62828;--accent:#2f6fde}}
+.theme-btn{white-space:nowrap}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
     <div class="brand">個股技術分析儀表板<small>FinMind 真實資料 · 指標皆可驗證 · 分數皆由公開規則計算，不含 AI 預測</small></div>
+    <button class="theme-btn" id="theme-btn" type="button">☀ 淺色</button>
     <button class="server-only" id="go-home" type="button">← 我的組合</button>
     <button class="web-only" id="token-btn" type="button">設定 Token</button>
     <button class="quota" id="quota" type="button" title="FinMind API 本小時用量，點擊查看明細">API —</button>
@@ -364,7 +369,7 @@ function baseLayout(extra = {}) {
   return Object.assign({
     paper_bgcolor: C.panel, plot_bgcolor: C.panel, font: {color: C.ink2, size: 12, family: "system-ui, -apple-system, PingFang TC, sans-serif"},
     margin: {l: 56, r: 16, t: 28, b: 32}, hovermode: "x unified", dragmode: "zoom",
-    hoverlabel: {bgcolor: "#1a2033", bordercolor: C.axis, font: {color: C.ink}},
+    hoverlabel: {bgcolor: css("--panel-2"), bordercolor: C.axis, font: {color: C.ink}},
     legend: {orientation: "h", y: 1.08, x: 0, font: {size: 12}},
     xaxis: {type: "category", gridcolor: C.grid, linecolor: C.axis, tickfont: {size: 11}, nticks: 10, showspikes: true,
       spikemode: "across", spikecolor: C.axis, spikethickness: 1, rangeslider: {visible: false}},
@@ -1231,6 +1236,25 @@ function openTabFromUrl() {
   const b = t && document.querySelector(`.tabs [data-tab="${CSS.escape(t)}"]`);
   if (b) b.click();
 }
+
+// ---------- 深淺色切換（記在 localStorage，所有頁面共用；沒選過就跟系統） ----------
+function curTheme() { return document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }
+function paintThemeBtn() {
+  const b = document.getElementById("theme-btn"); if (!b) return;
+  const dark = curTheme() === "dark";
+  b.textContent = dark ? "☀ 淺色" : "☾ 深色"; b.setAttribute("aria-label", dark ? "切換到淺色模式" : "切換到深色模式");
+}
+document.getElementById("theme-btn").addEventListener("click", () => {
+  const next = curTheme() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("it-theme", next); } catch (e) {}
+  paintThemeBtn(); onThemeChange();
+});
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+  if (!document.documentElement.dataset.theme) { paintThemeBtn(); onThemeChange(); }
+});
+paintThemeBtn();
+function onThemeChange() { colors(); if (D) { const v = $("#sym").value; render(); $("#sym").value = v; } }
 </script>
 </body>
 </html>
