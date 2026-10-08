@@ -138,6 +138,9 @@ td.n,th.n{text-align:right}
 .filters button{font-size:12px;padding:3px 10px;border-radius:999px}
 .filters button.on{border-color:var(--accent);background:rgba(91,141,239,.18)}
 .note{color:var(--muted);font-size:12px;margin:8px 0 0}
+.vt{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.vt td{padding:4px 4px;border-bottom:1px solid var(--grid);vertical-align:middle}
+.vt td:first-child{white-space:nowrap}.vt td:nth-child(3){width:38%}.vt .meter{margin:0}.vt .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.vt small{color:var(--muted);font-size:11px}.vt .d{color:var(--muted);font-size:12px}
 .empty{text-align:center;padding:72px 16px}
 .empty h1{font-size:26px;margin:0 0 8px;color:var(--accent)}
 .empty p{color:var(--ink-2);max-width:640px;margin:0 auto 20px}
@@ -194,6 +197,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 <div class="wrap">
   <div class="top">
     <div class="brand">個股技術分析儀表板<small>FinMind 真實資料 · 指標皆可驗證 · 分數皆由公開規則計算，不含 AI 預測</small></div>
+    <button class="server-only" id="go-home" type="button">← 我的組合</button>
     <button class="web-only" id="token-btn" type="button">設定 Token</button>
     <button class="quota" id="quota" type="button" title="FinMind API 本小時用量，點擊查看明細">API —</button>
     <form class="search" id="form">
@@ -260,6 +264,9 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
         <div class="card c8"><h3><span class="no">14</span>訊號歷史勝率<button class="info" data-x="backtest">ⓘ</button><span class="hint">本檔過去約 3 年</span></h3><div id="backtest"></div></div>
         <div class="card c4"><h3><span class="no">16</span>關鍵價位</h3><div class="kv" id="levels"></div></div>
         <div class="card c4"><h3><span class="no">17</span>我的持倉</h3><div id="position"></div></div>
+        <div class="card c8" data-fund><h3><span class="no">19</span>月營收<button class="info" data-x="fund">ⓘ</button><span class="hint" id="rev-hint"></span></h3><div class="chart short" id="ch-rev"></div><div class="kv" id="rev-kv"></div></div>
+        <div class="card c4" data-fund><h3><span class="no">20</span>估值位置<button class="info" data-x="fund">ⓘ</button><span class="hint">近 5 年百分位</span></h3><div class="chart xshort" id="ch-per"></div><div id="val"></div></div>
+        <div class="card c4" data-nofund hidden><h3><span class="no">19</span>基本面</h3><div id="fund-na"></div></div>
         <div class="card c8"><h3><span class="no">18</span>總評<button class="info" data-x="verdict">ⓘ</button></h3><div id="verdict"></div></div>
       </div>
       <p class="note">做不到的面板：券商分點（主力買賣、隔日沖）和股權分散（大戶／散戶）需要 FinMind 付費方案，因此不顯示，也不估算。</p>
@@ -559,6 +566,9 @@ function renderOverview() {
   const P = D.plus, L = D.levels, q = D.quote, tw = !!D.chips;
   document.querySelectorAll("[data-tw]").forEach(el => el.hidden = !tw);
   document.querySelectorAll("[data-us]").forEach(el => el.hidden = tw);
+  const hasF = !!(D.fundamentals && !D.fundamentals.error);
+  document.querySelectorAll("[data-fund]").forEach(el => el.hidden = !hasF);
+  document.querySelectorAll("[data-nofund]").forEach(el => el.hidden = hasF);
   if (!tw) { renderUS(); $("#us-chips-sum").innerHTML = usChipSummary(); }
   let no = 0;     // 依實際顯示的卡片重新編號（台股、美股顯示的卡片不同）
   document.querySelectorAll("#p-overview .card .no").forEach(el => { if (!el.closest(".card").hidden) el.textContent = String(++no).padStart(2, "0"); });
@@ -748,6 +758,8 @@ function renderOverview() {
       <span>定期定額</span><span>${p.dca ? (p.dca_amount ? `每月 ${D.market === "TW" ? "NT$" : "US$"} ${fmt(p.dca_amount, 0)}` : "是") : "否"}</span></div>
       ${p.dca ? '<p class="note">定期定額標的：技術訊號只當參考，不影響扣款紀律。</p>' : ""}` : `<p class="note">未持有此標的。</p>`;
 
+  renderFund();
+
   // 18 總評
   $("#verdict").innerHTML = `<div style="margin-bottom:8px"><span class="stance ${V.stance === "偏強" ? "bull" : V.stance === "偏弱" ? "bear" : "neutral"}">技術面${esc(V.stance)}</span></div>
     <ul class="summary">${V.reasons.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="note">${esc(V.note)}</p>
@@ -824,6 +836,43 @@ function renderUSChips() {
 const GUIDE_TAG = {keep: "✅ 維持", ok: "✅ 符合", caution: "⚠️ 注意", candidate: "💡 候選", timing: "⏱ 執行", info: "ℹ️ 資訊"};
 
 // 「偏強／偏弱」的說明：描述走勢，不是加減碼建議
+function renderFund() {
+  const F = D.fundamentals;
+  if (!F || F.error) {
+    $("#fund-na").innerHTML = `<p class="note">${F && F.error ? `基本面資料讀取失敗：${esc(F.error)}` :
+      D.market === "US" ? "美股基本面（營收、本益比歷史）需要付費 API，這裡不提供。" : "ETF 沒有營收和本益比，基本面不適用；可以看成分股或追蹤指數。"}</p>`;
+    return;
+  }
+  const R = F.revenue, V = F.valuation;
+  if (R) {
+    const ser = R.series;
+    $("#rev-hint").textContent = `下次公布 ${R.next.ym.replace("-", "/")} 營收，期限 ${R.next.deadline.slice(5).replace("-", "/")}`;
+    Plotly.react("ch-rev", [{type: "bar", x: ser.map(r => r.ym.slice(2).replace("-", "/")), y: ser.map(r => r.yoy), name: "年增率",
+      marker: {color: ser.map(r => r.yoy == null ? C.axis : r.yoy >= 0 ? C.up : C.down), line: {color: C.panel, width: 1}},
+      customdata: ser.map(r => [r.revenue / 1e8, r.mom]),
+      hovertemplate: "年增 %{y:+.1%}<br>營收 %{customdata[0]:,.1f} 億<br>月增 %{customdata[1]:+.1%}<extra></extra>"}],
+      baseLayout({showlegend: false, hovermode: "closest", margin: {l: 48, r: 12, t: 8, b: 32},
+        xaxis: {type: "category", gridcolor: C.grid, linecolor: C.axis, tickfont: {size: 11}, nticks: 6, tickangle: 0},
+        yaxis: {gridcolor: C.grid, zerolinecolor: C.ink2, tickformat: ".0%", tickfont: {size: 11}}}), cfgPlot);
+    const L = R.latest;
+    $("#rev-kv").innerHTML = [["最新月份", L.ym.replace("-", " 年 ") + " 月"], ["營收", `${fmt(L.revenue / 1e8, 1)} 億`],
+      ["年增 / 月增", `${pct(L.yoy, 1)} / ${pct(L.mom, 1)}`], ["近 3 月平均年增", pct(R.yoy_3m, 1)], ["今年累計年增", pct(R.ytd_yoy, 1)]]
+      .map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
+  }
+  if (V) {
+    const P = V.PER, ch = V.chart, band = (y, dash) => ({type: "line", xref: "paper", x0: 0, x1: 1, y0: y, y1: y, line: {color: C.muted, width: 1, dash}});
+    Plotly.react("ch-per", [{type: "scatter", mode: "lines", x: ch.date, y: ch.PER, name: "本益比", line: {color: C.s1, width: 2}, connectgaps: false,
+      hovertemplate: "本益比 %{y:.1f}<extra></extra>"}],
+      baseLayout({showlegend: false, margin: {l: 36, r: 8, t: 6, b: 22}, xaxis: {type: "date", gridcolor: C.grid, linecolor: C.axis, tickfont: {size: 10}, tickformat: "%Y"},
+        yaxis: {gridcolor: C.grid, tickfont: {size: 10}}, shapes: P.p20 ? [band(P.p20, "dot"), band(P.p50, "dash"), band(P.p80, "dot")] : []}), cfgPlot);
+    const row = x => x.value == null ? `<tr><td>${esc(x.name)}</td><td class="n">—</td><td colspan="2" class="d">虧損或無資料</td></tr>`
+      : `<tr><td>${esc(x.name)}</td><td class="n">${fmt(x.value)}${x.name === "殖利率" ? "%" : ""}</td>
+        <td><div class="meter" title="第 ${Math.round(x.pct * 100)} 百分位"><i style="width:${x.pct * 100}%"></i></div></td><td class="n">${Math.round(x.pct * 100)}<small>／${esc(x.zone)}</small></td></tr>`;
+    $("#val").innerHTML = `<table class="vt"><tbody>${row(V.PER)}${row(V.PBR)}${row(V.dividend_yield)}</tbody></table>
+      <p class="note">點線＝第 20、80 百分位，虛線＝中位數（${esc(V.start.slice(0, 4))}–${esc(V.date.slice(0, 4))}）。殖利率高代表股價相對配息低，方向和本益比相反。只描述歷史位置，不是買賣建議。</p>`;
+  }
+}
+
 function NOT_ADVICE(full) {
   const B = D.plus.backtest, kd = B.rows.find(r => r.signal === "KD 黃金交叉");
   const ev = kd && kd.win != null ? `以本檔為例，KD 黃金交叉後 10 日上漲比例 ${(kd.win * 100).toFixed(0)}%，任一天買進的基準是 ${(B.base_win * 100).toFixed(0)}%。` : "";
@@ -836,6 +885,7 @@ const EXPLAIN = () => ({
   risk: D.plus.risk.explain + "<br>" + D.plus.risk.dims.map(d => `<b>${d.name} ${d.score}</b>：${d.explain}`).join("<br>"),
   profile: D.plus.profile && D.plus.profile.explain, fan: D.plus.fan && D.plus.fan.explain,
   energy: D.plus.energy.explain, lights: D.plus.lights.explain, backtest: D.plus.backtest.explain,
+  fund: D.fundamentals && D.fundamentals.explain,
   verdict: D.plus.verdict.explain, market: D.market_overview && D.market_overview.explain,
   cost: "N 日均價＝近 N 日成交量加權的收盤價（20 日用實際成交金額 ÷ 成交量）。法人估算成本＝近 N 日中，有買超的日子以買超張數加權的收盤價；只是估算，不是法人的真實持股成本。",
   us: D.plus.us && D.plus.us.explain,
@@ -982,6 +1032,7 @@ $("#token-save").onclick = () => {
 };
 $("#token-clear").onclick = () => { try { localStorage.removeItem("finmind_token"); sessionStorage.removeItem("finmind_token"); } catch (e) {} openToken(); };
 $("#go-reports").onclick = () => { location.href = "/reports/"; };
+$("#go-home").onclick = () => { location.href = "/"; };
 $("#dl-print").onclick = () => { Object.keys(RENDER).forEach(renderTab); setTimeout(() => window.print(), 300); };
 function save(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
 

@@ -241,17 +241,17 @@ def render(r, cfg):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>投資組合月報 {month}</title>
 <style>
-:root{{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--muted:#898781;
---grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--series-1:#2a78d6;--series-2:#eb6834;
---up:#d03b3b;--down:#006300}}
-@media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;
---ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--series-1:#3987e5;--series-2:#d95926;
---up:#e66767;--down:#0ca30c}}}}
-:root[data-theme="dark"]{{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
---axis:#383835;--ring:rgba(255,255,255,.10);--series-1:#3987e5;--series-2:#d95926;--up:#e66767;--down:#0ca30c}}
+:root{{color-scheme:dark;--page:#0b0e16;--surface:#141927;--surface-2:#1a2033;--ink:#e8eaf0;--ink-2:#a3abbd;--muted:#6f7890;
+--grid:#232b3d;--axis:#2f3850;--ring:rgba(255,255,255,.08);--series-1:#3987e5;--series-2:#d95926;
+--up:#e66767;--down:#0ca30c;--accent:#5b8def}}
 *{{box-sizing:border-box}}
-body{{margin:0;background:var(--page);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"PingFang TC","Segoe UI",sans-serif}}
-main{{max-width:880px;margin:0 auto;padding:32px 16px 64px}}
+body{{margin:0;background:var(--page);color:var(--ink);font:14px/1.6 system-ui,-apple-system,"PingFang TC","Microsoft JhengHei","Segoe UI",sans-serif}}
+main{{max-width:880px;margin:0 auto;padding:16px 16px 64px}}
+nav.top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 16px;margin-bottom:16px}}
+nav.top b{{margin-right:auto;font-size:16px}}
+nav.top a{{color:var(--ink);text-decoration:none;border:1px solid var(--axis);background:var(--surface-2);border-radius:8px;padding:6px 12px;font-size:14px}}
+nav.top a:hover{{border-color:var(--accent)}}
+@media print{{nav.top{{display:none}}}}
 header .eyebrow{{color:var(--muted);font-size:13px}}
 h1{{font-size:26px;margin:4px 0 2px}} h2{{font-size:19px;margin:0 0 6px}} h3{{font-size:14px;color:var(--ink-2);margin:20px 0 4px;font-weight:600}}
 section{{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:20px;margin-top:16px}}
@@ -280,7 +280,7 @@ svg{{width:100%;height:auto;display:block;overflow:visible}}
 .hot{{fill:var(--c);stroke:var(--surface);stroke-width:2;visibility:hidden}}
 .chart{{position:relative;touch-action:pan-y}}
 .chart.on .cross,.chart.on .hot{{visibility:visible}}
-.tip{{position:absolute;top:0;pointer-events:none;background:var(--surface);border:1px solid var(--ring);border-radius:8px;
+.tip{{position:absolute;top:0;pointer-events:none;background:var(--surface-2);border:1px solid var(--ring);border-radius:8px;
 padding:6px 10px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}}
 .tip b{{display:block;font-size:14px}}
 .bar-row{{display:grid;grid-template-columns:96px 1fr 56px;align-items:center;gap:10px;margin:6px 0}}
@@ -293,6 +293,7 @@ padding:6px 10px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space
 .link{{stroke:var(--axis);stroke-width:2}}
 @media (max-width:560px){{.hero{{font-size:36px}} .bar-row{{grid-template-columns:80px 1fr 48px}}}}
 </style></head><body><main>
+<nav class="top"><b>投資組合月報</b><a href="/">我的組合</a><a href="/ta">技術分析</a><a href="/reports/">所有報告</a></nav>
 <header><div class="eyebrow">投資組合月報 · 資料日 {r["as_of"]} · USD/TWD {r["fx_usd_twd"][1]}</div>
 <h1>{month[:4]} 年 {int(month[5:])} 月</h1>
 <div class="hero">{_ntd(s["value_twd"])}</div>

@@ -14,7 +14,11 @@ def cmd_update(cfg, args):
         print(f"{mk} {sym}: +{n} 筆")
         if mk == "TW":
             data.update_tw_dividends(sym, start)
+            data.update_tw_dividend_announce(sym)
     print(f"USD/TWD: +{data.update_fx(start)} 筆")
+    from lib import market
+    errors = market.update(cfg)
+    print("市場溫度計：" + ("；".join(errors) if errors else "已更新"))
 
 
 def cmd_buy(cfg, args):
@@ -125,6 +129,8 @@ def cmd_launchd(cfg, args):
     jobs = {
         "daily": {"ProgramArguments": [py, f"{root}/invest.py", "job", "daily"],
                   "StartCalendarInterval": [{"Weekday": w, "Hour": 15, "Minute": 10} for w in range(1, 6)]},
+        "weekly": {"ProgramArguments": [py, f"{root}/invest.py", "job", "weekly"],
+                   "StartCalendarInterval": [{"Weekday": 5, "Hour": 15, "Minute": 40}]},
         "monthly": {"ProgramArguments": [py, f"{root}/invest.py", "job", "monthly"],
                     "StartCalendarInterval": [{"Day": 28, "Hour": 15, "Minute": 30}]},
         "dashboard": {"ProgramArguments": [py, f"{root}/invest.py", "serve"], "RunAtLoad": True, "KeepAlive": True},
@@ -150,6 +156,38 @@ def cmd_launchd(cfg, args):
             print(f"  已安裝並啟用 {label}")
     if not args.install:
         print("加上 --install 會複製到 ~/Library/LaunchAgents 並啟用")
+
+
+def cmd_weekly(cfg, args):
+    from lib import weekly
+    title, text, _ = weekly.build(cfg, include_amounts=args.amounts)
+    print(title)
+    print(text)
+
+
+def cmd_telegram_test(cfg, args):
+    """.env.local 有 TELEGRAM_BOT_TOKEN 但沒有 CHAT_ID 時，從 getUpdates 找出你傳給 bot 的對話 id 並寫入。"""
+    import urllib.parse
+    from lib import jobs
+    token = jobs._env("TELEGRAM_BOT_TOKEN")
+    if not token:
+        sys.exit("請先在 .env.local 加上 TELEGRAM_BOT_TOKEN=...（向 @BotFather 建立 bot 取得）")
+    api = f"https://api.telegram.org/bot{token}"
+    chat = jobs._env("TELEGRAM_CHAT_ID")
+    if not chat:
+        ups = json.loads(data.http_get(f"{api}/getUpdates"))["result"]
+        chats = [u["message"]["chat"]["id"] for u in ups if "message" in u]
+        if not chats:
+            sys.exit("找不到對話：請先在 Telegram 打開你的 bot，傳一則任意訊息（例如 /start），再執行一次")
+        chat = str(chats[-1])
+        env = data.ROOT / ".env.local"
+        with env.open("a") as f:
+            f.write(f"TELEGRAM_CHAT_ID={chat}\n")
+        env.chmod(0o600)
+        print("已寫入 TELEGRAM_CHAT_ID 到 .env.local")
+    body = urllib.parse.urlencode({"chat_id": chat, "text": "invest-tracker 測試訊息：Telegram 設定完成"}).encode()
+    data.http_post(f"{api}/sendMessage", body)
+    print("已送出測試訊息。要開始收每週摘要，請在 private/config.json 設定 notify.telegram = true")
 
 
 def cmd_publish(cfg, args):
@@ -228,7 +266,10 @@ def main():
     k = sub.add_parser("backup", help="把帳本與設定的變動 commit 到本機 git")
     k.add_argument("--reason", default="manual")
     j = sub.add_parser("job", help="排程工作：daily（更新 + 健檢通知）/ monthly（月報）")
-    j.add_argument("name", choices=["daily", "monthly"])
+    j.add_argument("name", choices=["daily", "weekly", "monthly"])
+    w = sub.add_parser("weekly", help="預覽每週摘要（不送出）")
+    w.add_argument("--amounts", action="store_true", help="預覽含金額的版本")
+    sub.add_parser("telegram-test", help="設定 Telegram：自動找出 chat id 並送一則測試訊息")
     c = sub.add_parser("reconcile", help="和券商庫存對帳（data/reconcile/*.csv）")
     c.add_argument("file")
     c.add_argument("--apply-cost", action="store_true", help="股數一致時，以券商成本校正期初均價")
@@ -243,7 +284,7 @@ def main():
      "report": cmd_report, "html": cmd_html, "simulate": cmd_simulate,
      "serve": cmd_serve, "ta": cmd_ta, "backup": cmd_backup, "job": cmd_job,
      "reconcile": cmd_reconcile, "quota": cmd_quota, "launchd": cmd_launchd,
-     "publish": cmd_publish}[args.cmd](cfg, args)
+     "publish": cmd_publish, "weekly": cmd_weekly, "telegram-test": cmd_telegram_test}[args.cmd](cfg, args)
 
 
 if __name__ == "__main__":

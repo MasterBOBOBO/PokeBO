@@ -14,7 +14,7 @@ CACHE = data.DATA / "ta_cache"
 INFO = data.DATA / "stock_info.csv"
 LOOKBACK_DAYS = 1100     # 約 3 年：MA60 / MACD 暖機，並提供訊號回測樣本
 SHOW = 260               # 回傳最近 260 個交易日給前端切換 60/120/250 日
-CACHE_VERSION = 10       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
+CACHE_VERSION = 11       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
 
 
 # ---------- 基本資料 ----------
@@ -396,6 +396,14 @@ def analyze(symbol, refresh=False):
     except Exception as e:  # 大盤資料失敗不影響個股分析
         mkt = {"error": str(e)}
 
+    from . import fundamentals
+    try:
+        fund = fundamentals.analyze(symbol)
+    except data.QuotaError:
+        raise
+    except Exception as e:  # 基本面資料失敗不影響技術分析
+        fund = {"error": str(e)}
+
     out = {
         "symbol": symbol, "market": market,
         "name": info["stock_name"] if info else (usinfo or {}).get("name") or data.load_config().get("names", {}).get(symbol, symbol),
@@ -407,6 +415,7 @@ def analyze(symbol, refresh=False):
                    for k, vals in s.items()},
         "chips": chips, "signals": sig, "warnings": warns,
         "checklist": checks, "trend": trend, "position": pos, "plus": plus, "market_overview": mkt,
+        "fundamentals": fund,
         "source": "FinMind（TWSE / TPEx 公開資料，T+1）" if market == "TW" else "FinMind USStockPrice",
         "web": data.WEB,
     }

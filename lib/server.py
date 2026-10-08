@@ -4,7 +4,9 @@
 （.env.local 的 DASHBOARD_KEY，第一次用 ?key=... 進入後改存 HttpOnly cookie）。
 
 路由：
-  /                  儀表板
+  /                  我的組合（長期持有者首頁）；帶 ?id= 會轉到 /ta
+  /ta                個股技術分析儀表板
+  /api/home          首頁資料 JSON
   /api/stock?id=     個股分析 JSON（同日快取；refresh=1 強制重抓）
   /api/holdings      快速選擇用的持股清單
   /api/quota         FinMind 本小時用量（官方 + 本機紀錄）
@@ -20,6 +22,7 @@ from urllib.parse import parse_qs, urlparse
 from . import data, ledger, ta
 
 PAGE = data.ROOT / "web" / "dashboard.html"
+HOME = data.ROOT / "web" / "home.html"
 SYMBOL = re.compile(r"^[0-9A-Z]{1,10}$")
 REPORTS = data.ROOT / "reports"
 
@@ -95,16 +98,48 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/reports/":
                 files = sorted((p for p in REPORTS.glob("*.html")), reverse=True) if REPORTS.exists() else []
                 links = "".join(f'<li><a href="/reports/{p.name}">{p.stem} 月報</a></li>' for p in files) or "<li>尚無月報</li>"
+                wk = sorted((REPORTS / "weekly").glob("*.md"), reverse=True)[:12] if (REPORTS / "weekly").exists() else []
+                links += "".join(f'<li><a href="/reports/weekly/{p.name}">{p.stem} 每週摘要</a></li>' for p in wk)
                 return self._send(200, f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<title>月報</title><style>body{{font:16px system-ui;background:#0b0e16;color:#e8eaf0;padding:20px}}a{{color:#5b8def}}li{{margin:12px 0}}</style>
-<h2>月報</h2><ul>{links}</ul><p><a href="/">← 技術分析儀表板</a></p>""", "text/html; charset=utf-8")
+<title>報告</title><style>body{{margin:0;font:14px/1.6 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
+main{{max-width:720px;margin:0 auto;padding:16px}}
+.top,.card{{background:#141927;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px}}
+.top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}.top b{{margin-right:auto;font-size:16px}}
+.top a{{color:#e8eaf0;text-decoration:none;border:1px solid #2f3850;background:#1a2033;border-radius:8px;padding:6px 12px}}
+ul{{list-style:none;margin:0;padding:0}}li{{border-bottom:1px solid #232b3d}}li:last-child{{border-bottom:none}}
+li a{{display:block;padding:10px 4px;color:#5b8def;text-decoration:none}}</style>
+<main><nav class="top"><b>月報與每週摘要</b><a href="/">我的組合</a><a href="/ta">技術分析</a></nav>
+<div class="card"><ul>{links}</ul></div></main>""", "text/html; charset=utf-8")
+            if url.path.startswith("/reports/weekly/") and url.path.endswith(".md"):
+                f = REPORTS / "weekly" / url.path.rsplit("/", 1)[-1]
+                if f.parent == REPORTS / "weekly" and f.exists():
+                    import html
+                    return self._send(200, f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>每週摘要 {f.stem}</title><style>body{{margin:0;font:14px/1.7 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
+main{{max-width:720px;margin:0 auto;padding:16px}}
+.top,.card{{background:#141927;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px}}
+.top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}.top b{{margin-right:auto;font-size:16px}}
+.top a{{color:#e8eaf0;text-decoration:none;border:1px solid #2f3850;background:#1a2033;border-radius:8px;padding:6px 12px}}
+pre{{white-space:pre-wrap;font:inherit;margin:0}}</style>
+<main><nav class="top"><b>每週摘要 {f.stem}</b><a href="/">我的組合</a><a href="/reports/">所有報告</a></nav>
+<div class="card"><pre>{html.escape(f.read_text(encoding="utf-8"))}</pre></div></main>""", "text/html; charset=utf-8")
+                return self._json(404, {"error": "找不到每週摘要"})
             if url.path.startswith("/reports/") and url.path.endswith(".html"):
                 f = REPORTS / url.path.rsplit("/", 1)[-1]
                 if f.parent == REPORTS and f.exists():
                     return self._send(200, f.read_text(encoding="utf-8"), "text/html; charset=utf-8")
                 return self._json(404, {"error": "找不到月報"})
-            if url.path == "/":
+            if url.path == "/" and "id" in q:      # 舊網址 /?id=2330 → 技術分析
+                self.send_response(302)
+                self.send_header("Location", "/ta?" + url.query)
+                self.end_headers()
+            elif url.path == "/":
+                self._send(200, HOME.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+            elif url.path == "/ta":
                 self._send(200, PAGE.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+            elif url.path == "/api/home":
+                from . import home
+                self._json(200, home.build())
             elif url.path == "/api/fx":
                 rows = data.load_series(data.FX_PATH, "spot_buy")[-120:]
                 self._json(200, {"date": [d for d, _ in rows], "rate": [v for _, v in rows]})
@@ -150,7 +185,7 @@ def serve(port=8765, lan=False):
     if lan:
         Handler.lan_key = dashboard_key()
     srv = ThreadingHTTPServer((host, port), Handler)
-    print(f"技術分析儀表板：http://127.0.0.1:{port}/   （Ctrl+C 結束）")
+    print(f"我的組合：http://127.0.0.1:{port}/   技術分析：http://127.0.0.1:{port}/ta   （Ctrl+C 結束）")
     if lan:
         ip = _lan_ip()
         print(f"手機（同一個 Wi-Fi）：http://{ip}:{port}/?key={Handler.lan_key}")
