@@ -138,6 +138,13 @@ td.n,th.n{text-align:right}
 .filters button{font-size:12px;padding:3px 10px;border-radius:999px}
 .filters button.on{border-color:var(--accent);background:rgba(91,141,239,.18)}
 .note{color:var(--muted);font-size:12px;margin:8px 0 0}
+.nwl{list-style:none;margin:0;padding:0;max-height:420px;overflow-y:auto}
+.nw{display:grid;grid-template-columns:76px 1fr;gap:10px;padding:7px 0;border-bottom:1px solid var(--grid);font-size:13px}
+.nw .t{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nw a{color:var(--ink);text-decoration:none}.nw a:hover{color:var(--accent);text-decoration:underline}
+.nw small{display:block;color:var(--muted);font-size:11.5px}
+.nw.mat{background:rgba(91,141,239,.06)}
+.tagx{display:inline-block;font-size:11px;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:0 5px;margin-right:6px}
 .vt{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.vt td{padding:4px 4px;border-bottom:1px solid var(--grid);vertical-align:middle}
 .vt td:first-child{white-space:nowrap}.vt td:nth-child(3){width:38%}.vt .meter{margin:0}.vt .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .vt small{color:var(--muted);font-size:11px}.vt .d{color:var(--muted);font-size:12px}
@@ -268,6 +275,7 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
         <div class="card c4" data-fund><h3><span class="no">20</span>估值位置<button class="info" data-x="fund">ⓘ</button><span class="hint">近 5 年百分位</span></h3><div class="chart xshort" id="ch-per"></div><div id="val"></div></div>
         <div class="card c4" data-nofund hidden><h3><span class="no">19</span>基本面</h3><div id="fund-na"></div></div>
         <div class="card c8"><h3><span class="no">18</span>總評<button class="info" data-x="verdict">ⓘ</button></h3><div id="verdict"></div></div>
+        <div class="card c12"><h3><span class="no">21</span>新聞與公告<span class="hint">FinMind 新聞 · 證交所／櫃買中心重大訊息</span></h3><div id="news"></div></div>
       </div>
       <p class="note">做不到的面板：券商分點（主力買賣、隔日沖）和股權分散（大戶／散戶）需要 FinMind 付費方案，因此不顯示，也不估算。</p>
     </section>
@@ -434,6 +442,13 @@ const API = {
     if (!r.ok) throw new Error(j.error || r.statusText);
     return j;
   },
+  async news(sym) {
+    if (await detectMode() === "web") return callWorker("news", {symbol: sym});
+    const r = await fetch(`/api/news?id=${encodeURIComponent(sym)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    return j;
+  },
   async fx() {
     return (await detectMode()) === "web" ? callWorker("fx", {}) : (await fetch("/api/fx")).json();
   },
@@ -470,7 +485,7 @@ async function load(sym, refresh = false) {
     const d = await API.stock(sym, refresh);
     if (my !== loadSeq) return;
     D = d; refreshQuota(); const tab = new URLSearchParams(location.search).get("tab");
-    history.replaceState(null, "", `?id=${sym}${tab ? `&tab=${tab}` : ""}`); render();
+    history.replaceState(null, "", `?id=${sym}${tab ? `&tab=${tab}` : ""}`); render(); loadNews(sym, my);
   } catch (e) {
     if (my !== loadSeq) return;
     const quota = /QuotaError|呼叫上限|已暫停呼叫/.test(e.message), shared = MODE === "web" && !ownToken();
@@ -483,6 +498,30 @@ async function load(sym, refresh = false) {
     $("#retry").onclick = () => load(sym, refresh);
     if ($("#use-own")) $("#use-own").onclick = openToken;
   } finally { if (my === loadSeq) busy(false); }
+}
+
+// 新聞獨立載入：比技術分析更即時，也不拖慢主畫面
+async function loadNews(sym, my) {
+  const el = $("#news");
+  if (MODE === "offline") { el.innerHTML = `<p class="note">離線報告不含新聞。</p>`; return; }
+  el.innerHTML = `<p class="note">新聞載入中…</p>`;
+  try {
+    const n = await API.news(sym);
+    if (my !== loadSeq) return;
+    const mat = (n.material || []).map(m => `<li class="nw mat"><span class="t">${esc(m.time.slice(5).replace("-", "/"))}</span>
+      <span><span class="tagx">重大訊息</span>${esc(m.subject)}</span></li>`);
+    const fil = (n.filings || []).map(f => `<li class="nw mat"><span class="t">${esc(f.time.slice(5).replace("-", "/"))}</span>
+      <span><span class="tagx">SEC ${esc(f.form)}</span><a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.subject)}</a></span></li>`);
+    const nws = (n.news || []).map(x => `<li class="nw"><span class="t">${esc(x.time.slice(5).replace("-", "/"))}</span>
+      <span><a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a><small>${esc(x.sources.join("、"))}</small></span></li>`);
+    const note = D.market === "US"
+      ? (n.filings == null ? (MODE === "web" ? "美股 SEC 申報只在本機版提供（瀏覽器跨網域限制）。" : "ETF 沒有 8-K 申報；美股 ETF 也沒有免費的新聞來源。") : "SEC 8-K：公司依法申報的重大事件，點標題看原文。")
+      : (MODE === "web" ? "重大訊息（證交所／櫃買中心官方公告）只在本機版提供；網頁版顯示近 3 天新聞。" : "重大訊息是公司依法申報的正式公告（近 30 天），新聞為近 3 天。");
+    el.innerHTML = (mat.length || fil.length || nws.length ? `<ul class="nwl">${[...mat, ...fil, ...nws].join("")}</ul>` : `<p class="note">近期沒有新聞或公告。</p>`) +
+      `<p class="note">${note}只列標題與來源，不判斷利多利空。</p>`;
+  } catch (e) {
+    if (my === loadSeq) el.innerHTML = `<p class="note">新聞讀取失敗：${esc(e.message)}</p>`;
+  }
 }
 
 async function loadChips() {

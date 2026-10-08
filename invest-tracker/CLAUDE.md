@@ -75,10 +75,11 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 | Label | 時間 | 內容 |
 |---|---|---|
 | <launchd_prefix>.daily | 週一到週五 15:10 | 更新行情 → Health Check 狀態有變化才通知 → git 備份 |
+| <launchd_prefix>.news | 每天 19:30 | 抓重大訊息與持股新聞 → 持股有新的重大訊息（或美股個股 8-K）才推播，同一則只推一次 |
 | <launchd_prefix>.weekly | 每週五 15:40 | 更新行情 → 每週摘要：本機存完整版 reports/weekly/，通知只送不含金額的版本 |
 | <launchd_prefix>.monthly | 每月 28 日 15:30 | 更新行情 → 產出 reports/YYYY-MM.html → 通知摘要 |
 | <launchd_prefix>.dashboard | 登入時啟動、常駐 | 我的組合 http://127.0.0.1:8765/ 、技術分析 /ta |
-- 手動執行：`python3 invest.py job daily|weekly|monthly`；log 在 logs/jobs.log。預覽每週摘要：`python3 invest.py weekly [--amounts]`。
+- 手動執行：`python3 invest.py job daily|news|weekly|monthly`；log 在 logs/jobs.log。預覽每週摘要：`python3 invest.py weekly [--amounts]`。
 - 通知：預設用 macOS 通知中心，且不顯示金額（`private/config.json > notify.include_amounts=false`）。
   Telegram 是選用功能：在 .env.local 加上 TELEGRAM_BOT_TOKEN，傳一則訊息給 bot 後執行 `invest.py telegram-test`
   （自動寫入 TELEGRAM_CHAT_ID 並送測試訊息），再設定 notify.telegram=true。Telegram 是外部服務：預設只送百分比、狀態與日期，不送金額。
@@ -111,6 +112,16 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
   國發會、聯準會沒有 CORS，只在本機版使用。
 - 每週摘要（lib/weekly.py）：組合與大盤同期報酬、漲跌貢獻（百分點）、健檢、未來兩週事件、溫度計、漏記提醒。
   起算日和組合報酬一致（建檔不滿 5 個交易日時從建檔日起算）。
+
+## 新聞與重大訊息（lib/news.py）
+- 新聞：FinMind TaiwanStockNews，**每次呼叫只回傳 start_date 當天**（不支援 end_date），所以按日期分檔快取
+  `data/news/{代號}/{日期}.json`：過去的日子抓過就不再抓，今天 3 小時內用快取。時間是 UTC，顯示時 +8。同標題合併來源。
+- 重大訊息：證交所 t187ap04_L（上市）＋櫃買中心 mopsfin_t187ap04_O（上櫃），OpenAPI 只給最近一天，每晚累積到
+  `data/news/material.csv`（保留 90 天）。兩個網域的憑證缺 Subject Key Identifier，`data.LENIENT_HOSTS` 只對它們關掉 VERIFY_X509_STRICT。
+  沒有 CORS，只在本機版。美股個股：SEC 8-K（ETF 沒有）。
+- 技術分析頁「新聞與公告」卡片走獨立的 `/api/news`（網頁版是 worker 的 news 指令），不跟技術分析的每日快取。
+- 首頁「持股新聞」只讀快取（cached_only），資料由每晚 news 排程預先抓好。推播紀錄在 data/state/news_sent.json。
+- 只列標題、來源、連結，不做利多利空判讀。
 
 ## 個股技術分析儀表板（lib/ta.py、lib/server.py、web/dashboard.html）
 - 只呈現能從資料直接計算的指標：MA5/10/20/60、KD(9,3,3)、MACD(12,26,9)、RSI(14)、布林(20,2)、ATR(14)、

@@ -5,7 +5,7 @@
 import math
 from datetime import date, timedelta
 
-from . import data, divcal, events, ledger, market, report, risk
+from . import data, divcal, events, ledger, market, news, report, risk
 
 BENCHMARKS = ["0050", "VOO"]
 # 政策條的項目名稱要和 report.health_checks 一致，狀態直接沿用健檢結果
@@ -224,6 +224,7 @@ def build(cfg=None, today=None):
         "dividends": cal,
         "events": events.build(cfg, r["holdings"], cal["events"], today),
         "market": market.snapshot(),
+        "news": news.for_holdings(r["holdings"]),
         "allocation": [{"symbol": h["symbol"], "category": h["category"], "market": h["market"],
                         "value_twd": h["value_twd"], "weight": h["value_twd"] / (s["value_twd"] or 1),
                         "pnl_pct": h["pnl_pct"]} for h in sorted(r["holdings"], key=lambda h: -h["value_twd"])],

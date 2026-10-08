@@ -158,10 +158,25 @@ def weekly(cfg):
     return path
 
 
+def news_job(cfg):
+    """每晚：抓重大訊息與持股新聞；有新的持股重大訊息才推播（同一則只推一次）。"""
+    from . import news
+    r = report.build(cfg)
+    items, errors = news.daily_update(cfg, r["holdings"])
+    for err in errors:
+        log(f"news: {err}")
+    if items:
+        notify(cfg, f"持股重大訊息 {date.today().month}/{date.today().day}",
+               f"{len(items)} 則：" + "、".join(sorted({x['symbol'] for x in items})), telegram_text=news.push_text(items))
+        news.mark_sent(items)
+    log(f"news ok new={len(items)}")
+    return items
+
+
 def run(name):
     cfg = data.load_config()
     try:
-        return {"daily": daily, "monthly": monthly, "weekly": weekly}[name](cfg)
+        return {"daily": daily, "monthly": monthly, "weekly": weekly, "news": news_job}[name](cfg)
     except Exception as e:
         log(f"{name} FAILED: {e}\n{traceback.format_exc()}")
         notify(cfg, f"投資追蹤排程失敗（{name}）", f"{type(e).__name__}: {e}"[:200])

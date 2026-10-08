@@ -129,6 +129,8 @@ def cmd_launchd(cfg, args):
     jobs = {
         "daily": {"ProgramArguments": [py, f"{root}/invest.py", "job", "daily"],
                   "StartCalendarInterval": [{"Weekday": w, "Hour": 15, "Minute": 10} for w in range(1, 6)]},
+        "news": {"ProgramArguments": [py, f"{root}/invest.py", "job", "news"],
+                 "StartCalendarInterval": [{"Hour": 19, "Minute": 30}]},
         "weekly": {"ProgramArguments": [py, f"{root}/invest.py", "job", "weekly"],
                    "StartCalendarInterval": [{"Weekday": 5, "Hour": 15, "Minute": 40}]},
         "monthly": {"ProgramArguments": [py, f"{root}/invest.py", "job", "monthly"],
@@ -266,7 +268,7 @@ def main():
     k = sub.add_parser("backup", help="把帳本與設定的變動 commit 到本機 git")
     k.add_argument("--reason", default="manual")
     j = sub.add_parser("job", help="排程工作：daily（更新 + 健檢通知）/ monthly（月報）")
-    j.add_argument("name", choices=["daily", "weekly", "monthly"])
+    j.add_argument("name", choices=["daily", "weekly", "monthly", "news"])
     w = sub.add_parser("weekly", help="預覽每週摘要（不送出）")
     w.add_argument("--amounts", action="store_true", help="預覽含金額的版本")
     sub.add_parser("telegram-test", help="設定 Telegram：自動找出 chat id 並送一則測試訊息")
