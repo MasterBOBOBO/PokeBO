@@ -210,6 +210,17 @@ class Analytics(unittest.TestCase):
         self.assertEqual((st["label"], st["quiet_streak"]), ("爆量", 0))
         self.assertIsNone(t.volume_state({"volume": vol}, t.sma(vol, 20), 10))
 
+    def test_tdcc_summarize(self):
+        from lib import tdcc
+        rows = ["\ufeff資料日期,證券代號,持股分級,人數,股數,占集保庫存數比例%"]
+        pcts = [1, 3, 1, 1, 0.5, 0.5, 0.5, 0.5, 1, 1, 1, 1, 1, 1, 85, 0, 100]
+        for lv, pc in enumerate(pcts, 1):
+            rows.append(f"20261002,2330  ,{lv},{1000 if lv == 17 else 10},0,{pc:.2f}")
+        day, by = tdcc.summarize("\n".join(rows))
+        s = by["2330"]
+        self.assertEqual(day, "20261002")
+        self.assertEqual((s["holders"], s["big1000"], s["big400"], s["retail50"]), (1000, 85, 88, 8))
+
     def test_hints_cover_signal_titles(self):
         from lib import ta as t
         for title in ["KD 黃金交叉（低檔）", "跌破 MA60", "爆量", "量縮後帶量上漲", "月線乖離過大（+12.0%）",

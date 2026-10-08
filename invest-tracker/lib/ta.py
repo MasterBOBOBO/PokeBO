@@ -8,13 +8,13 @@ import json
 import math
 from datetime import date, timedelta
 
-from . import data, ledger, ta_plus
+from . import data, ledger, ta_plus, tdcc
 
 CACHE = data.DATA / "ta_cache"
 INFO = data.DATA / "stock_info.csv"
 LOOKBACK_DAYS = 1100     # 約 3 年：MA60 / MACD 暖機，並提供訊號回測樣本
 SHOW = 260               # 回傳最近 260 個交易日給前端切換 60/120/250 日
-CACHE_VERSION = 13       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
+CACHE_VERSION = 14       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
 
 
 # ---------- 基本資料 ----------
@@ -156,6 +156,23 @@ def _margin(symbol, start):
             "short": [r["ShortSaleTodayBalance"] for r in rows]}
 
 
+def _sbl(symbol, start):
+    """借券賣出餘額（張）。借券賣出多為法人放空或避險；和融券是兩套制度。"""
+    rows = data.fetch("TaiwanDailyShortSaleBalances", symbol, start)
+    return {"date": [r["date"] for r in rows],
+            "sbl": [round(r["SBLShortSalesCurrentDayBalance"] / 1000) for r in rows]}
+
+
+def _optional(fn, *args):
+    """補充資料抓不到時不影響整體分析（額度用完仍要往上丟）。"""
+    try:
+        return fn(*args)
+    except data.QuotaError:
+        raise
+    except Exception:
+        return None
+
+
 # ---------- 訊號與檢核 ----------
 
 def _cross(a, b, i):
@@ -196,6 +213,8 @@ HINTS = {
     "波動放大": "最近每天的漲跌幅度比平常大很多，價格可能劇烈變動。",
     "外資連 5 日賣超": "外資連續一週站在賣方，常會壓抑股價表現。",
     "融資增、股價跌": "借錢買股的人變多，股價卻在跌；如果繼續跌，可能引發融資斷頭的賣壓。",
+    "借券賣出餘額 5 日增加": "借券賣出多半是法人放空或避險；餘額快速增加，代表看壞或避險的部位變多。",
+    "千張大戶持股連 3 週減少": "持有 1,000 張以上的大股東持股比例連續下降，代表大戶在調節；也可能是 ETF 贖回或股權移轉，要搭配新聞看。",
 }
 HINTS["RSI 超買"], HINTS["RSI 超賣"] = HINTS["RSI 進入超買"], HINTS["RSI 進入超賣"]
 HINTS["收盤低於季線"], HINTS["今日爆量"] = HINTS["跌破 MA60"], HINTS["爆量"]
@@ -314,6 +333,13 @@ def warnings(s, chips, levels):
         m = chips["margin"]["margin"]
         if len(m) >= 6 and m[-1] > m[-6] * 1.05 and c < s["close"][-6]:
             add("alert", "融資增、股價跌", f"融資 5 日增加 {m[-1] / m[-6] - 1:+.1%}，股價 5 日 {c / s['close'][-6] - 1:+.1%}，籌碼轉弱")
+        b = (chips.get("sbl") or {}).get("sbl") or []
+        # 增幅 > 10%，且增加的張數超過半天的平均成交量，避免餘額很小時的雜訊
+        if len(b) >= 6 and b[-6] and b[-1] > b[-6] * 1.10 and vol20[i] and b[-1] - b[-6] > 0.5 * vol20[i]:
+            add("watch", "借券賣出餘額 5 日增加", f"{b[-1] / b[-6] - 1:+.1%}（{b[-1] - b[-6]:+,} 張），目前 {b[-1]:,} 張")
+        t = (chips.get("tdcc") or {}).get("big1000") or []
+        if len(t) >= 4 and t[-4] > t[-3] > t[-2] > t[-1]:
+            add("watch", "千張大戶持股連 3 週減少", f"{t[-4]:.2f}% → {t[-1]:.2f}%（集保每週資料）")
     if not out:
         add("info", "目前無警示", "各項技術條件都在正常區間")
     return out
@@ -402,7 +428,9 @@ def analyze(symbol, refresh=False):
     chips = None
     if market == "TW":
         cstart = s["date"][-SHOW] if len(s["date"]) >= SHOW else s["date"][0]
-        chips = {"institutional": _institutional(symbol, cstart), "margin": _margin(symbol, cstart)}
+        chips = {"institutional": _institutional(symbol, cstart), "margin": _margin(symbol, cstart),
+                 "sbl": _optional(_sbl, symbol, cstart), "tdcc": _optional(tdcc.history, symbol),
+                 "tdcc_local_only": data.WEB}
 
     i = len(cl) - 1
     y_ago = (date.fromisoformat(s["date"][i]) - timedelta(days=365)).isoformat()
@@ -437,6 +465,7 @@ def analyze(symbol, refresh=False):
     extra = {}
     if market == "TW":
         x = ta_plus.fetch_extra(symbol, s["date"][-60])
+        chips["shares_issued"] = x["shares_issued"]
         dts = [(d, x["daytrade"].get(d, 0) / (v * 1000) if v else 0) for d, v in zip(s["date"][-60:], s["volume"][-60:])]
         extra = {"daytrade_series": {"date": [d for d, _ in dts], "ratio": [round(r, 4) for _, r in dts]},
                  "daytrade_ratio20": sum(r for _, r in dts[-20:]) / 20,

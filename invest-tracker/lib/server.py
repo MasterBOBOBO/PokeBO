@@ -28,7 +28,7 @@ PAGE = data.ROOT / "web" / "dashboard.html"
 HOME = data.ROOT / "web" / "home.html"
 SYMBOL = re.compile(r"^[0-9A-Z]{1,10}$")
 REPORTS = data.ROOT / "reports"
-# 網站圖示（web/ 底下）：ta- 開頭是技術分析頁的放大鏡，其他頁面用金色箭頭；/favicon.ico 給沒讀 <link rel="icon"> 的瀏覽器
+# 網站圖示（web/ 底下）：ta- 開頭是技術分析頁的紅 K 棒，其他頁面用綠色階梯；/favicon.ico 給沒讀 <link rel="icon"> 的瀏覽器
 ICONS = {f"{p}{n}" for p in ("", "ta-") for n in ("favicon-16.png", "favicon-32.png", "icon-192.png", "apple-touch-icon.png")}
 
 
@@ -89,7 +89,7 @@ def simple_page(title, heading, nav, body):
     links = "".join(f'<a href="{href}">{_h.escape(text)}</a>' for href, text in nav)
     return (f'<!doctype html><html lang="zh-Hant"><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">'
             f'<script>try{{var t=localStorage.getItem("it-theme");if(t)document.documentElement.dataset.theme=t}}catch(e){{}}</script>'
-            f'<link rel="icon" type="image/png" href="/favicon-32.png"><title>{_h.escape(title)}</title><style>{SIMPLE_CSS}</style>'
+            f'<link rel="icon" type="image/png" href="/favicon-32.png?v=2"><title>{_h.escape(title)}</title><style>{SIMPLE_CSS}</style>'
             f'<main><nav class="top"><b>{_h.escape(heading)}</b><button id="theme-btn" type="button">\u2600 淺色</button>{links}</nav>'
             f'<div class="card">{body}</div></main><script>{SIMPLE_JS}</script></html>')
 
