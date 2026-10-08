@@ -68,5 +68,14 @@ class Schedule(unittest.TestCase):
         self.assertEqual(jobs.missed(now, {}), [])            # 從沒執行過不算漏跑
 
 
+class Symbols(unittest.TestCase):
+    def test_us_name_cleanup(self):
+        from lib import symbols
+        clean = lambda n: symbols._NAME_NOISE.sub("", n)
+        self.assertEqual(clean("Agilent Technologies Inc. Common Stock"), "Agilent Technologies Inc.")
+        self.assertEqual(clean("Space Exploration Technologies Corp. Class A Common Stock"), "Space Exploration Technologies Corp.")
+        self.assertEqual(clean("Vanguard S&P 500 ETF"), "Vanguard S&P 500 ETF")
+
+
 if __name__ == "__main__":
     unittest.main()

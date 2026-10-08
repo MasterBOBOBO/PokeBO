@@ -8,6 +8,7 @@
   /ta                個股技術分析儀表板
   /api/home          首頁資料 JSON
   /api/news?id=      個股新聞與重大訊息
+  /api/symbols       搜尋框用的股票清單（台股上市櫃＋美股）
   /api/stock?id=     個股分析 JSON（同日快取；refresh=1 強制重抓）
   /api/holdings      快速選擇用的持股清單
   /api/quota         FinMind 本小時用量（官方 + 本機紀錄）
@@ -17,6 +18,7 @@ import hmac
 import json
 import re
 import secrets
+from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -26,6 +28,8 @@ PAGE = data.ROOT / "web" / "dashboard.html"
 HOME = data.ROOT / "web" / "home.html"
 SYMBOL = re.compile(r"^[0-9A-Z]{1,10}$")
 REPORTS = data.ROOT / "reports"
+# 網站圖示（web/ 底下）：ta- 開頭是技術分析頁的放大鏡，其他頁面用金色箭頭；/favicon.ico 給沒讀 <link rel="icon"> 的瀏覽器
+ICONS = {f"{p}{n}" for p in ("", "ta-") for n in ("favicon-16.png", "favicon-32.png", "icon-192.png", "apple-touch-icon.png")}
 
 
 def dashboard_key():
@@ -61,6 +65,7 @@ def holdings():
 
 class Handler(BaseHTTPRequestHandler):
     lan_key = None          # 區域網路模式時設定；None = 只開放本機
+    symbols_cache = ("", [])  # 搜尋框股票清單，同一天只整理一次
 
     def _authorized(self, q):
         if self.client_address[0] in ("127.0.0.1", "::1") or not self.lan_key:
@@ -96,13 +101,16 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         try:
+            name = "favicon-32.png" if url.path == "/favicon.ico" else url.path.lstrip("/")
+            if name in ICONS:
+                return self._send(200, (data.ROOT / "web" / name).read_bytes(), "image/png")
             if url.path == "/reports/":
                 files = sorted((p for p in REPORTS.glob("*.html")), reverse=True) if REPORTS.exists() else []
                 links = "".join(f'<li><a href="/reports/{p.name}">{p.stem} 月報</a></li>' for p in files) or "<li>尚無月報</li>"
                 wk = sorted((REPORTS / "weekly").glob("*.md"), reverse=True)[:12] if (REPORTS / "weekly").exists() else []
                 links += "".join(f'<li><a href="/reports/weekly/{p.name}">{p.stem} 每週摘要</a></li>' for p in wk)
                 return self._send(200, f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<title>報告</title><style>body{{margin:0;font:14px/1.6 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
+<link rel="icon" type="image/png" href="/favicon-32.png"><title>報告</title><style>body{{margin:0;font:14px/1.6 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
 main{{max-width:720px;margin:0 auto;padding:16px}}
 .top,.card{{background:#141927;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px}}
 .top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}.top b{{margin-right:auto;font-size:16px}}
@@ -116,7 +124,7 @@ li a{{display:block;padding:10px 4px;color:#5b8def;text-decoration:none}}</style
                 if f.parent == REPORTS / "weekly" and f.exists():
                     import html
                     return self._send(200, f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<title>每週摘要 {f.stem}</title><style>body{{margin:0;font:14px/1.7 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
+<link rel="icon" type="image/png" href="/favicon-32.png"><title>每週摘要 {f.stem}</title><style>body{{margin:0;font:14px/1.7 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
 main{{max-width:720px;margin:0 auto;padding:16px}}
 .top,.card{{background:#141927;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px}}
 .top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}.top b{{margin-right:auto;font-size:16px}}
@@ -138,6 +146,12 @@ pre{{white-space:pre-wrap;font:inherit;margin:0}}</style>
                 self._send(200, HOME.read_text(encoding="utf-8"), "text/html; charset=utf-8")
             elif url.path == "/ta":
                 self._send(200, PAGE.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+            elif url.path == "/api/symbols":
+                from . import symbols
+                today = date.today().isoformat()
+                if Handler.symbols_cache[0] != today:
+                    Handler.symbols_cache = (today, symbols.all_symbols())
+                self._json(200, Handler.symbols_cache[1])
             elif url.path == "/api/news":
                 if not SYMBOL.match(sym):
                     return self._json(400, {"error": "代號格式不正確"})

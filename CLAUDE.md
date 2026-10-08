@@ -154,6 +154,12 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
   - 每日排程會預先抓取持有美股的資料；FINRA 每日檔案快取在 data/finra/daily（保留 120 天）。
 - 基本面卡片（lib/fundamentals.py，台股個股才有，ETF 和美股顯示不適用）：月營收年增／月增／累計年增、下次公布期限；
   本益比、股價淨值比、殖利率的近 5 年百分位（虧損期間沒有本益比，不列入）。網頁版也有（已加入 worker.js 的 MODULES）。
+- 搜尋框提示（lib/symbols.py，`/api/symbols`，網頁版是 worker 的 symbols 指令）：台股上市櫃（含 ETF，排除興櫃）＋美股
+  （FinMind USStockInfo 整理成 data/us_symbols.csv，7 天更新）。輸入代號前幾碼或名稱即列出，排序：完全相符 → 代號開頭 → 名稱開頭 → 名稱包含，
+  同分時持股優先、台股優先。第一次點搜尋框才載入清單。
+- X 軸是類別軸，標籤要唯一：`lbl()` 在區間超過約 11 個月時改用「年/月/日」，否則去年和今年同一天會畫在同一格。
+- 網站圖示：我的組合、月報、報告頁用金色箭頭（web/favicon-16/32.png 只裁主箭頭、icon-192.png、apple-touch-icon.png）；
+  技術分析頁用放大鏡（web/ta-*.png）。本機伺服器另外提供 /favicon.ico。
 - 天數篩選：1 / 5 / 7 / 60 / 120 / 250 日，只影響圖表顯示範圍；指標和評分都以完整歷史計算。沒有盤中分時資料。
 - **刻意不做**：券商分點（主力、隔日沖）和股權分散（大戶／散戶）是 FinMind 付費資料，不估算、不顯示假數字。
 - 效能：圖表 responsive 關閉，改用 ResizeObserver 只在寬度改變時重排；捲動時暫停圖表 hover；分頁延遲繪製。

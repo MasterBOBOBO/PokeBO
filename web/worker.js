@@ -5,7 +5,7 @@
 
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
 // __init__.py 由 worker 自己產生：GitHub Pages 的 Jekyll 會隱藏底線開頭的檔案（回 404）
-const MODULES = ["data", "ledger", "report", "risk", "ta", "ta_plus", "us_chips", "scenario", "reconcile", "backup", "fundamentals", "news"];
+const MODULES = ["data", "ledger", "report", "risk", "ta", "ta_plus", "us_chips", "scenario", "reconcile", "backup", "fundamentals", "news", "symbols"];
 const ROOT = "/invest";
 let py = null, ready = null;
 
@@ -76,6 +76,10 @@ from lib import data, ta
 if not SYM[:1].isdigit():   # 美股需要匯率資料（匯率影響、成本換算）
     data.update_fx((date.today() - timedelta(days=800)).isoformat())
 json.dumps(ta.analyze(SYM, refresh=REFRESH), ensure_ascii=False)`);
+    } else if (msg.cmd === "symbols") {
+      result = run(`
+from lib import symbols
+json.dumps(symbols.all_symbols(), ensure_ascii=False)`);
     } else if (msg.cmd === "news") {
       py.globals.set("SYM", msg.symbol);
       result = run(`
