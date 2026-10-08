@@ -68,6 +68,13 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chipbar .lab{min-width:4.5em}
 .inst-head{font-size:13px;color:var(--ink-2);margin:0 0 4px}
 .tablewrap.short{max-height:300px}
+/* 法人動向儀表 */
+.ig{display:grid;max-width:880px;grid-template-columns:minmax(220px,300px) 1fr;gap:12px 24px;align-items:center}
+.ig svg{width:100%;height:auto;display:block}
+.ig .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.ig .stats .l{font-size:12px;color:var(--muted)}.ig .stats .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.ig .by{grid-column:1/-1;font-size:12px;color:var(--ink-2)}
+@media (max-width:640px){.ig{grid-template-columns:1fr}.ig svg{max-width:280px;margin:0 auto}.ig .stats .v{font-size:16px}}
 .cardf{margin-left:auto;display:flex;align-items:center;gap:8px}
 .card-pick{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0 0}
 .card-pick button{font-size:12px;padding:3px 10px;border-radius:999px;color:var(--muted)}
@@ -353,6 +360,9 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 
     <section class="panel" id="p-chips">
       <div class="grid" id="chips-grid">
+        <div class="card c12"><h3>法人動向<button class="info" data-x="instg">ⓘ</button><span class="hint" id="ig-date"></span></h3>
+          <div class="chipbar"><span class="lab">天數</span><span class="seg sm" id="ig-days" role="group" aria-label="法人動向天數"><button type="button" data-n="1" class="on">1</button><button type="button" data-n="2">2</button><button type="button" data-n="3">3</button><button type="button" data-n="5">5</button><button type="button" data-n="10">10</button><button type="button" data-n="20">20</button><button type="button" data-n="60">60</button><button type="button" data-n="120">120</button></span></div>
+          <div class="ig" id="ig"></div></div>
         <div class="card c12"><h3>三大法人每日買賣超（張）<span class="hint">右軸為收盤價</span></h3>
           <div class="chipbar"><span class="seg sm" id="inst-pick" role="group" aria-label="法人">
             <button type="button" data-g="all" class="on">全部</button><button type="button" data-g="foreign">外資</button>
@@ -1007,6 +1017,7 @@ const EXPLAIN = () => ({
   si: D.plus.us_chips && D.plus.us_chips.short_interest && D.plus.us_chips.short_interest.explain,
   ins: D.plus.us_chips && D.plus.us_chips.insider ? D.plus.us_chips.insider.explain : "ETF 沒有內部人申報。",
   sbl: "借券賣出餘額＝向股東借股票來賣、還沒買回還券的張數（FinMind TaiwanDailyShortSaleBalances）。借券賣出多半是外資、法人放空或避險，和散戶的融券是兩套制度。餘額增加代表看壞或避險的部位變多，減少代表在回補。",
+  instg: "依三大法人官方買賣超（外資＋投信＋自營商）計算，不是券商分點的「主力」資料（分點資料需付費）。集中度＝近 N 日法人買賣超合計 ÷ 同期成交量。≥ 10% 法人大買、3%～10% 偏買、-3%～3% 中性、-10%～-3% 偏賣、≤ -10% 法人大賣。週轉率＝同期成交量 ÷ 發行股數。這只描述法人過去 N 日的買賣，不代表接下來的漲跌。",
   fhold: "外資持股＝外資及陸資持有的股數（FinMind TaiwanStockShareholding，證交所每日公布的官方數字），比例是占發行股數。和 XQ 等軟體用買賣超累加的「估計持股」不同，這是實際申報值。",
   tdcc: "臺灣集中保管結算所「集保戶股權分散表」（每週五資料，免費開放資料）。大戶＝持有超過所選張數的股東持股占集保庫存比例，散戶＝持有所選張數以下；門檻依官方分級（1、5、10、15、20、30、40、50、100、200、400、600、800、1,000 張）加總。2026-10-02 那週只存了千張／400 張／50 張摘要，其他門檻從之後的週次開始才有。官方只提供最新一週，所以從開始使用的那週起每週累積。網站沒有開放跨網域，只有本機版能抓。",
   daytrade: "當沖比例＝當沖成交股數 ÷ 總成交股數；週轉率＝日成交股數 ÷ 發行股數；日內振幅＝(最高−最低) ÷ 收盤。資料：FinMind TaiwanStockDayTrading、TaiwanStockShareholding。",
@@ -1169,7 +1180,7 @@ function renderChips() {
   const has = !!D.chips;
   $("#chips-grid").hidden = !has; $("#us-chips-grid").hidden = has;
   if (!has) return renderUSChips();
-  renderSBL(); renderTDCC(); renderFHold(); renderInst();
+  renderSBL(); renderTDCC(); renderFHold(); renderInst(); renderInstGauge();
   const I = D.chips.institutional, M = D.chips.margin, k = Math.min(N, I.date.length);
   const xd = lbl(I.date.slice(-k));
   const names = ["外資", "投信", "自營商"], keys = ["foreign", "trust", "dealer"], cs = [C.s1, C.s2, C.s3];
@@ -1193,6 +1204,40 @@ function renderChips() {
   if (B && B.sbl.length >= 6) rows.push(["借券賣出餘額 5 日增減", `${fmt(B.sbl.at(-1) - B.sbl.at(-6), 0)} 張`]);
   $("#inst-stats").innerHTML = rows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
 }
+
+// 法人動向儀表：近 N 日三大法人買賣超 ÷ 成交量（集中度），分五區
+let igDays = 1;
+const IG_ZONES = [[-Infinity, -10, "法人大賣"], [-10, -3, "法人偏賣"], [-3, 3, "中性"], [3, 10, "法人偏買"], [10, Infinity, "法人大買"]];
+function renderInstGauge() {
+  const I = D.chips.institutional, n = Math.min(igDays, I.date.length), ds = I.date.slice(-n);
+  const vol = Object.fromEntries(D.series.date.map((d, i) => [d, D.series.volume[i]]));
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const net = sum(I.total.slice(-n)), v = sum(ds.map(d => vol[d] || 0));
+  const conc = v ? net / v * 100 : 0, z = IG_ZONES.findIndex(([a, b]) => conc >= a && conc < b);
+  const SI = D.chips.shares_issued, turn = SI ? v * 1000 / SI * 100 : null;
+  const cols = [C.down, C.down, C.muted, C.up, C.up], op = [1, .55, 1, .55, 1];
+  const P = (deg, r) => [100 + r * Math.cos(deg * Math.PI / 180), 100 - r * Math.sin(deg * Math.PI / 180)];
+  const arc = (a0, a1, r0, r1) => { const [x0, y0] = P(a0, r1), [x1, y1] = P(a1, r1), [x2, y2] = P(a1, r0), [x3, y3] = P(a0, r0);
+    return `M${x0},${y0} A${r1},${r1} 0 0 1 ${x1},${y1} L${x2},${y2} A${r0},${r0} 0 0 0 ${x3},${y3} Z`; };
+  const segs = IG_ZONES.map((_, i) => `<path d="${arc(180 - i * 36 - 1, 180 - (i + 1) * 36 + 1, 62, 90)}" fill="${cols[i]}" opacity="${i === z ? op[i] : .18}"/>`).join("");
+  const ang = 180 - (Math.max(-20, Math.min(20, conc)) + 20) / 40 * 180, [nx, ny] = P(ang, 60), [b1x, b1y] = P(ang + 5, 50), [b2x, b2y] = P(ang - 5, 50);
+  const label = IG_ZONES[z][2], tone = z < 2 ? "down" : z > 2 ? "up" : "";
+  const sg = (x, d) => `<span class="${cls(x)}">${x > 0 ? "+" : ""}${fmt(x, d)}</span>`;
+  $("#ig-date").textContent = I.date.at(-1);
+  $("#ig").innerHTML = `<svg viewBox="0 0 200 112" role="img" aria-label="近 ${n} 日${label}，集中度 ${conc.toFixed(2)}%">${segs}
+      <path d="M${nx},${ny} L${b1x},${b1y} L${b2x},${b2y} Z" fill="${C.ink}"/>
+      <text x="100" y="78" text-anchor="middle" font-size="11" fill="${C.ink2}">近 ${n} 日</text>
+      <text x="100" y="102" text-anchor="middle" font-size="20" font-weight="700" fill="${tone ? C[tone] : C.ink}">${label}</text></svg>
+    <div class="stats"><div><div class="l">買賣超(張)</div><div class="v">${sg(net, 0)}</div></div>
+      <div><div class="l">集中度(%)</div><div class="v">${sg(conc, 2)}</div></div>
+      <div><div class="l">成交量(張)</div><div class="v">${fmt(v, 0)}</div></div>
+      <div><div class="l">週轉率(%)</div><div class="v">${turn == null ? "—" : turn.toFixed(2)}</div></div></div>
+    <div class="by">外資 ${sg(sum(I.foreign.slice(-n)), 0)} · 投信 ${sg(sum(I.trust.slice(-n)), 0)} · 自營商 ${sg(sum(I.dealer.slice(-n)), 0)} 張
+      ${n < igDays ? `（資料只有 ${n} 日）` : ""}　※ 依三大法人官方資料，不是券商分點</div>`;
+}
+document.querySelectorAll("#ig-days button").forEach(b => b.onclick = () => {
+  igDays = +b.dataset.n; document.querySelectorAll("#ig-days button").forEach(x => x.classList.toggle("on", x === b)); if (D && D.chips) renderInstGauge();
+});
 
 // 法人買賣超：可切換單一法人（紅買綠賣）＋收盤價；明細表跟著顯示區間
 let instPick = "all";
