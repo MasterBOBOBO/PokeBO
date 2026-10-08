@@ -252,6 +252,36 @@ def update_tw_dividends(symbol, history_start):
     return len(rows)
 
 
+def announce_path(symbol):
+    return DATA / "dividends" / f"TW_{symbol}_announce.csv"
+
+
+ANNOUNCE_FIELDS = ["ex_date", "pay_date", "cash"]
+
+
+def update_tw_dividend_announce(symbol, months=18):
+    """已公告的除息日、發放日（TaiwanStockDividend）。金額未定時 cash 為 0。同一天只抓一次。"""
+    path = announce_path(symbol)
+    if path.exists() and date.fromtimestamp(path.stat().st_mtime) == date.today():
+        return 0
+    start = (date.today() - timedelta(days=months * 30)).isoformat()
+    raw = fetch("TaiwanStockDividend", symbol, start)
+    rows = {}
+    for r in raw:
+        ex = r.get("CashExDividendTradingDate") or ""
+        if not ex:
+            continue
+        rows[ex] = {"ex_date": ex, "pay_date": r.get("CashDividendPaymentDate") or "",
+                    "cash": round((r.get("CashEarningsDistribution") or 0) + (r.get("CashStatutorySurplus") or 0), 6)}
+    _write(path, [rows[k] for k in sorted(rows)], ANNOUNCE_FIELDS)
+    return len(rows)
+
+
+def load_announce(symbol):
+    return [{"ex_date": r["ex_date"], "pay_date": r["pay_date"], "cash": float(r["cash"] or 0)}
+            for r in _read(announce_path(symbol))]
+
+
 def us_dividends(symbol):
     """FinMind 沒有美股配息資料集，改由 Adj_Close/Close 比值的跳動反推每股配息。"""
     rows = _read(price_path("US", symbol))

@@ -5,7 +5,7 @@
 
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
 // __init__.py 由 worker 自己產生：GitHub Pages 的 Jekyll 會隱藏底線開頭的檔案（回 404）
-const MODULES = ["data", "ledger", "report", "risk", "ta", "ta_plus", "us_chips", "scenario", "reconcile", "backup"];
+const MODULES = ["data", "ledger", "report", "risk", "ta", "ta_plus", "us_chips", "scenario", "reconcile", "backup", "fundamentals"];
 const ROOT = "/invest";
 let py = null, ready = null;
 

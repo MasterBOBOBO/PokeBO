@@ -1,4 +1,4 @@
-"""排程工作（由 launchd 呼叫）：每日更新 + 健檢變化通知；每月產出月報。
+"""排程工作（由 launchd 呼叫）：每日更新 + 健檢變化通知；每週摘要；每月產出月報。
 
 通知管道：
 - macOS 通知中心（預設，免設定）
@@ -33,7 +33,8 @@ def _env(key):
     return None
 
 
-def notify(cfg, title, body):
+def notify(cfg, title, body, telegram_text=None):
+    """telegram_text：要送到 Telegram 的完整內文（預設和通知中心相同）。"""
     n = cfg.get("notify", {})
     if n.get("macos", True):
         script = f"display notification {json.dumps(body)} with title {json.dumps(title)}"
@@ -41,7 +42,7 @@ def notify(cfg, title, body):
     if n.get("telegram"):
         token, chat = _env("TELEGRAM_BOT_TOKEN"), _env("TELEGRAM_CHAT_ID")
         if token and chat:
-            payload = urllib.parse.urlencode({"chat_id": chat, "text": f"{title}\n{body}"}).encode()
+            payload = urllib.parse.urlencode({"chat_id": chat, "text": f"{title}\n{telegram_text or body}"}).encode()
             urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", payload,
                                    timeout=20, context=data.SSL_CTX)
     log(f"notify: {title} | {body}")
@@ -54,7 +55,11 @@ def _update(cfg):
         data.update_prices(mk, sym, start)
         if mk == "TW":
             data.update_tw_dividends(sym, start)
+            data.update_tw_dividend_announce(sym)
     data.update_fx(start)
+    from . import market
+    for err in market.update(cfg):
+        log(f"market update failed: {err}")
     # 預先抓取持有美股的 FINRA / SEC 資料，打開儀表板時不用等
     from . import us_chips
     for mk, sym in ledger.tracked_symbols(cfg):
@@ -140,10 +145,23 @@ def monthly(cfg):
     return path
 
 
+def weekly(cfg):
+    """每週五收盤後：更新 → 產生每週摘要 → 本機存完整版，通知只送不含金額的版本（除非 include_amounts）。"""
+    from . import home, weekly as wk
+    _update(cfg)
+    h = home.build(cfg)
+    _, full, _ = wk.build(cfg, h, include_amounts=True)
+    path = wk.save(full)
+    title, text, short = wk.build(cfg, h)
+    notify(cfg, title, short, telegram_text=text)
+    log(f"weekly ok {path}")
+    return path
+
+
 def run(name):
     cfg = data.load_config()
     try:
-        return {"daily": daily, "monthly": monthly}[name](cfg)
+        return {"daily": daily, "monthly": monthly, "weekly": weekly}[name](cfg)
     except Exception as e:
         log(f"{name} FAILED: {e}\n{traceback.format_exc()}")
         notify(cfg, f"投資追蹤排程失敗（{name}）", f"{type(e).__name__}: {e}"[:200])

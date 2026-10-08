@@ -13,7 +13,7 @@ python3 invest.py report                 # 文字報告
 python3 invest.py report --json          # 完整 JSON（給 Claude 分析用，含 health/risk/dividend_outlook）
 python3 invest.py html                   # 月報 HTML → reports/YYYY-MM.html
 python3 invest.py simulate private/scenarios/example.json   # 模擬調整方案後的 Health Check（不寫入帳本）
-python3 invest.py serve                  # 個股技術分析儀表板 http://127.0.0.1:8765/
+python3 invest.py serve                  # 我的組合 http://127.0.0.1:8765/ ；技術分析 /ta
 python3 invest.py ta 2330                # 個股技術分析離線報告 → reports/ta/2330_YYYY-MM-DD.html
 python3 invest.py quota                  # FinMind API 本小時已用次數（官方）+ 本機各資料集呼叫明細
 python3 invest.py buy 0050 176 113.2 --date 2026-10-27 --fee 28   # 記錄實際成交
@@ -53,7 +53,7 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 - 每次呼叫都記錄在 data/state/api_calls.log（只保留 2 天），用來看是哪個資料集在消耗額度。
 - 官方用量達 98% 時，`data.fetch` 會丟出 QuotaError 並暫停呼叫；FinMind 回傳 402 或 429 時也會轉成 QuotaError。
 - 儀表板頂部顯示用量（每 60 秒更新，50% 以上轉黃、80% 以上轉紅）；每日排程發現用量 ≥ 80% 時會通知。
-- 用量估算：分析一檔台股約 7 次呼叫（同一天會用快取）、大盤每天 3 次、每日排程約 30 次。
+- 用量估算：分析一檔台股個股約 9 次呼叫（含基本面 2 次；同一天會用快取）、大盤每天 3 次、每日排程約 45 次（含已公告配息、市場溫度計）。
 
 ## 計算方式
 - 股利：台股來自 FinMind TaiwanStockDividendResult；美股 FinMind 沒有配息資料，由 Adj_Close/Close 比值的跳動反推。
@@ -75,11 +75,13 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 | Label | 時間 | 內容 |
 |---|---|---|
 | <launchd_prefix>.daily | 週一到週五 15:10 | 更新行情 → Health Check 狀態有變化才通知 → git 備份 |
+| <launchd_prefix>.weekly | 每週五 15:40 | 更新行情 → 每週摘要：本機存完整版 reports/weekly/，通知只送不含金額的版本 |
 | <launchd_prefix>.monthly | 每月 28 日 15:30 | 更新行情 → 產出 reports/YYYY-MM.html → 通知摘要 |
-| <launchd_prefix>.dashboard | 登入時啟動、常駐 | 技術分析儀表板 http://127.0.0.1:8765/ |
-- 手動執行：`python3 invest.py job daily|monthly`；log 在 logs/jobs.log。
+| <launchd_prefix>.dashboard | 登入時啟動、常駐 | 我的組合 http://127.0.0.1:8765/ 、技術分析 /ta |
+- 手動執行：`python3 invest.py job daily|weekly|monthly`；log 在 logs/jobs.log。預覽每週摘要：`python3 invest.py weekly [--amounts]`。
 - 通知：預設用 macOS 通知中心，且不顯示金額（`private/config.json > notify.include_amounts=false`）。
-  Telegram 是選用功能：在 .env.local 加上 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID，再設定 notify.telegram=true。
+  Telegram 是選用功能：在 .env.local 加上 TELEGRAM_BOT_TOKEN，傳一則訊息給 bot 後執行 `invest.py telegram-test`
+  （自動寫入 TELEGRAM_CHAT_ID 並送測試訊息），再設定 notify.telegram=true。Telegram 是外部服務：預設只送百分比、狀態與日期，不送金額。
 - 停用排程：`launchctl bootout gui/$(id -u)/<launchd_prefix>.<name>`。
 - 備份：`python3 invest.py backup`（buy、daily、monthly 會自動執行），commit 到 private/ 的本機 git（不推送）。
 - 公開 repo（GitHub）只有程式碼；個人資料都在 private/、CLAUDE.local.md、data/、reports/，全部被 .gitignore 排除。
@@ -90,6 +92,25 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 - ETF 成分權重是手動維護的（請註明來源與資料日），超過 120 天沒更新，Health Check 會顯示 Risk 提醒更新。
 - ETF 內含的台股公司（例如 SMH 裡的台積電 ADR）可以用台股代號（2330）計入穿透曝險。QQQM（Nasdaq-100）和 VOO（S&P 500）都不含台積電。
 - 單一公司曝險 = 直接持股 + ETF 市值 × 成分權重。只涵蓋設定中有權重的 ETF（目前只有 0050），高股息 ETF 和 SMH 裡的台積電沒有計入。
+
+## 我的組合（長期持有者首頁：lib/home.py、lib/divcal.py、web/home.html）
+- 本機 `serve` 的首頁 `/`，資料來自 `/api/home`；技術分析移到 `/ta`（舊網址 `/?id=` 會轉址）。網頁版沒有持倉，打開 home.html 只顯示提示。
+- 卡片：總覽數字、配置 vs 投資政策（狀態沿用健檢結果，不另算）、持倉配置、累積投入與市值、和大盤比較、回撤、定期定額、股利行事曆、健檢。
+- 和大盤比較（`home.benchmark`）：每一筆投入改在同一天買進 `config.json > benchmarks`（預設 0050、VOO）的含息總報酬指數。
+  期初部位以建檔日市值當作投入，和 XIRR 一致；美股用買入日 spot_sell 換匯、最新 spot_buy 計值。
+- 美國遺產稅倒數：依目前美股每月定額、不計漲跌，推估多久達到免稅額和警示線。
+- 股利行事曆（divcal）：已公告（TaiwanStockDividend，`data/dividends/TW_{symbol}_announce.csv`，每天最多抓一次）＞日期已公告、金額用最近一次配息推估＞依去年同期推估。
+  已除息、尚未入帳的列為「待入帳」，期初部位也算。股數用目前持股，不計入之後的扣款與再投資。
+  美股入帳日用除息日 + 5 天推估；台股沒有歷史發放日時用 + 25 天。
+- 只呈現事實與政策比較，不產生買賣建議。
+- 近期事件（lib/events.py，未來 60 天）：除息／入帳、定額扣款日、台股個股月營收期限（每月 10 日）、
+  財報法定期限（一般公司 3/31、5/15、8/14、11/14；金融業 3/31、5/30、8/31、11/29）、FOMC 利率決議。法說會沒有免費來源，不提供。
+- 市場溫度計（lib/market.py）：國發會景氣對策信號（data.gov.tw 開放資料 6099，每 7 天最多下載一次）、加權指數 240 日乖離百分位、
+  整體融資餘額 20 日變化百分位、VIX（FinMind USStockPrice ^VIX）。FOMC 日期解析聯準會行事曆頁面。
+  百分位 > 80 偏熱、< 20 偏冷（VIX 相反）；只描述位置，不是進出場訊號。資料在 update／每日排程更新，首頁只讀快取。
+  國發會、聯準會沒有 CORS，只在本機版使用。
+- 每週摘要（lib/weekly.py）：組合與大盤同期報酬、漲跌貢獻（百分點）、健檢、未來兩週事件、溫度計、漏記提醒。
+  起算日和組合報酬一致（建檔不滿 5 個交易日時從建檔日起算）。
 
 ## 個股技術分析儀表板（lib/ta.py、lib/server.py、web/dashboard.html）
 - 只呈現能從資料直接計算的指標：MA5/10/20/60、KD(9,3,3)、MACD(12,26,9)、RSI(14)、布林(20,2)、ATR(14)、
@@ -118,6 +139,8 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
   - FMP 免費金鑰（.env.local 的 FMP_API_KEY）只能用 profile（Beta、市值、52 週區間）；ETF 成分股、機構持股、內部人統計都回傳 402（付費方案限定）。
     所以 13F 機構持股仍未提供；ETF 成分權重改成手動維護。
   - 每日排程會預先抓取持有美股的資料；FINRA 每日檔案快取在 data/finra/daily（保留 120 天）。
+- 基本面卡片（lib/fundamentals.py，台股個股才有，ETF 和美股顯示不適用）：月營收年增／月增／累計年增、下次公布期限；
+  本益比、股價淨值比、殖利率的近 5 年百分位（虧損期間沒有本益比，不列入）。網頁版也有（已加入 worker.js 的 MODULES）。
 - 天數篩選：1 / 5 / 7 / 60 / 120 / 250 日，只影響圖表顯示範圍；指標和評分都以完整歷史計算。沒有盤中分時資料。
 - **刻意不做**：券商分點（主力、隔日沖）和股權分散（大戶／散戶）是 FinMind 付費資料，不估算、不顯示假數字。
 - 效能：圖表 responsive 關閉，改用 ResizeObserver 只在寬度改變時重排；捲動時暫停圖表 hover；分頁延遲繪製。
