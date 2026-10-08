@@ -157,6 +157,9 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 - 搜尋框提示（lib/symbols.py，`/api/symbols`，網頁版是 worker 的 symbols 指令）：台股上市櫃（含 ETF，排除興櫃）＋美股
   （FinMind USStockInfo 整理成 data/us_symbols.csv，7 天更新）。輸入代號前幾碼或名稱即列出，排序：完全相符 → 代號開頭 → 名稱開頭 → 名稱包含，
   同分時持股優先、台股優先。第一次點搜尋框才載入清單。
+- 深淺色：所有頁面（首頁、技術分析、月報、報告列表、每週摘要）都有切換按鈕，選擇存在 localStorage `it-theme`（各頁共用），
+  沒選過就跟系統 prefers-color-scheme。淺色 token 寫在各頁的 `:root[data-theme="light"]` 與 media query；
+  Plotly 圖表顏色在繪製時讀 CSS 變數，切換時要重繪（`onThemeChange`）。淺色系列色 #2a78d6／#d4571f／#199e70 已過色弱驗證。
 - X 軸是類別軸，標籤要唯一：`lbl()` 在區間超過約 11 個月時改用「年/月/日」，否則去年和今年同一天會畫在同一格。
 - 網站圖示：我的組合、月報、報告頁用金色箭頭（web/favicon-16/32.png 只裁主箭頭、icon-192.png、apple-touch-icon.png）；
   技術分析頁用放大鏡（web/ta-*.png）。本機伺服器另外提供 /favicon.ico。

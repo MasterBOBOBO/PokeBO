@@ -63,6 +63,37 @@ def holdings():
     return out
 
 
+_LIGHT = ("color-scheme:light;--page:#f3f4f7;--panel:#ffffff;--panel-2:#eef0f5;--grid:#e4e7ee;--axis:#cdd3df;"
+          "--ink:#151a28;--ink-2:#495165;--accent:#2f6fde")
+SIMPLE_CSS = (":root{color-scheme:dark;--page:#0b0e16;--panel:#141927;--panel-2:#1a2033;--grid:#232b3d;--axis:#2f3850;"
+              "--ink:#e8eaf0;--ink-2:#a3abbd;--accent:#5b8def}"
+              f":root[data-theme=light]{{{_LIGHT}}}"
+              f"@media (prefers-color-scheme:light){{:root:not([data-theme=dark]){{{_LIGHT}}}}}"
+              """body{margin:0;font:14px/1.7 system-ui,-apple-system,"PingFang TC",sans-serif;background:var(--page);color:var(--ink)}
+main{max-width:720px;margin:0 auto;padding:16px}
+.top,.card{background:var(--panel);border:1px solid var(--grid);border-radius:12px;padding:12px 16px;margin-bottom:12px}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.top b{margin-right:auto;font-size:16px}
+.top a,.top button{font:inherit;cursor:pointer;color:var(--ink);text-decoration:none;border:1px solid var(--axis);background:var(--panel-2);border-radius:8px;padding:6px 12px}
+ul{list-style:none;margin:0;padding:0}li{border-bottom:1px solid var(--grid)}li:last-child{border-bottom:none}
+li a{display:block;padding:10px 4px;color:var(--accent);text-decoration:none}pre{white-space:pre-wrap;font:inherit;margin:0}""")
+SIMPLE_JS = """(function(){var r=document.documentElement,b=document.getElementById('theme-btn');
+try{var t=localStorage.getItem('it-theme');if(t)r.dataset.theme=t}catch(e){}
+function cur(){return r.dataset.theme||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark')}
+function paint(){b.textContent=cur()==='dark'?'\u2600 淺色':'\u263e 深色'}
+b.onclick=function(){var n=cur()==='dark'?'light':'dark';r.dataset.theme=n;try{localStorage.setItem('it-theme',n)}catch(e){}paint()};paint()})();"""
+
+
+def simple_page(title, heading, nav, body):
+    """報告列表、每週摘要等伺服器產生的小頁面：和其他頁面同一套深淺色。"""
+    import html as _h
+    links = "".join(f'<a href="{href}">{_h.escape(text)}</a>' for href, text in nav)
+    return (f'<!doctype html><html lang="zh-Hant"><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">'
+            f'<script>try{{var t=localStorage.getItem("it-theme");if(t)document.documentElement.dataset.theme=t}}catch(e){{}}</script>'
+            f'<link rel="icon" type="image/png" href="/favicon-32.png"><title>{_h.escape(title)}</title><style>{SIMPLE_CSS}</style>'
+            f'<main><nav class="top"><b>{_h.escape(heading)}</b><button id="theme-btn" type="button">\u2600 淺色</button>{links}</nav>'
+            f'<div class="card">{body}</div></main><script>{SIMPLE_JS}</script></html>')
+
+
 class Handler(BaseHTTPRequestHandler):
     lan_key = None          # 區域網路模式時設定；None = 只開放本機
     symbols_cache = ("", [])  # 搜尋框股票清單，同一天只整理一次
@@ -109,29 +140,16 @@ class Handler(BaseHTTPRequestHandler):
                 links = "".join(f'<li><a href="/reports/{p.name}">{p.stem} 月報</a></li>' for p in files) or "<li>尚無月報</li>"
                 wk = sorted((REPORTS / "weekly").glob("*.md"), reverse=True)[:12] if (REPORTS / "weekly").exists() else []
                 links += "".join(f'<li><a href="/reports/weekly/{p.name}">{p.stem} 每週摘要</a></li>' for p in wk)
-                return self._send(200, f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<link rel="icon" type="image/png" href="/favicon-32.png"><title>報告</title><style>body{{margin:0;font:14px/1.6 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
-main{{max-width:720px;margin:0 auto;padding:16px}}
-.top,.card{{background:#141927;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px}}
-.top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}.top b{{margin-right:auto;font-size:16px}}
-.top a{{color:#e8eaf0;text-decoration:none;border:1px solid #2f3850;background:#1a2033;border-radius:8px;padding:6px 12px}}
-ul{{list-style:none;margin:0;padding:0}}li{{border-bottom:1px solid #232b3d}}li:last-child{{border-bottom:none}}
-li a{{display:block;padding:10px 4px;color:#5b8def;text-decoration:none}}</style>
-<main><nav class="top"><b>月報與每週摘要</b><a href="/">我的組合</a><a href="/ta">技術分析</a></nav>
-<div class="card"><ul>{links}</ul></div></main>""", "text/html; charset=utf-8")
+                return self._send(200, simple_page("報告", "月報與每週摘要", [("/", "我的組合"), ("/ta", "技術分析")],
+                                                   f"<ul>{links}</ul>"), "text/html; charset=utf-8")
             if url.path.startswith("/reports/weekly/") and url.path.endswith(".md"):
                 f = REPORTS / "weekly" / url.path.rsplit("/", 1)[-1]
                 if f.parent == REPORTS / "weekly" and f.exists():
                     import html
-                    return self._send(200, f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<link rel="icon" type="image/png" href="/favicon-32.png"><title>每週摘要 {f.stem}</title><style>body{{margin:0;font:14px/1.7 system-ui,-apple-system,"PingFang TC",sans-serif;background:#0b0e16;color:#e8eaf0}}
-main{{max-width:720px;margin:0 auto;padding:16px}}
-.top,.card{{background:#141927;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:12px}}
-.top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}.top b{{margin-right:auto;font-size:16px}}
-.top a{{color:#e8eaf0;text-decoration:none;border:1px solid #2f3850;background:#1a2033;border-radius:8px;padding:6px 12px}}
-pre{{white-space:pre-wrap;font:inherit;margin:0}}</style>
-<main><nav class="top"><b>每週摘要 {f.stem}</b><a href="/">我的組合</a><a href="/reports/">所有報告</a></nav>
-<div class="card"><pre>{html.escape(f.read_text(encoding="utf-8"))}</pre></div></main>""", "text/html; charset=utf-8")
+                    return self._send(200, simple_page(f"每週摘要 {f.stem}", f"每週摘要 {f.stem}",
+                                                       [("/", "我的組合"), ("/reports/", "所有報告")],
+                                                       f"<pre>{html.escape(f.read_text(encoding='utf-8'))}</pre>"),
+                                      "text/html; charset=utf-8")
                 return self._json(404, {"error": "找不到每週摘要"})
             if url.path.startswith("/reports/") and url.path.endswith(".html"):
                 f = REPORTS / url.path.rsplit("/", 1)[-1]

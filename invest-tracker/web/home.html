@@ -10,6 +10,7 @@
 <title>我的組合</title>
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"
   integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
+<script>/* 深淺色：沒有手動選過就跟系統設定 */try{var t=localStorage.getItem("it-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
 :root{
   color-scheme:dark;
@@ -106,6 +107,9 @@ tr.total td{font-weight:600;border-bottom:none}
 .disclaimer{color:var(--muted);font-size:12px;margin:16px 4px 32px}
 @media (max-width:560px){.wrap{padding:12px}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile{padding:10px 12px}
   .tile .v{font-size:17px}.brand small{display:none}.alloc{grid-template-columns:minmax(56px,auto) 1fr 46px 56px}}
+:root[data-theme="light"]{color-scheme:light;--page:#f3f4f7;--panel:#ffffff;--panel-2:#eef0f5;--grid:#e4e7ee;--axis:#cdd3df;--ink:#151a28;--ink-2:#495165;--muted:#6b7387;--ring:rgba(15,23,42,.10);--s1:#2a78d6;--s2:#d4571f;--s3:#199e70;--s4:#a86f00;--s7:#6f60d8;--up:#d03b3b;--down:#0a7f0a;--good:#0a7f0a;--warn:#a86400;--bad:#c62828;--accent:#2f6fde}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){color-scheme:light;--page:#f3f4f7;--panel:#ffffff;--panel-2:#eef0f5;--grid:#e4e7ee;--axis:#cdd3df;--ink:#151a28;--ink-2:#495165;--muted:#6b7387;--ring:rgba(15,23,42,.10);--s1:#2a78d6;--s2:#d4571f;--s3:#199e70;--s4:#a86f00;--s7:#6f60d8;--up:#d03b3b;--down:#0a7f0a;--good:#0a7f0a;--warn:#a86400;--bad:#c62828;--accent:#2f6fde}}
+.theme-btn{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -114,6 +118,7 @@ tr.total td{font-weight:600;border-bottom:none}
     <div class="brand">我的組合<small id="sub">長期持有者視角 · 配置、累積、回撤、股利</small></div>
     <a class="btn" href="/ta">技術分析</a>
     <a class="btn" href="/reports/">月報</a>
+    <button class="theme-btn" id="theme-btn" type="button">☀ 淺色</button>
     <button id="reload" type="button">重新整理</button>
   </div>
   <div class="loading" id="loading" role="status">組合資料計算中…</div>
@@ -366,6 +371,25 @@ function renderHealth() {
 $("#reload").onclick = load;
 $("#div-more").onclick = () => { const b = $("#div-more"); b.dataset.all = b.dataset.all === "1" ? "" : "1"; renderDiv(); };
 load();
+
+// ---------- 深淺色切換（記在 localStorage，所有頁面共用；沒選過就跟系統） ----------
+function curTheme() { return document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }
+function paintThemeBtn() {
+  const b = document.getElementById("theme-btn"); if (!b) return;
+  const dark = curTheme() === "dark";
+  b.textContent = dark ? "☀ 淺色" : "☾ 深色"; b.setAttribute("aria-label", dark ? "切換到淺色模式" : "切換到深色模式");
+}
+document.getElementById("theme-btn").addEventListener("click", () => {
+  const next = curTheme() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("it-theme", next); } catch (e) {}
+  paintThemeBtn(); onThemeChange();
+});
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+  if (!document.documentElement.dataset.theme) { paintThemeBtn(); onThemeChange(); }
+});
+paintThemeBtn();
+function onThemeChange() { if (H) render(); }
 </script>
 </body>
 </html>

@@ -238,6 +238,7 @@ def render(r, cfg):
 
     return f'''<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
+<script>try{{var t=localStorage.getItem("it-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}}catch(e){{}}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>投資組合月報 {month}</title>
@@ -245,13 +246,16 @@ def render(r, cfg):
 :root{{color-scheme:dark;--page:#0b0e16;--surface:#141927;--surface-2:#1a2033;--ink:#e8eaf0;--ink-2:#a3abbd;--muted:#6f7890;
 --grid:#232b3d;--axis:#2f3850;--ring:rgba(255,255,255,.08);--series-1:#3987e5;--series-2:#d95926;
 --up:#e66767;--down:#0ca30c;--accent:#5b8def}}
+:root[data-theme="light"]{{color-scheme:light;--page:#f3f4f7;--surface:#ffffff;--surface-2:#eef0f5;--ink:#151a28;--ink-2:#495165;--muted:#6b7387;--grid:#e4e7ee;--axis:#cdd3df;--ring:rgba(15,23,42,.10);--series-1:#2a78d6;--series-2:#d4571f;--up:#d03b3b;--down:#0a7f0a;--accent:#2f6fde}}
+@media (prefers-color-scheme:light){{:root:not([data-theme="dark"]){{color-scheme:light;--page:#f3f4f7;--surface:#ffffff;--surface-2:#eef0f5;--ink:#151a28;--ink-2:#495165;--muted:#6b7387;--grid:#e4e7ee;--axis:#cdd3df;--ring:rgba(15,23,42,.10);--series-1:#2a78d6;--series-2:#d4571f;--up:#d03b3b;--down:#0a7f0a;--accent:#2f6fde}}}}
 *{{box-sizing:border-box}}
 body{{margin:0;background:var(--page);color:var(--ink);font:14px/1.6 system-ui,-apple-system,"PingFang TC","Microsoft JhengHei","Segoe UI",sans-serif}}
 main{{max-width:880px;margin:0 auto;padding:16px 16px 64px}}
 nav.top{{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 16px;margin-bottom:16px}}
 nav.top b{{margin-right:auto;font-size:16px}}
 nav.top a{{color:var(--ink);text-decoration:none;border:1px solid var(--axis);background:var(--surface-2);border-radius:8px;padding:6px 12px;font-size:14px}}
-nav.top a:hover{{border-color:var(--accent)}}
+nav.top a:hover,nav.top button:hover{{border-color:var(--accent)}}
+nav.top button{{font:inherit;cursor:pointer;color:var(--ink);border:1px solid var(--axis);background:var(--surface-2);border-radius:8px;padding:6px 12px;font-size:14px}}
 @media print{{nav.top{{display:none}}}}
 header .eyebrow{{color:var(--muted);font-size:13px}}
 h1{{font-size:26px;margin:4px 0 2px}} h2{{font-size:19px;margin:0 0 6px}} h3{{font-size:14px;color:var(--ink-2);margin:20px 0 4px;font-weight:600}}
@@ -294,7 +298,7 @@ padding:6px 10px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space
 .link{{stroke:var(--axis);stroke-width:2}}
 @media (max-width:560px){{.hero{{font-size:36px}} .bar-row{{grid-template-columns:80px 1fr 48px}}}}
 </style></head><body><main>
-<nav class="top"><b>投資組合月報</b><a href="/">我的組合</a><a href="/ta">技術分析</a><a href="/reports/">所有報告</a></nav>
+<nav class="top"><b>投資組合月報</b><button id="theme-btn" type="button">☀ 淺色</button><a href="/">我的組合</a><a href="/ta">技術分析</a><a href="/reports/">所有報告</a></nav>
 <header><div class="eyebrow">投資組合月報 · 資料日 {r["as_of"]} · USD/TWD {r["fx_usd_twd"][1]}</div>
 <h1>{month[:4]} 年 {int(month[5:])} 月</h1>
 <div class="hero">{_ntd(s["value_twd"])}</div>
@@ -327,6 +331,13 @@ padding:6px 10px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space
 <p class="foot">產生時間 {datetime.now():%Y-%m-%d %H:%M} · invest-tracker</p></section>
 </main>
 <script>
+(function(){{
+  const btn=document.getElementById('theme-btn'), root=document.documentElement;
+  const cur=()=>root.dataset.theme||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  const paint=()=>{{btn.textContent=cur()==='dark'?'☀ 淺色':'☾ 深色';}};
+  btn.onclick=()=>{{const n=cur()==='dark'?'light':'dark';root.dataset.theme=n;try{{localStorage.setItem('it-theme',n)}}catch(e){{}}paint();}};
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change',paint); paint();
+}})();
 document.querySelectorAll('.chart').forEach(el=>{{
   const p=JSON.parse(el.dataset.chart), svg=el.querySelector('svg'), tip=el.querySelector('.tip');
   const cross=el.querySelector('.cross'), hot=el.querySelector('.hot'), n=p.d.length;
