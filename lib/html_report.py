@@ -240,7 +240,7 @@ def render(r, cfg):
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <script>try{{var t=localStorage.getItem("it-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}}catch(e){{}}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 <title>投資組合月報 {month}</title>
 <style>
 :root{{color-scheme:dark;--page:#0b0e16;--surface:#141927;--surface-2:#1a2033;--ink:#e8eaf0;--ink-2:#a3abbd;--muted:#6f7890;

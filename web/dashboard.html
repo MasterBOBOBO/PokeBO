@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" type="image/png" sizes="32x32" href="ta-favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="ta-favicon-16.png">
-<link rel="icon" type="image/png" sizes="192x192" href="ta-icon-192.png">
-<link rel="apple-touch-icon" href="ta-apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="ta-favicon-32.png?v=2">
+<link rel="icon" type="image/png" sizes="16x16" href="ta-favicon-16.png?v=2">
+<link rel="icon" type="image/png" sizes="192x192" href="ta-icon-192.png?v=2">
+<link rel="apple-touch-icon" href="ta-apple-touch-icon.png?v=2">
 <title>個股技術分析</title>
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"
   integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
@@ -349,6 +349,8 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
         <div class="card c6"><h3>融資餘額（張）</h3><div class="chart short" id="ch-margin"></div></div>
         <div class="card c6"><h3>融券餘額（張）</h3><div class="chart short" id="ch-short"></div></div>
         <div class="card c6"><h3>法人統計</h3><div class="kv" id="inst-stats"></div></div>
+        <div class="card c6"><h3>借券賣出餘額（張）<button class="info" data-x="sbl">ⓘ</button></h3><div class="chart short" id="ch-sbl"></div><p class="note" id="sbl-note"></p></div>
+        <div class="card c6"><h3>集保股權分散（大戶／散戶）<button class="info" data-x="tdcc">ⓘ</button><span class="hint">每週</span></h3><div id="tdcc"></div></div>
       </div>
       <div class="grid" id="us-chips-grid" hidden>
         <div class="card c12"><h3>每日放空成交量比例（FINRA）<button class="info" data-x="sv">ⓘ</button><span class="hint">近 60 個交易日</span></h3><div class="chart" id="ch-sv"></div></div>
@@ -764,7 +766,8 @@ function renderOverview() {
     $("#inst-table").innerHTML = `<table><thead><tr><th></th><th class="n">今日</th><th class="n">5 日</th><th class="n">20 日</th><th class="n">連續</th></tr></thead><tbody>` +
       [["外資", "foreign"], ["投信", "trust"], ["自營商", "dealer"], ["合計", "total"]].map(([n, g]) =>
         `<tr><td>${n}</td><td class="n ${cls(inst[g].at(-1))}">${fmt(inst[g].at(-1), 0)}</td><td class="n ${cls(sum(inst[g], 5))}">${fmt(sum(inst[g], 5), 0)}</td>
-        <td class="n ${cls(sum(inst[g], 20))}">${fmt(sum(inst[g], 20), 0)}</td><td class="n">${g === "total" ? "" : sTxt(st[g])}</td></tr>`).join("") + "</tbody></table>";
+        <td class="n ${cls(sum(inst[g], 20))}">${fmt(sum(inst[g], 20), 0)}</td><td class="n">${g === "total" ? "" : sTxt(st[g])}</td></tr>`).join("") + "</tbody></table>"
+      + chipLine();
 
     // 09 當沖與週轉
     const dt = P.daytrade;
@@ -987,6 +990,8 @@ const EXPLAIN = () => ({
   sv: D.plus.us_chips && D.plus.us_chips.short_volume && D.plus.us_chips.short_volume.explain,
   si: D.plus.us_chips && D.plus.us_chips.short_interest && D.plus.us_chips.short_interest.explain,
   ins: D.plus.us_chips && D.plus.us_chips.insider ? D.plus.us_chips.insider.explain : "ETF 沒有內部人申報。",
+  sbl: "借券賣出餘額＝向股東借股票來賣、還沒買回還券的張數（FinMind TaiwanDailyShortSaleBalances）。借券賣出多半是外資、法人放空或避險，和散戶的融券是兩套制度。餘額增加代表看壞或避險的部位變多，減少代表在回補。",
+  tdcc: "臺灣集中保管結算所「集保戶股權分散表」（每週五資料，免費開放資料）。千張大戶＝持有 1,000 張以上的股東持股占集保庫存比例；400 張以上同理；散戶＝持有 50 張以下。官方只提供最新一週，所以從開始使用的那週起每週累積。網站沒有開放跨網域，只有本機版能抓。",
   daytrade: "當沖比例＝當沖成交股數 ÷ 總成交股數；週轉率＝日成交股數 ÷ 發行股數；日內振幅＝(最高−最低) ÷ 收盤。資料：FinMind TaiwanStockDayTrading、TaiwanStockShareholding。",
 });
 
@@ -1048,10 +1053,54 @@ function renderMACD() {
   $("#macd-note").textContent = `顯示區間內：黃金交叉 ${c("macd", "bull").length} 次（${dl(c("macd", "bull")) || "無"}）；死亡交叉 ${c("macd", "bear").length} 次（${dl(c("macd", "bear")) || "無"}）；柱狀體翻正 ${c("osc", "bull").length} 次、翻負 ${c("osc", "bear").length} 次。訊號列表只涵蓋近 60 日。`;
 }
 
+function chipLine() {
+  const B = D.chips.sbl, parts = [];
+  if (D.chips.tdcc) parts.push(tdccSummary(D.chips.tdcc, true));
+  if (B && B.sbl.length >= 6) parts.push(`借券賣出餘額 ${fmt(B.sbl.at(-1), 0)} 張（5 日 ${B.sbl.at(-1) - B.sbl.at(-6) >= 0 ? "+" : ""}${fmt(B.sbl.at(-1) - B.sbl.at(-6), 0)}）`);
+  return parts.length ? `<p class="note">${parts.map(esc).join("<br>")}</p>` : "";
+}
+
+function renderSBL() {
+  const B = D.chips.sbl;
+  if (!B || !B.sbl.length) { Plotly.purge("ch-sbl"); $("#sbl-note").textContent = "沒有借券賣出資料（部分 ETF 或冷門股沒有）。"; return; }
+  const k = Math.min(N, B.date.length), x = lbl(B.date.slice(-k));
+  Plotly.react("ch-sbl", [line("借券賣出餘額", B.sbl.slice(-k), C.s4, {x, showlegend: false, fill: "tozeroy", fillcolor: "rgba(201,133,0,.1)", hovertemplate: "%{y:,} 張"})],
+    baseLayout({margin: {l: 64, r: 16, t: 12, b: 28}}), cfgPlot);
+  const SI = D.chips.shares_issued;
+  $("#sbl-note").textContent = `最新 ${fmt(B.sbl.at(-1), 0)} 張` + (SI ? `，約占股本 ${(B.sbl.at(-1) * 1000 / SI * 100).toFixed(2)}%` : "")
+    + (B.sbl.length >= 21 ? `；20 日變化 ${fmt(B.sbl.at(-1) - B.sbl.at(-21), 0)} 張` : "");
+}
+
+// 集保股權分散：只有本機版有；歷史從開始累積的那週算起
+function tdccSummary(T, short) {
+  if (!T) return "";
+  const n = T.date.length, d = (k, digits = 2) => n >= 2 ? `（較上週 ${(T[k][n - 1] - T[k][n - 2] >= 0 ? "+" : "")}${(T[k][n - 1] - T[k][n - 2]).toFixed(digits)}）` : "";
+  if (short) return `千張大戶 ${T.big1000[n - 1].toFixed(2)}%${d("big1000")} · 散戶（50 張以下）${T.retail50[n - 1].toFixed(2)}%`;
+  return [["資料日期", T.date[n - 1]], ["千張大戶持股", `${T.big1000[n - 1].toFixed(2)}%${d("big1000")}`],
+    ["千張大戶人數", `${fmt(T.big1000_holders[n - 1], 0)} 人`], ["400 張以上持股", `${T.big400[n - 1].toFixed(2)}%${d("big400")}`],
+    ["散戶（50 張以下）持股", `${T.retail50[n - 1].toFixed(2)}%${d("retail50")}`],
+    ["股東總人數", `${fmt(T.holders[n - 1], 0)} 人` + (n >= 2 ? `（較上週 ${T.holders[n - 1] - T.holders[n - 2] >= 0 ? "+" : ""}${fmt(T.holders[n - 1] - T.holders[n - 2], 0)}）` : "")]]
+    .map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
+}
+function renderTDCC() {
+  const T = D.chips.tdcc, el = $("#tdcc");
+  if (!T) {
+    el.innerHTML = `<p class="note">${D.chips.tdcc_local_only ? "集保中心的資料沒有開放跨網域讀取，網頁版無法取得；本機版每週自動累積。" : "目前沒有這檔的集保資料（例如剛上市）。"}</p>`;
+    return;
+  }
+  const n = T.date.length;
+  el.innerHTML = `${n >= 2 ? '<div class="chart xshort" id="ch-tdcc"></div>' : ""}<div class="kv">${tdccSummary(T)}</div>
+    <p class="note">${n >= 2 ? `近 ${n} 週趨勢。` : `目前只有 ${T.date[0]} 這一週；集保官方只提供最新一週，之後每週自動累積，2 週以上就會畫出趨勢。`}大戶比例上升不代表一定會漲，只是持股集中的程度。</p>`;
+  if (n >= 2) Plotly.react("ch-tdcc", [line("千張大戶 %", T.big1000, C.s1, {x: T.date, hovertemplate: "%{y:.2f}%"}),
+    line("散戶 %", T.retail50, C.s2, {x: T.date, yaxis: "y2", hovertemplate: "%{y:.2f}%"})],
+    baseLayout({margin: {l: 44, r: 44, t: 24, b: 24}, yaxis2: {overlaying: "y", side: "right", showgrid: false}}), cfgPlot);
+}
+
 function renderChips() {
   const has = !!D.chips;
   $("#chips-grid").hidden = !has; $("#us-chips-grid").hidden = has;
   if (!has) return renderUSChips();
+  renderSBL(); renderTDCC();
   const I = D.chips.institutional, M = D.chips.margin, k = Math.min(N, I.date.length);
   const xd = lbl(I.date.slice(-k));
   const names = ["外資", "投信", "自營商"], keys = ["foreign", "trust", "dealer"], cs = [C.s1, C.s2, C.s3];
@@ -1071,6 +1120,10 @@ function renderChips() {
   rows.push(["三大法人 20 日合計", fmt(sum(I.total, 20), 0)]);
   if (mk >= 6) rows.push(["融資 5 日增減", `${fmt(M.margin.at(-1) - M.margin.at(-6), 0)} 張`]);
   if (M.margin.at(-1)) rows.push(["券資比", pct(M.short.at(-1) / M.margin.at(-1))]);
+  const SI = D.chips.shares_issued;
+  if (SI) rows.push(["投信 20 日買超占股本", pct(sum(I.trust, 20) * 1000 / SI, 2)]);
+  const B = D.chips.sbl;
+  if (B && B.sbl.length >= 6) rows.push(["借券賣出餘額 5 日增減", `${fmt(B.sbl.at(-1) - B.sbl.at(-6), 0)} 張`]);
   $("#inst-stats").innerHTML = rows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
 }
 

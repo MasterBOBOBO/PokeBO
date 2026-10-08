@@ -99,6 +99,11 @@ def update_fomc(force=False):
     return len(meetings)
 
 
+def _tdcc():
+    from . import tdcc
+    tdcc.update()
+
+
 def update(cfg):
     """每日排程呼叫。各項獨立，一項失敗不影響其他項；回傳錯誤訊息清單。"""
     errors = []
@@ -106,7 +111,7 @@ def update(cfg):
     for name, fn in (("TAIEX", lambda: data.update_prices("TW", TAIEX, start)),
                      ("VIX", lambda: data.update_prices("US", VIX, "2016-01-01")),
                      ("融資餘額", lambda: update_margin(start)),
-                     ("景氣燈號", update_ndc), ("FOMC", update_fomc)):
+                     ("景氣燈號", update_ndc), ("FOMC", update_fomc), ("集保股權分散", _tdcc)):
         try:
             fn()
         except data.QuotaError:

@@ -22,7 +22,7 @@ _CA = "/etc/ssl/cert.pem"
 SSL_CTX = ssl.create_default_context(cafile=_CA if os.path.exists(_CA) else None) if ssl else None
 # 證交所、櫃買中心的憑證缺少 Subject Key Identifier，Python 3.13 起預設的嚴格檢查會拒絕；
 # 只對這兩個網域關掉 VERIFY_X509_STRICT，憑證鏈和網域名稱照樣驗證
-LENIENT_HOSTS = {"openapi.twse.com.tw", "www.tpex.org.tw"}
+LENIENT_HOSTS = {"openapi.twse.com.tw", "www.tpex.org.tw", "opendata.tdcc.com.tw"}
 SSL_CTX_LENIENT = None
 if ssl:
     SSL_CTX_LENIENT = ssl.create_default_context(cafile=_CA if os.path.exists(_CA) else None)

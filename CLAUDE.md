@@ -53,7 +53,7 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 - 每次呼叫都記錄在 data/state/api_calls.log（只保留 2 天），用來看是哪個資料集在消耗額度。
 - 官方用量達 98% 時，`data.fetch` 會丟出 QuotaError 並暫停呼叫；FinMind 回傳 402 或 429 時也會轉成 QuotaError。
 - 儀表板頂部顯示用量（每 60 秒更新，50% 以上轉黃、80% 以上轉紅）；每日排程發現用量 ≥ 80% 時會通知。
-- 用量估算：分析一檔台股個股約 9 次呼叫（含基本面 2 次；同一天會用快取）、大盤每天 3 次、每日排程約 45 次（含已公告配息、市場溫度計）。
+- 用量估算：分析一檔台股個股約 10 次呼叫（含基本面 2 次、借券賣出餘額 1 次；同一天會用快取）、大盤每天 3 次、每日排程約 45 次（含已公告配息、市場溫度計）。
 
 ## 計算方式
 - 股利：台股來自 FinMind TaiwanStockDividendResult；美股 FinMind 沒有配息資料，由 Adj_Close/Close 比值的跳動反推。
@@ -119,7 +119,7 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 - 新聞：FinMind TaiwanStockNews，**每次呼叫只回傳 start_date 當天**（不支援 end_date），所以按日期分檔快取
   `data/news/{代號}/{日期}.json`：過去的日子抓過就不再抓，今天 3 小時內用快取。時間是 UTC，顯示時 +8。同標題合併來源。
 - 重大訊息：證交所 t187ap04_L（上市）＋櫃買中心 mopsfin_t187ap04_O（上櫃），OpenAPI 只給最近一天，每晚累積到
-  `data/news/material.csv`（保留 90 天）。兩個網域的憑證缺 Subject Key Identifier，`data.LENIENT_HOSTS` 只對它們關掉 VERIFY_X509_STRICT。
+  `data/news/material.csv`（保留 90 天）。兩個網域（以及集保中心 opendata.tdcc.com.tw）的憑證缺 Subject Key Identifier，`data.LENIENT_HOSTS` 只對它們關掉 VERIFY_X509_STRICT。
   沒有 CORS，只在本機版。美股個股：SEC 8-K（ETF 沒有）。
 - 技術分析頁「新聞與公告」卡片走獨立的 `/api/news`（網頁版是 worker 的 news 指令），不跟技術分析的每日快取。
 - 首頁「持股新聞」只讀快取（cached_only），資料由每晚 news 排程預先抓好。推播紀錄在 data/state/news_sent.json。
@@ -167,8 +167,10 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
   沒選過就跟系統 prefers-color-scheme。淺色 token 寫在各頁的 `:root[data-theme="light"]` 與 media query；
   Plotly 圖表顏色在繪製時讀 CSS 變數，切換時要重繪（`onThemeChange`）。淺色系列色 #2a78d6／#d4571f／#199e70 已過色弱驗證。
 - X 軸是類別軸，標籤要唯一：`lbl()` 在區間超過約 11 個月時改用「年/月/日」，否則去年和今年同一天會畫在同一格。
-- 網站圖示：我的組合、月報、報告頁用金色箭頭（web/favicon-16/32.png 只裁主箭頭、icon-192.png、apple-touch-icon.png）；
-  技術分析頁用放大鏡（web/ta-*.png）。本機伺服器另外提供 /favicon.ico。
+- 網站圖示（深藍底 #0e1b2c）：我的組合、月報、報告頁用「穩健階梯」三根綠色遞增長條（web/favicon-16/32.png、icon-192.png、
+  apple-touch-icon.png）；技術分析頁用「連續上漲 K 棒」兩根紅 K（台股紅漲，web/ta-*.png）。本機伺服器另外提供 /favicon.ico。
+  原檔是 web/icon-src/*.svg（160 格；*-square 是 apple-touch 用的無圓角版），改圖時改 SVG 再輸出各尺寸 PNG。
+  瀏覽器會長期快取網站圖示，所以圖示網址都帶 `?v=N`（web/*.html、server.py、html_report.py）；換圖時要一起把 N 加 1，舊月報的連結也要改。
   apple-touch-icon 必須是**不透明、滿版正方形、主圖內縮留邊**：iOS 會自己切圓角並把透明處補黑，
   圓形或自帶圓角的圖貼邊會被切到（看起來爆框）。
 - 天數篩選：1 / 5 / 7 / 60 / 120 / 250 日，只影響圖表顯示範圍；指標和評分都以完整歷史計算。沒有盤中分時資料。
@@ -176,7 +178,14 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 - 綜合分析卡片篩選（`applyCards`）：每張卡片有 `data-card`；精簡（預設，`CORE_CARDS`：主 K 線、決策摘要、法人行為／美股補充、
   趨勢檢核、關鍵價位、我的持倉、月營收、總評、新聞）／完整／自訂（勾選卡片），存在 localStorage `ta-cards`。
   卡片編號依目前看得到的卡片重新編號；被篩掉的卡片用 `.off` 隱藏（`hidden` 留給台股／美股／基本面判斷）。
-- **刻意不做**：券商分點（主力、隔日沖）和股權分散（大戶／散戶）是 FinMind 付費資料，不估算、不顯示假數字。
+- **刻意不做**：券商分點（主力、隔日沖）和 FinMind 的股權分散是付費資料，不估算、不顯示假數字。
+- 籌碼補充（台股）：
+  - 借券賣出餘額（`ta._sbl`，FinMind TaiwanDailyShortSaleBalances，免費，網頁版也有）：籌碼分頁圖表、法人統計 5 日增減；
+    警示「借券賣出餘額 5 日增加」= 增幅 > 10% 且增加張數 > 半天的 20 日均量（避免餘額很小時的雜訊）。
+  - 集保股權分散（`lib/tdcc.py`，集保中心開放資料 1-5，每週）：千張大戶、400 張以上、50 張以下散戶比例與股東人數。
+    官方只給最新一週，每日排程（market.update）下載後把各股摘要存成 data/tdcc/{資料日期}.csv，歷史從 2026-10-02 那週開始累積；
+    沒有 CORS，網頁版顯示「只在本機版」。警示「千張大戶持股連 3 週減少」需要累積 4 週以上才會出現。
+  - 投信 20 日買超占股本（發行股數來自 TaiwanStockShareholding）。綜合分析「法人行為」卡片下方附一行大戶／借券摘要。
 - 效能：圖表 responsive 關閉，改用 ResizeObserver 只在寬度改變時重排；捲動時暫停圖表 hover；分頁延遲繪製。
 - 分析快取檔名含 `CACHE_VERSION`，分析輸出的欄位有變動時要加 1。
 
