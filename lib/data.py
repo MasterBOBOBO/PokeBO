@@ -20,6 +20,13 @@ API = "https://api.finmindtrade.com/api/v4/data"
 # python.org 版 Python 在 macOS 沒有根憑證，改用系統內建的
 _CA = "/etc/ssl/cert.pem"
 SSL_CTX = ssl.create_default_context(cafile=_CA if os.path.exists(_CA) else None) if ssl else None
+# 證交所、櫃買中心的憑證缺少 Subject Key Identifier，Python 3.13 起預設的嚴格檢查會拒絕；
+# 只對這兩個網域關掉 VERIFY_X509_STRICT，憑證鏈和網域名稱照樣驗證
+LENIENT_HOSTS = {"openapi.twse.com.tw", "www.tpex.org.tw"}
+SSL_CTX_LENIENT = None
+if ssl:
+    SSL_CTX_LENIENT = ssl.create_default_context(cafile=_CA if os.path.exists(_CA) else None)
+    SSL_CTX_LENIENT.verify_flags &= ~getattr(ssl, "VERIFY_X509_STRICT", 0)
 
 # 網頁版（GitHub Pages + Pyodide）會把 WEB 設為 True，並用 set_transport() 換成瀏覽器的 XHR：
 # - FinMind token 改用網址參數（帶 Authorization 標頭會觸發預檢，而 FinMind 預檢回 400）
@@ -29,7 +36,8 @@ WEB = False
 
 def _urllib_request(method, url, body=None, headers=None, timeout=30):
     req = urllib.request.Request(url, body, headers or {}, method=method)
-    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as r:
+    ctx = SSL_CTX_LENIENT if urllib.parse.urlparse(url).hostname in LENIENT_HOSTS else SSL_CTX
+    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
         return r.read()
 
 

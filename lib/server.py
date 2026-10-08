@@ -7,6 +7,7 @@
   /                  我的組合（長期持有者首頁）；帶 ?id= 會轉到 /ta
   /ta                個股技術分析儀表板
   /api/home          首頁資料 JSON
+  /api/news?id=      個股新聞與重大訊息
   /api/stock?id=     個股分析 JSON（同日快取；refresh=1 強制重抓）
   /api/holdings      快速選擇用的持股清單
   /api/quota         FinMind 本小時用量（官方 + 本機紀錄）
@@ -137,6 +138,11 @@ pre{{white-space:pre-wrap;font:inherit;margin:0}}</style>
                 self._send(200, HOME.read_text(encoding="utf-8"), "text/html; charset=utf-8")
             elif url.path == "/ta":
                 self._send(200, PAGE.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+            elif url.path == "/api/news":
+                if not SYMBOL.match(sym):
+                    return self._json(400, {"error": "代號格式不正確"})
+                from . import news
+                self._json(200, news.for_stock(sym, "TW" if sym[:1].isdigit() else "US"))
             elif url.path == "/api/home":
                 from . import home
                 self._json(200, home.build())
