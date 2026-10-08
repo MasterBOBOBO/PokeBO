@@ -120,23 +120,18 @@ def cmd_quota(cfg, args):
 
 
 def cmd_launchd(cfg, args):
-    """依本機路徑產生 macOS launchd 排程（每日更新、每月月報、常駐儀表板），--install 直接安裝。"""
+    """依本機路徑產生 macOS launchd 排程（時間見 lib/jobs.py > SCHEDULE、開機補跑、常駐儀表板），--install 直接安裝。"""
     import os
     import plistlib
     import subprocess
     py, root = sys.executable, str(data.ROOT)
     prefix = cfg.get("launchd_prefix", "com.invest-tracker")
-    jobs = {
-        "daily": {"ProgramArguments": [py, f"{root}/invest.py", "job", "daily"],
-                  "StartCalendarInterval": [{"Weekday": w, "Hour": 15, "Minute": 10} for w in range(1, 6)]},
-        "news": {"ProgramArguments": [py, f"{root}/invest.py", "job", "news"],
-                 "StartCalendarInterval": [{"Hour": 19, "Minute": 30}]},
-        "weekly": {"ProgramArguments": [py, f"{root}/invest.py", "job", "weekly"],
-                   "StartCalendarInterval": [{"Weekday": 5, "Hour": 15, "Minute": 40}]},
-        "monthly": {"ProgramArguments": [py, f"{root}/invest.py", "job", "monthly"],
-                    "StartCalendarInterval": [{"Day": 28, "Hour": 15, "Minute": 30}]},
-        "dashboard": {"ProgramArguments": [py, f"{root}/invest.py", "serve"], "RunAtLoad": True, "KeepAlive": True},
-    }
+    from lib import jobs as J
+    jobs = {name: {"ProgramArguments": [py, f"{root}/invest.py", "job", name], "StartCalendarInterval": specs}
+            for name, specs in J.SCHEDULE.items()}
+    # 登入（開機）時補跑關機期間錯過的排程
+    jobs["catchup"] = {"ProgramArguments": [py, f"{root}/invest.py", "job", "catchup"], "RunAtLoad": True}
+    jobs["dashboard"] = {"ProgramArguments": [py, f"{root}/invest.py", "serve"], "RunAtLoad": True, "KeepAlive": True}
     out = data.ROOT / "launchd"
     out.mkdir(exist_ok=True)
     (data.ROOT / "logs").mkdir(exist_ok=True)
@@ -268,7 +263,7 @@ def main():
     k = sub.add_parser("backup", help="把帳本與設定的變動 commit 到本機 git")
     k.add_argument("--reason", default="manual")
     j = sub.add_parser("job", help="排程工作：daily（更新 + 健檢通知）/ monthly（月報）")
-    j.add_argument("name", choices=["daily", "weekly", "monthly", "news"])
+    j.add_argument("name", choices=["daily", "news", "weekly", "monthly", "catchup"])
     w = sub.add_parser("weekly", help="預覽每週摘要（不送出）")
     w.add_argument("--amounts", action="store_true", help="預覽含金額的版本")
     sub.add_parser("telegram-test", help="設定 Telegram：自動找出 chat id 並送一則測試訊息")

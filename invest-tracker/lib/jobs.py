@@ -1,4 +1,7 @@
-"""排程工作（由 launchd 呼叫）：每日更新 + 健檢變化通知；每週摘要；每月產出月報。
+"""排程工作（由 launchd 呼叫）：每日更新 + 健檢變化通知；每晚新聞；每週摘要；每月產出月報；開機補跑。
+
+排程時間集中在 SCHEDULE（invest.py launchd 產生設定檔、catchup 判斷漏跑都讀這裡）。
+Mac 睡眠時錯過的排程，launchd 會在醒來後自動補跑；關機時錯過的，由登入時執行的 catchup 補跑。
 
 通知管道：
 - macOS 通知中心（預設，免設定）
@@ -10,11 +13,23 @@ import subprocess
 import traceback
 import urllib.parse
 import urllib.request
-from datetime import date, datetime
+import socket
+import time
+from datetime import date, datetime, timedelta
 
 from . import backup, data, html_report, report
 
 STATE = data.DATA / "state" / "last_health.json"
+RUNS = data.DATA / "state" / "job_runs.json"
+# launchd StartCalendarInterval 格式（Weekday：0/7 = 週日、1 = 週一 … 6 = 週六）。
+# 全部排在晚上：法人、融資、重大訊息當天都已公布；錯開幾分鐘，避免同時更新同一批資料檔。
+# 週報排在週六早上，台股、美股週五的收盤都已經有資料。
+SCHEDULE = {
+    "daily": [{"Weekday": w, "Hour": 22, "Minute": 0} for w in range(1, 6)],
+    "news": [{"Hour": 22, "Minute": 5}],
+    "monthly": [{"Day": 28, "Hour": 22, "Minute": 15}],
+    "weekly": [{"Weekday": 6, "Hour": 9, "Minute": 0}],
+}
 LOG = data.ROOT / "logs" / "jobs.log"
 
 
@@ -80,7 +95,7 @@ def _headline(cfg, r):
 
 
 def daily(cfg):
-    """收盤後：更新行情 → 比對 Health Check 狀態，有變化才通知 → 備份帳本。"""
+    """每天晚上：更新行情 → 比對 Health Check 狀態，有變化才通知 → 備份帳本。"""
     _update(cfg)
     r = report.build(cfg)
     now = {h["item"]: h["status"] for h in r["health"]}
@@ -146,7 +161,7 @@ def monthly(cfg):
 
 
 def weekly(cfg):
-    """每週五收盤後：更新 → 產生每週摘要 → 本機存完整版，通知只送不含金額的版本（除非 include_amounts）。"""
+    """每週六早上：更新 → 產生每週摘要 → 本機存完整版，通知只送不含金額的版本（除非 include_amounts）。"""
     from . import home, weekly as wk
     _update(cfg)
     h = home.build(cfg)
@@ -173,10 +188,90 @@ def news_job(cfg):
     return items
 
 
+def last_due(specs, now):
+    """最近一次「應該執行」的時間（往回找 40 天）。"""
+    best = None
+    for back in range(40):
+        d = (now - timedelta(days=back)).date()
+        for sp in specs:
+            if "Weekday" in sp and (d.weekday() + 1) % 7 != sp["Weekday"] % 7:
+                continue
+            if "Day" in sp and d.day != sp["Day"]:
+                continue
+            t = datetime(d.year, d.month, d.day, sp.get("Hour", 0), sp.get("Minute", 0))
+            if t <= now and (best is None or t > best):
+                best = t
+        if best:
+            return best
+    return None
+
+
+def _runs():
+    return json.loads(RUNS.read_text(encoding="utf-8")) if RUNS.exists() else {}
+
+
+def _mark(name, when=None):
+    runs = _runs()
+    runs[name] = (when or datetime.now()).isoformat(timespec="seconds")
+    RUNS.parent.mkdir(parents=True, exist_ok=True)
+    RUNS.write_text(json.dumps(runs, indent=2), encoding="utf-8")
+
+
+def missed(now=None, runs=None):
+    """回傳漏跑的排程名稱（依 SCHEDULE 順序）。從沒執行過的不算漏跑，避免第一次安裝就把所有通知送一遍。"""
+    now = now or datetime.now()
+    runs = _runs() if runs is None else runs
+    out = []
+    for name, specs in SCHEDULE.items():
+        due = last_due(specs, now)
+        last = runs.get(name)
+        if due and last and datetime.fromisoformat(last) < due:
+            out.append(name)
+    return out
+
+
+def _wait_network(host="api.finmindtrade.com", tries=20, gap=15):
+    """開機登入時網路可能還沒好，最多等 5 分鐘。"""
+    for _ in range(tries):
+        try:
+            socket.create_connection((host, 443), timeout=5).close()
+            return True
+        except OSError:
+            time.sleep(gap)
+    return False
+
+
+def catchup(cfg):
+    """登入（開機）時執行：補跑關機期間錯過的排程。重大訊息 API 只給最近一天，隔天早上補跑還能撈回前一天的公告。"""
+    runs = _runs()
+    for name in SCHEDULE:            # 第一次使用：把現在當作已執行，之後才開始判斷漏跑
+        runs.setdefault(name, datetime.now().isoformat(timespec="seconds"))
+    RUNS.parent.mkdir(parents=True, exist_ok=True)
+    RUNS.write_text(json.dumps(runs, indent=2), encoding="utf-8")
+    todo = missed(runs=runs)
+    if not todo:
+        log("catchup: 沒有漏跑的排程")
+        return []
+    if not _wait_network():
+        log("catchup: 網路不通，下次登入再補")
+        return []
+    log(f"catchup: 補跑 {todo}")
+    for name in todo:
+        try:
+            run(name)
+        except Exception:
+            pass                      # run() 已記錄並通知，繼續補下一個
+    return todo
+
+
 def run(name):
     cfg = data.load_config()
+    jobs = {"daily": daily, "monthly": monthly, "weekly": weekly, "news": news_job, "catchup": catchup}
     try:
-        return {"daily": daily, "monthly": monthly, "weekly": weekly, "news": news_job}[name](cfg)
+        result = jobs[name](cfg)
+        if name != "catchup":
+            _mark(name)
+        return result
     except Exception as e:
         log(f"{name} FAILED: {e}\n{traceback.format_exc()}")
         notify(cfg, f"投資追蹤排程失敗（{name}）", f"{type(e).__name__}: {e}"[:200])
