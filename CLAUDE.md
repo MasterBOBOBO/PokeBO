@@ -74,12 +74,14 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 ## 自動化（launchd，用 `python3 invest.py launchd --install` 產生並安裝）
 | Label | 時間 | 內容 |
 |---|---|---|
-| <launchd_prefix>.daily | 週一到週五 15:10 | 更新行情 → Health Check 狀態有變化才通知 → git 備份 |
-| <launchd_prefix>.news | 每天 19:30 | 抓重大訊息與持股新聞 → 持股有新的重大訊息（或美股個股 8-K）才推播，同一則只推一次 |
-| <launchd_prefix>.weekly | 每週五 15:40 | 更新行情 → 每週摘要：本機存完整版 reports/weekly/，通知只送不含金額的版本 |
-| <launchd_prefix>.monthly | 每月 28 日 15:30 | 更新行情 → 產出 reports/YYYY-MM.html → 通知摘要 |
+| <launchd_prefix>.daily | 週一到週五 22:00 | 更新行情 → Health Check 狀態有變化才通知 → git 備份 |
+| <launchd_prefix>.news | 每天 22:05 | 抓重大訊息與持股新聞 → 持股有新的重大訊息（或美股個股 8-K）才推播，同一則只推一次 |
+| <launchd_prefix>.weekly | 每週六 09:00 | 更新行情 → 每週摘要：本機存完整版 reports/weekly/，通知只送不含金額的版本 |
+| <launchd_prefix>.monthly | 每月 28 日 22:15 | 更新行情 → 產出 reports/YYYY-MM.html → 通知摘要 |
+| <launchd_prefix>.catchup | 登入（開機）時 | 補跑關機期間錯過的排程（依 data/state/job_runs.json）；睡眠中錯過的由 launchd 醒來後自動補 |
 | <launchd_prefix>.dashboard | 登入時啟動、常駐 | 我的組合 http://127.0.0.1:8765/ 、技術分析 /ta |
-- 手動執行：`python3 invest.py job daily|news|weekly|monthly`；log 在 logs/jobs.log。預覽每週摘要：`python3 invest.py weekly [--amounts]`。
+- 排程時間集中在 `lib/jobs.py > SCHEDULE`，改時間後執行 `invest.py launchd --install`。
+- 手動執行：`python3 invest.py job daily|news|weekly|monthly|catchup`；log 在 logs/jobs.log。預覽每週摘要：`python3 invest.py weekly [--amounts]`。
 - 通知：預設用 macOS 通知中心，且不顯示金額（`private/config.json > notify.include_amounts=false`）。
   Telegram 是選用功能：在 .env.local 加上 TELEGRAM_BOT_TOKEN，傳一則訊息給 bot 後執行 `invest.py telegram-test`
   （自動寫入 TELEGRAM_CHAT_ID 並送測試訊息），再設定 notify.telegram=true。Telegram 是外部服務：預設只送百分比、狀態與日期，不送金額。

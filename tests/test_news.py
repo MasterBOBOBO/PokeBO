@@ -47,5 +47,26 @@ class News(unittest.TestCase):
                 news.SENT = orig
 
 
+class Schedule(unittest.TestCase):
+    def test_last_due(self):
+        from datetime import datetime
+        from lib import jobs
+        # 2026-10-10 是週六
+        self.assertEqual(jobs.last_due(jobs.SCHEDULE["weekly"], datetime(2026, 10, 10, 8, 0)), datetime(2026, 10, 3, 9, 0))
+        self.assertEqual(jobs.last_due(jobs.SCHEDULE["weekly"], datetime(2026, 10, 10, 9, 30)), datetime(2026, 10, 10, 9, 0))
+        # 週日早上：最近一次平日排程是週五 22:00
+        self.assertEqual(jobs.last_due(jobs.SCHEDULE["daily"], datetime(2026, 10, 11, 8, 0)), datetime(2026, 10, 9, 22, 0))
+        self.assertEqual(jobs.last_due(jobs.SCHEDULE["monthly"], datetime(2026, 10, 8, 12, 0)), datetime(2026, 9, 28, 22, 15))
+
+    def test_missed(self):
+        from datetime import datetime
+        from lib import jobs
+        now = datetime(2026, 10, 9, 8, 0)                    # 週五早上，前一晚關機
+        runs = {"daily": "2026-10-07T22:00:05", "news": "2026-10-07T22:05:30",
+                "weekly": "2026-10-03T09:00:10", "monthly": "2026-09-28T22:15:40"}
+        self.assertEqual(jobs.missed(now, runs), ["daily", "news"])
+        self.assertEqual(jobs.missed(now, {}), [])            # 從沒執行過不算漏跑
+
+
 if __name__ == "__main__":
     unittest.main()
