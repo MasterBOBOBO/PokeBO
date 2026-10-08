@@ -199,7 +199,10 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
   .search{flex:0 0 100%;width:100%;max-width:100%;min-width:0;order:4}
   .search input{flex:1 1 0;width:0;min-width:0;font-size:16px}.search button{flex:0 0 auto}
   .ac{width:100%}
-  .quota{order:3;margin-left:auto}
+  /* 主題、Token、API 用量三顆擠同一列：前兩顆固定寬，用量徽章吃剩下空間，百分比交給進度條表示 */
+  .top>button{font-size:13px;padding:6px 10px;white-space:nowrap}
+  .quota{flex:1 1 0;min-width:0;justify-content:center;gap:6px;padding:6px 10px}
+  .quota .qbar{width:36px;flex:none}.quota .qpct{display:none}
   .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
   .chip{white-space:nowrap;flex:none}
   .quote{grid-template-columns:repeat(3,1fr)}
@@ -1336,7 +1339,7 @@ async function refreshQuota() {
     if (!o) { el.textContent = MODE === "web" ? "API —" : `API 本機 ${L.total} 次/時`; return; }
     const p = o.pct || 0;
     el.className = "quota " + (p >= 0.8 ? "high" : p >= 0.5 ? "mid" : "");
-    el.innerHTML = `API ${o.used} / ${o.limit}<span class="qbar" aria-hidden="true"><i style="width:${Math.min(100, p * 100)}%"></i></span>${(p * 100).toFixed(0)}%`;
+    el.innerHTML = `API ${o.used} / ${o.limit}<span class="qbar" aria-hidden="true"><i style="width:${Math.min(100, p * 100)}%"></i></span><span class="qpct">${(p * 100).toFixed(0)}%</span>`;
     el.setAttribute("aria-label", `FinMind 本小時已用 ${o.used} 次，上限 ${o.limit} 次`);
     $("#quota-detail").innerHTML = `<b>FinMind API 本小時用量</b>（${esc(o.level)} 方案）：官方 ${o.used} / ${o.limit} 次，剩餘 ${o.limit - o.used} 次。
       官方數字可能延遲數分鐘；達 98% 時系統會暫停呼叫。${MODE === "web" ? "" : `<br>本機近 60 分鐘呼叫 ${L.total} 次：
