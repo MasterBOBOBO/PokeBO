@@ -56,7 +56,18 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .up{color:var(--up)}.down{color:var(--down)}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
 .src{color:var(--ink-2);font-size:12px;background:var(--panel);border:1px solid var(--ring);border-radius:999px;padding:4px 12px;margin-right:auto}
-.range button.on{border-color:var(--accent);color:var(--ink);background:rgba(91,141,239,.18)}
+.viewbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding-top:12px}
+.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--axis);border-radius:10px;overflow:hidden;background:var(--panel-2)}
+.seg button{border:none;border-radius:0;background:none;color:var(--ink-2);padding:6px 10px;min-width:4.4em;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--axis)}
+.seg button.on{background:rgba(91,141,239,.22);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.vb-note{color:var(--muted);font-size:12px}
+.cardf{margin-left:auto;display:flex;align-items:center;gap:8px}
+.card-pick{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0 0}
+.card-pick button{font-size:12px;padding:3px 10px;border-radius:999px;color:var(--muted)}
+.card-pick button.on{border-color:var(--accent);background:rgba(91,141,239,.18);color:var(--ink)}
+.card.off{display:none}
+.grid.core [data-card="verdict"]{grid-column:span 12}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--axis);overflow-x:auto}
 .tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--ink-2);padding:10px 14px;white-space:nowrap}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
@@ -140,6 +151,7 @@ body.scrolling .js-plotly-plot{pointer-events:none}
 .warn.alert{border-left-color:var(--bad)}.warn.watch{border-left-color:var(--warn)}.warn.info{border-left-color:var(--good)}
 .warn .lv{font-size:12px;font-weight:600;white-space:nowrap}
 .warn .dt{grid-column:2;color:var(--ink-2);font-size:13px}
+.sig-hint,.warn .dt.sig-hint{color:var(--muted);font-size:12px;line-height:1.5;margin-top:2px;max-width:46em}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{position:sticky;top:0;background:var(--panel);text-align:left;color:var(--muted);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--axis)}
 td{padding:6px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
@@ -192,10 +204,11 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
   .chip{white-space:nowrap;flex:none}
   .quote{grid-template-columns:repeat(3,1fr)}
   .q{padding:8px}.q .v{font-size:15px}.q .l{font-size:11px}
-  .q.name{grid-column:1/-1}
+  .q.name{grid-column:1/-1}.q.volq{grid-column:1/-1}
   .toolbar{gap:6px}.src{width:100%;margin:0;font-size:11px}
   .toolbar>button{flex:1 1 calc(50% - 6px);font-size:13px;padding:8px}
-  .range{display:flex;width:100%;overflow-x:auto}.range button{flex:1;padding:8px 4px}
+  #range{width:100%}#range button{min-width:0;padding:8px 2px}
+  .viewbar .vb-note{font-size:11px}.cardf{margin-left:0;width:100%}
   .tabs button{padding:10px 12px}
   .grid{gap:10px}
   .card{padding:12px}
@@ -251,9 +264,6 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
     <div class="quote" id="quote"></div>
     <div class="toolbar">
       <span class="src" id="src"></span>
-      <span class="range" id="range" role="group" aria-label="顯示區間">
-        <button data-n="1">1 日</button><button data-n="5">5 日</button><button data-n="7">7 日</button><button data-n="60" class="on">60 日</button><button data-n="120">120 日</button><button data-n="250">250 日</button>
-      </span>
       <button id="dl-png">下載圖表 PNG</button>
       <button id="dl-csv">下載資料 CSV</button>
       <button id="dl-html">下載離線報告 HTML</button>
@@ -268,34 +278,47 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
       <button data-tab="chips">籌碼</button>
       <button data-tab="raw">原始資料</button>
     </div>
+    <div class="viewbar">
+      <span class="seg" id="range" role="group" aria-label="圖表顯示區間">
+        <button data-n="1">1 日</button><button data-n="5">5 日</button><button data-n="7">7 日</button><button data-n="60" class="on">60 日</button><button data-n="120">120 日</button><button data-n="250">250 日</button>
+      </span>
+      <span class="vb-note">只影響圖表範圍；指標與評分都以完整歷史計算（日 K，沒有盤中資料）</span>
+      <span class="cardf" id="cardf">
+        <span class="seg" id="card-mode" role="group" aria-label="綜合分析顯示的卡片">
+          <button data-m="core">精簡</button><button data-m="all">完整</button><button data-m="custom">自訂</button>
+        </span>
+        <span class="vb-note" id="card-count"></span>
+      </span>
+    </div>
+    <div class="card-pick" id="card-pick" hidden aria-label="勾選要顯示的卡片"></div>
 
     <section class="panel on" id="p-overview">
       <div class="grid">
-        <div class="card c8"><h3><span class="no">01</span>主 K 線圖<span class="hint">支撐／壓力／成交均價／法人估算成本</span></h3><div class="levelkeys" id="levelkeys"></div><div class="chart tall" id="ch-main"></div></div>
-        <div class="card c4 first-narrow"><h3><span class="no">02</span>決策摘要<button class="info" data-x="verdict">ⓘ</button></h3><div id="core"></div></div>
-        <div class="card c4"><h3><span class="no">03</span>多維度評分<button class="info" data-x="radar">ⓘ</button></h3><div class="chart mid" id="ch-radar"></div><div id="radar-foot" class="foot2"></div></div>
-        <div class="card c4"><h3><span class="no">04</span>籌碼熱區（價量分布）<button class="info" data-x="profile">ⓘ</button></h3><div class="chart mid" id="ch-profile"></div><div id="profile-foot" class="foot2"></div></div>
-        <div class="card c4"><h3><span class="no">05</span>風險雷達<button class="info" data-x="risk">ⓘ</button></h3><div class="chart mid" id="ch-risk"></div><div id="risk-foot" class="foot2"></div></div>
-        <div class="card c4"><h3><span class="no">06</span>10 日歷史區間<button class="info" data-x="fan">ⓘ</button><span class="hint">統計，非預測</span></h3><div class="chart mid" id="ch-fan"></div><div id="fan-foot" class="foot2"></div></div>
-        <div class="card c4"><h3><span class="no">07</span>成本結構<button class="info" data-x="cost">ⓘ</button></h3><div id="cost"></div></div>
-        <div class="card c4" data-tw><h3><span class="no">08</span>法人行為<span class="hint">近 20 日（張）</span></h3><div class="chart short" id="ch-inst-mini"></div><div id="inst-table"></div></div>
-        <div class="card c4" data-us hidden><h3><span class="no">08</span>美股補充資訊<button class="info" data-x="us">ⓘ</button></h3><div id="us-info"></div></div>
-        <div class="card c4" data-us hidden><h3><span class="no">09</span>匯率影響（USD/TWD）<button class="info" data-x="us">ⓘ</button></h3><div class="chart xshort" id="ch-fx"></div><div id="us-fx"></div></div>
-        <div class="card c4" data-us hidden><h3><span class="no">19</span>美股籌碼（FINRA / SEC）<button class="info" data-x="uschips">ⓘ</button></h3><div id="us-chips-sum"></div></div>
-        <div class="card c4" data-tw><h3><span class="no">09</span>當沖與週轉<button class="info" data-x="daytrade">ⓘ</button></h3><div class="chart xshort" id="ch-daytrade"></div><div class="kv" id="daytrade-kv"></div></div>
-        <div class="card c4"><h3><span class="no">10</span>多空能量<button class="info" data-x="energy">ⓘ</button></h3><div id="energy"></div></div>
-        <div class="card c4"><h3><span class="no">11</span>健康指標</h3><div class="rings" id="rings"></div></div>
-        <div class="card c4"><h3><span class="no">12</span>信號燈<button class="info" data-x="lights">ⓘ</button></h3><div id="lights"></div></div>
-        <div class="card c4"><h3><span class="no">13</span>大盤狀態<button class="info" data-x="market">ⓘ</button></h3><div id="market"></div></div>
-        <div class="card c4"><h3><span class="no">15</span>趨勢檢核<span class="hint">規則式，逐項可驗證</span></h3><div id="checklist"></div></div>
-        <div class="card c8"><h3><span class="no">14</span>訊號歷史勝率<button class="info" data-x="backtest">ⓘ</button><span class="hint">本檔過去約 3 年</span></h3><div id="backtest"></div></div>
-        <div class="card c4"><h3><span class="no">16</span>關鍵價位</h3><div class="kv" id="levels"></div></div>
-        <div class="card c4"><h3><span class="no">17</span>我的持倉</h3><div id="position"></div></div>
-        <div class="card c8" data-fund><h3><span class="no">19</span>月營收<button class="info" data-x="fund">ⓘ</button><span class="hint" id="rev-hint"></span></h3><div class="chart short" id="ch-rev"></div><div class="kv" id="rev-kv"></div></div>
-        <div class="card c4" data-fund><h3><span class="no">20</span>估值位置<button class="info" data-x="fund">ⓘ</button><span class="hint">近 5 年百分位</span></h3><div class="chart xshort" id="ch-per"></div><div id="val"></div></div>
-        <div class="card c4" data-nofund hidden><h3><span class="no">19</span>基本面</h3><div id="fund-na"></div></div>
-        <div class="card c8"><h3><span class="no">18</span>總評<button class="info" data-x="verdict">ⓘ</button></h3><div id="verdict"></div></div>
-        <div class="card c12"><h3><span class="no">21</span>新聞與公告<span class="hint">FinMind 新聞 · 證交所／櫃買中心重大訊息</span></h3><div id="news"></div></div>
+        <div data-card="main" class="card c8"><h3><span class="no">01</span>主 K 線圖<span class="hint">支撐／壓力／成交均價／法人估算成本</span></h3><div class="levelkeys" id="levelkeys"></div><div class="chart tall" id="ch-main"></div></div>
+        <div data-card="summary" class="card c4 first-narrow"><h3><span class="no">02</span>決策摘要<button class="info" data-x="verdict">ⓘ</button></h3><div id="core"></div></div>
+        <div data-card="radar" class="card c4"><h3><span class="no">03</span>多維度評分<button class="info" data-x="radar">ⓘ</button></h3><div class="chart mid" id="ch-radar"></div><div id="radar-foot" class="foot2"></div></div>
+        <div data-card="profile" class="card c4"><h3><span class="no">04</span>籌碼熱區（價量分布）<button class="info" data-x="profile">ⓘ</button></h3><div class="chart mid" id="ch-profile"></div><div id="profile-foot" class="foot2"></div></div>
+        <div data-card="risk" class="card c4"><h3><span class="no">05</span>風險雷達<button class="info" data-x="risk">ⓘ</button></h3><div class="chart mid" id="ch-risk"></div><div id="risk-foot" class="foot2"></div></div>
+        <div data-card="fan" class="card c4"><h3><span class="no">06</span>10 日歷史區間<button class="info" data-x="fan">ⓘ</button><span class="hint">統計，非預測</span></h3><div class="chart mid" id="ch-fan"></div><div id="fan-foot" class="foot2"></div></div>
+        <div data-card="cost" class="card c4"><h3><span class="no">07</span>成本結構<button class="info" data-x="cost">ⓘ</button></h3><div id="cost"></div></div>
+        <div data-card="inst" class="card c4" data-tw><h3><span class="no">08</span>法人行為<span class="hint">近 20 日（張）</span></h3><div class="chart short" id="ch-inst-mini"></div><div id="inst-table"></div></div>
+        <div data-card="usinfo" class="card c4" data-us hidden><h3><span class="no">08</span>美股補充資訊<button class="info" data-x="us">ⓘ</button></h3><div id="us-info"></div></div>
+        <div data-card="fx" class="card c4" data-us hidden><h3><span class="no">09</span>匯率影響（USD/TWD）<button class="info" data-x="us">ⓘ</button></h3><div class="chart xshort" id="ch-fx"></div><div id="us-fx"></div></div>
+        <div data-card="uschips" class="card c4" data-us hidden><h3><span class="no">19</span>美股籌碼（FINRA / SEC）<button class="info" data-x="uschips">ⓘ</button></h3><div id="us-chips-sum"></div></div>
+        <div data-card="daytrade" class="card c4" data-tw><h3><span class="no">09</span>當沖與週轉<button class="info" data-x="daytrade">ⓘ</button></h3><div class="chart xshort" id="ch-daytrade"></div><div class="kv" id="daytrade-kv"></div></div>
+        <div data-card="energy" class="card c4"><h3><span class="no">10</span>多空能量<button class="info" data-x="energy">ⓘ</button></h3><div id="energy"></div></div>
+        <div data-card="rings" class="card c4"><h3><span class="no">11</span>健康指標</h3><div class="rings" id="rings"></div></div>
+        <div data-card="lights" class="card c4"><h3><span class="no">12</span>信號燈<button class="info" data-x="lights">ⓘ</button></h3><div id="lights"></div></div>
+        <div data-card="market" class="card c4"><h3><span class="no">13</span>大盤狀態<button class="info" data-x="market">ⓘ</button></h3><div id="market"></div></div>
+        <div data-card="checklist" class="card c4"><h3><span class="no">15</span>趨勢檢核<span class="hint">規則式，逐項可驗證</span></h3><div id="checklist"></div></div>
+        <div data-card="backtest" class="card c8"><h3><span class="no">14</span>訊號歷史勝率<button class="info" data-x="backtest">ⓘ</button><span class="hint">本檔過去約 3 年</span></h3><div id="backtest"></div></div>
+        <div data-card="levels" class="card c4"><h3><span class="no">16</span>關鍵價位</h3><div class="kv" id="levels"></div></div>
+        <div data-card="position" class="card c4"><h3><span class="no">17</span>我的持倉</h3><div id="position"></div></div>
+        <div data-card="rev" class="card c8" data-fund><h3><span class="no">19</span>月營收<button class="info" data-x="fund">ⓘ</button><span class="hint" id="rev-hint"></span></h3><div class="chart short" id="ch-rev"></div><div class="kv" id="rev-kv"></div></div>
+        <div data-card="val" class="card c4" data-fund><h3><span class="no">20</span>估值位置<button class="info" data-x="fund">ⓘ</button><span class="hint">近 5 年百分位</span></h3><div class="chart xshort" id="ch-per"></div><div id="val"></div></div>
+        <div data-card="fundna" class="card c4" data-nofund hidden><h3><span class="no">19</span>基本面</h3><div id="fund-na"></div></div>
+        <div data-card="verdict" class="card c8"><h3><span class="no">18</span>總評<button class="info" data-x="verdict">ⓘ</button></h3><div id="verdict"></div></div>
+        <div data-card="news" class="card c12"><h3><span class="no">21</span>新聞與公告<span class="hint">FinMind 新聞 · 證交所／櫃買中心重大訊息</span></h3><div id="news"></div></div>
       </div>
       <p class="note">做不到的面板：券商分點（主力買賣、隔日沖）和股權分散（大戶／散戶）需要 FinMind 付費方案，因此不顯示，也不估算。</p>
     </section>
@@ -575,6 +598,7 @@ function render() {
   document.querySelectorAll(".info[aria-expanded]").forEach(b => b.setAttribute("aria-expanded", "false"));
   dirty = new Set(Object.keys(RENDER));
   renderTab(activeTab());
+  applyCards();
 }
 function renderTab(tab) {
   if (!D || !dirty.has(tab)) return;
@@ -609,6 +633,12 @@ document.addEventListener("click", e => {
   card.querySelector("h3").after(div); b.setAttribute("aria-expanded", "true");
 });
 
+function volCell(v) {
+  if (!v) return ["", "量比", "—"];
+  const tag = v.quiet_streak >= 2 ? `量縮 ${v.quiet_streak} 日` : v.label;
+  return ["", "量比（÷20日均量）", `${v.ratio.toFixed(1)} 倍 · ${tag}`];
+}
+
 function renderQuote() {
   const q = D.quote, unit = D.market === "TW" ? "張" : "股";
   const cells = [
@@ -619,13 +649,12 @@ function renderQuote() {
     ["", `成交量(${unit})`, fmt(q.volume, 0)],
     ["", "成交筆數", q.trades == null ? "—" : fmt(q.trades, 0)],
     ["", "開盤", fmt(q.open)], ["", "最高", fmt(q.high)], ["", "最低", fmt(q.low)],
-    ["", "最新交易日", q.date], ["", "資料筆數(交易日)", q.rows],
+    ["", "最新交易日", q.date], volCell(q.vol_state),
   ];
   $("#quote").title = `${D.symbol} ${D.name}`;
   $("#quote").innerHTML = cells.map(([c, l, v], i) =>
-    `<div class="q ${i === 0 ? "name" : ""}"><div class="l">${esc(i === 0 ? D.industry : l)}</div><div class="v ${i === 0 ? "" : c}">${esc(i === 0 ? (v === l ? l : `${l} ${v}`) : v)}</div></div>`).join("");
-  $("#src").textContent = `資料來源：${D.source} · 顯示 ${Math.min(N, D.series.date.length)} 個交易日 · 產生於 ${D.generated}`
-    + (N < 20 ? "（短區間只影響圖表顯示範圍；指標、檢核與評分仍以完整歷史計算。資料為日 K，沒有盤中分時）" : "");
+    `<div class="q ${i === 0 ? "name" : i === cells.length - 1 ? "volq" : ""}"><div class="l">${esc(i === 0 ? D.industry : l)}</div><div class="v ${i === 0 ? "" : c}">${esc(i === 0 ? (v === l ? l : `${l} ${v}`) : v)}</div></div>`).join("");
+  $("#src").textContent = `資料來源：${D.source} · 共 ${q.rows} 個交易日 · 產生於 ${D.generated}`;
 }
 
 function renderOverview() {
@@ -636,8 +665,6 @@ function renderOverview() {
   document.querySelectorAll("[data-fund]").forEach(el => el.hidden = !hasF);
   document.querySelectorAll("[data-nofund]").forEach(el => el.hidden = hasF);
   if (!tw) { renderUS(); $("#us-chips-sum").innerHTML = usChipSummary(); }
-  let no = 0;     // 依實際顯示的卡片重新編號（台股、美股顯示的卡片不同）
-  document.querySelectorAll("#p-overview .card .no").forEach(el => { if (!el.closest(".card").hidden) el.textContent = String(++no).padStart(2, "0"); });
 
   // 01 主 K 線：支撐／壓力／成交均價／法人估算成本畫成水平線
   const lo = Math.min(...S("low")), hi = Math.max(...S("high"));
@@ -652,6 +679,7 @@ function renderOverview() {
   Plotly.react("ch-main", [
     candles(), line("MA5", S("ma5"), C.s1), line("MA10", S("ma10"), C.s2), line("MA20", S("ma20"), C.s3), line("MA60", S("ma60"), C.s7),
     {type: "bar", name: "成交量", x: dates(), y: vol, yaxis: "y2", marker: {color: cl.map((c, i) => c >= op[i] ? C.up : C.down), opacity: .55}, hovertemplate: "%{y:,.0f}", showlegend: false},
+    line("20 日均量", S("vol_ma20"), C.ink2, {yaxis: "y2", line: {color: C.ink2, width: 1.5}, hovertemplate: "%{y:,.0f}"}),
   ], baseLayout({
     yaxis: {domain: [0.3, 1], gridcolor: C.grid}, yaxis2: {domain: [0, 0.22], gridcolor: C.grid},
     shapes: shown.map(([, v, c, d]) => ({type: "line", xref: "paper", x0: 0, x1: 1, y0: v, y1: v, line: {color: c, width: 1, dash: d}})),
@@ -965,14 +993,16 @@ const EXPLAIN = () => ({
 function renderAlerts() {
   const lv = {alert: "🔴 Alert", watch: "🟡 Watch", info: "🟢 OK"};
   $("#warnings").innerHTML = D.warnings.map(w =>
-    `<div class="warn ${w.level}"><span class="lv">${lv[w.level]}</span><b>${esc(w.title)}</b><span class="dt">${esc(w.detail)}</span></div>`).join("");
+    `<div class="warn ${w.level}"><span class="lv">${lv[w.level]}</span><b>${esc(w.title)}</b><span class="dt">${esc(w.detail)}</span>${w.hint ? `<span class="dt sig-hint">💬 ${esc(w.hint)}</span>` : ""}</div>`).join("");
   const kinds = {all: "全部", kd: "KD", macd: "MACD", osc: "柱狀體", ma: "均線", vol: "成交量", rsi: "RSI"};
   const counts = {}; D.signals.forEach(s => counts[s.kind] = (counts[s.kind] || 0) + 1);
   $("#sig-filters").innerHTML = Object.entries(kinds).filter(([k]) => k === "all" || counts[k]).map(([k, v]) =>
     `<button data-k="${k}" class="${sigFilter === k ? "on" : ""}">${v} ${k === "all" ? D.signals.length : counts[k]}</button>`).join("");
   const rows = D.signals.filter(s => sigFilter === "all" || s.kind === sigFilter).slice().reverse();
+  const shown = new Set();   // 同一種訊號只在第一次出現時附白話說明，避免整張表重複
+  const hintOf = s => !s.hint || shown.has(s.hint) ? "" : (shown.add(s.hint), `<div class="sig-hint">💬 ${esc(s.hint)}</div>`);
   $("#sig-table").innerHTML = `<thead><tr><th>日期</th><th>訊號</th><th>數值</th></tr></thead><tbody>` +
-    rows.map(s => `<tr><td>${s.date}</td><td><span class="tone ${s.tone}" aria-hidden="true"></span>${esc(s.label)}</td><td>${esc(s.detail)}</td></tr>`).join("") + "</tbody>";
+    rows.map(s => `<tr><td>${s.date}</td><td><span class="tone ${s.tone}" aria-hidden="true"></span>${esc(s.label)}${hintOf(s)}</td><td>${esc(s.detail)}</td></tr>`).join("") + "</tbody>";
   const bull = D.signals.filter(s => s.tone === "bull").length, bear = D.signals.filter(s => s.tone === "bear").length;
   $("#sig-count").textContent = `近 60 日：偏強訊號 ${bull} 個、偏弱訊號 ${bear} 個。●紅點 = 偏強、●綠點 = 偏弱、●灰點 = 中性（台股慣例紅漲綠跌）。`;
 }
@@ -1173,6 +1203,7 @@ function selectTab(b) {
   });
   document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === `p-${b.dataset.tab}`));
   renderTab(b.dataset.tab);
+  applyCards();
   document.querySelectorAll(`#p-${b.dataset.tab} .js-plotly-plot`).forEach(el => Plotly.Plots.resize(el));
 }
 $("#tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if (b) selectTab(b); };
@@ -1198,6 +1229,45 @@ $("#tabs").onkeydown = e => {
     b.type = "button"; b.setAttribute("aria-label", `查看「${title}」的計算方式`); b.setAttribute("aria-expanded", "false");
   });
 })();
+// 綜合分析卡片篩選：精簡（預設，量價＋趨勢＋籌碼＋結論）／完整／自訂；選擇存在 localStorage
+const CORE_CARDS = ["main", "summary", "inst", "usinfo", "checklist", "levels", "position", "rev", "verdict", "news"];
+let cardPref = {mode: "core", custom: null};
+try { Object.assign(cardPref, JSON.parse(localStorage.getItem("ta-cards")) || {}); } catch (e) {}
+const saveCards = () => { try { localStorage.setItem("ta-cards", JSON.stringify(cardPref)); } catch (e) {} };
+const cardTitle = el => [...el.querySelector("h3").childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").trim();
+function cardOn(k) {
+  if (cardPref.mode === "all") return true;
+  if (cardPref.mode === "custom" && cardPref.custom) return cardPref.custom.includes(k);
+  return CORE_CARDS.includes(k) && !(k === "position" && D && D.web);   // 網頁版沒有持倉，精簡模式不放空卡片
+}
+function applyCards() {
+  const cards = [...document.querySelectorAll("#p-overview [data-card]")], avail = cards.filter(el => !el.hidden);
+  cards.forEach(el => el.classList.toggle("off", !cardOn(el.dataset.card)));
+  let no = 0;   // 依目前看得到的卡片重新編號（台股、美股與篩選後顯示的卡片不同）
+  cards.forEach(el => { const n = el.querySelector(".no"); if (n && !el.hidden && cardOn(el.dataset.card)) n.textContent = String(++no).padStart(2, "0"); });
+  $("#p-overview .grid").classList.toggle("core", cardPref.mode === "core");
+  document.querySelectorAll("#card-mode button").forEach(b => b.classList.toggle("on", b.dataset.m === cardPref.mode));
+  $("#card-count").textContent = `顯示 ${avail.filter(el => cardOn(el.dataset.card)).length} / ${avail.length} 張`;
+  const pick = $("#card-pick"), ov = activeTab() === "overview";
+  $("#cardf").hidden = !ov;
+  pick.hidden = cardPref.mode !== "custom" || !ov;
+  pick.innerHTML = avail.map(el => { const on = cardOn(el.dataset.card);
+    return `<button type="button" data-card-k="${el.dataset.card}" class="${on ? "on" : ""}" aria-pressed="${on}">${esc(cardTitle(el))}</button>`; }).join("");
+  if (ov) document.querySelectorAll("#p-overview .card:not(.off) .js-plotly-plot").forEach(el => Plotly.Plots.resize(el));
+}
+$("#card-mode").onclick = e => {
+  const b = e.target.closest("[data-m]"); if (!b) return;
+  cardPref.mode = b.dataset.m;
+  if (cardPref.mode === "custom" && !cardPref.custom) cardPref.custom = [...CORE_CARDS];
+  saveCards(); applyCards();
+};
+$("#card-pick").onclick = e => {
+  const b = e.target.closest("[data-card-k]"); if (!b) return;
+  const k = b.dataset.cardK, s = new Set(cardPref.custom || CORE_CARDS);
+  s.has(k) ? s.delete(k) : s.add(k);
+  cardPref.custom = [...s]; saveCards(); applyCards();
+};
+
 $("#range").onclick = e => {
   const b = e.target.closest("[data-n]"); if (!b || !D) return;
   N = +b.dataset.n; document.querySelectorAll("#range button").forEach(x => x.classList.toggle("on", x === b)); render();

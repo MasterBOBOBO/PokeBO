@@ -14,7 +14,7 @@ CACHE = data.DATA / "ta_cache"
 INFO = data.DATA / "stock_info.csv"
 LOOKBACK_DAYS = 1100     # 約 3 年：MA60 / MACD 暖機，並提供訊號回測樣本
 SHOW = 260               # 回傳最近 260 個交易日給前端切換 60/120/250 日
-CACHE_VERSION = 11       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
+CACHE_VERSION = 13       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
 
 
 # ---------- 基本資料 ----------
@@ -169,13 +169,73 @@ def _cross(a, b, i):
     return 0
 
 
+# 量縮後帶量上漲：連續 QUIET_DAYS 日成交量 < QUIET_RATIO 倍 20 日均量，當天量 > SURGE_RATIO 倍且收盤上漲
+QUIET_DAYS, QUIET_RATIO, SURGE_RATIO = 3, 0.7, 1.5
+
+# 每個訊號／警示的白話說明（key 是標題去掉括號補充後的文字）
+HINTS = {
+    "KD 黃金交叉": "短線動能轉強：收盤在近 9 日高低區間的位置往上走。低檔出現較常被視為反彈跡象，盤整時容易反覆出現。",
+    "KD 死亡交叉": "短線動能轉弱：收盤在近 9 日高低區間的位置往下走。高檔出現代表漲勢可能放緩。",
+    "MACD 黃金交叉": "中期動能轉強：短期均線的上升速度超過長期均線。反應比 KD 慢，但比較少假訊號。",
+    "MACD 死亡交叉": "中期動能轉弱：短期均線的上升速度落後長期均線。",
+    "柱狀體翻正": "多空力道由弱轉強的早期跡象，通常比 MACD 交叉早一點出現。",
+    "柱狀體翻負": "多空力道由強轉弱的早期跡象，通常比 MACD 交叉早一點出現。",
+    "站上 MA20": "股價回到近一個月的平均價格之上，近一個月買進的人多數處於獲利。",
+    "跌破 MA20": "股價跌到近一個月的平均價格之下，近一個月買進的人多數處於虧損。",
+    "站上 MA60": "股價回到近一季的平均價格之上，中期走勢轉好。",
+    "跌破 MA60": "股價跌到近一季的平均價格之下，中期走勢轉弱。",
+    "爆量": "成交量放大到平常的 2 倍以上，代表有大量資金進出；收紅代表買方較積極，收黑代表賣方較積極。",
+    "量縮後帶量上漲": "連續幾天成交清淡（市場在觀望），接著帶量上漲，代表有資金開始進場。之後量能能不能延續才是關鍵。",
+    "RSI 進入超買": "近 14 日漲多跌少，短線過熱，容易整理；但強勢股可以維持超買很久。",
+    "RSI 進入超賣": "近 14 日跌多漲少，短線超跌，可能反彈；但弱勢股可以維持超賣很久。",
+    "KD 高檔鈍化區": "K 值在 80 以上代表漲勢強，但這時追價，買在短線高點的機率也比較高。",
+    "KD 低檔區": "短線跌多，可能出現反彈；但弱勢股可以在低檔停留很久。",
+    "月線乖離過大": "股價離近一個月的平均價格太遠，歷史上常會拉回或反彈，往月線靠近。",
+    "突破布林上軌": "股價超出近 20 日正常波動範圍的上緣：代表很強，也代表短線偏熱。",
+    "跌破布林下軌": "股價跌出近 20 日正常波動範圍的下緣：代表很弱，也代表短線超跌。",
+    "波動放大": "最近每天的漲跌幅度比平常大很多，價格可能劇烈變動。",
+    "外資連 5 日賣超": "外資連續一週站在賣方，常會壓抑股價表現。",
+    "融資增、股價跌": "借錢買股的人變多，股價卻在跌；如果繼續跌，可能引發融資斷頭的賣壓。",
+}
+HINTS["RSI 超買"], HINTS["RSI 超賣"] = HINTS["RSI 進入超買"], HINTS["RSI 進入超賣"]
+HINTS["收盤低於季線"], HINTS["今日爆量"] = HINTS["跌破 MA60"], HINTS["爆量"]
+HINTS["今日量縮後帶量上漲"] = HINTS["量縮後帶量上漲"]
+
+
+def hint(title):
+    return HINTS.get(title.split("（")[0])
+
+
+def quiet_then_surge(s, vol20, i):
+    """第 i 日是否「量縮後帶量上漲」。vol20 = sma(volume, 20)；每天都和前一日的 20 日均量比（不含當天）。"""
+    if i - QUIET_DAYS - 1 < 0 or not vol20[i - QUIET_DAYS - 1]:
+        return False
+    v = s["volume"]
+    return (all(v[j] < QUIET_RATIO * vol20[j - 1] for j in range(i - QUIET_DAYS, i))
+            and v[i] > SURGE_RATIO * vol20[i - 1] and s["close"][i] > s["close"][i - 1])
+
+
+def volume_state(s, vol20, i):
+    """第 i 日的量比（÷ 前一日的 20 日均量）、狀態，以及到今天為止連續量縮的天數。"""
+    v = s["volume"]
+    if i < 1 or not vol20[i - 1]:
+        return None
+    ratio = v[i] / vol20[i - 1]
+    streak, j = 0, i
+    while j >= 1 and vol20[j - 1] and v[j] < QUIET_RATIO * vol20[j - 1]:
+        streak, j = streak + 1, j - 1
+    label = ("爆量" if ratio > 2 else "量增" if ratio > SURGE_RATIO else "量縮" if ratio < QUIET_RATIO else "正常")
+    return {"ratio": round(ratio, 2), "label": label, "quiet_streak": streak}
+
+
 def signals(s, window=60):
     out = []
     n = len(s["close"])
     vol20 = sma(s["volume"], 20)
 
     def add(i, kind, label, detail, tone):
-        out.append({"date": s["date"][i], "kind": kind, "label": label, "detail": detail, "tone": tone})
+        out.append({"date": s["date"][i], "kind": kind, "label": label, "detail": detail, "tone": tone,
+                    "hint": hint(label)})
 
     for i in range(max(1, n - window), n):
         c = _cross(s["k"], s["d"], i)
@@ -199,6 +259,9 @@ def signals(s, window=60):
         if vol20[i - 1] and s["volume"][i] > 2 * vol20[i - 1]:
             add(i, "vol", "爆量", f"成交量為 20 日均量 {s['volume'][i] / vol20[i - 1]:.1f} 倍",
                 "bull" if s["close"][i] >= s["close"][i - 1] else "bear")
+        if quiet_then_surge(s, vol20, i):
+            add(i, "vol", "量縮後帶量上漲", f"前 {QUIET_DAYS} 日量都低於均量 {QUIET_RATIO} 倍，"
+                f"今日量為 20 日均量 {s['volume'][i] / vol20[i - 1]:.1f} 倍", "bull")
         if s["rsi"][i] and s["rsi"][i - 1]:
             if s["rsi"][i - 1] <= 70 < s["rsi"][i]:
                 add(i, "rsi", "RSI 進入超買", f"RSI {s['rsi'][i]:.1f}", "neutral")
@@ -214,7 +277,7 @@ def warnings(s, chips, levels):
     c = s["close"][i]
 
     def add(level, title, detail):
-        out.append({"level": level, "title": title, "detail": detail})
+        out.append({"level": level, "title": title, "detail": detail, "hint": hint(title)})
 
     k = s["k"][i]
     if k > 80:
@@ -239,6 +302,9 @@ def warnings(s, chips, levels):
     vol20 = sma(s["volume"], 20)
     if vol20[i - 1] and s["volume"][i] > 2 * vol20[i - 1]:
         add("watch", "今日爆量", f"成交量為 20 日均量 {s['volume'][i] / vol20[i - 1]:.1f} 倍")
+    if quiet_then_surge(s, vol20, i):
+        add("watch", "今日量縮後帶量上漲", f"前 {QUIET_DAYS} 日量都低於均量 {QUIET_RATIO} 倍，"
+            f"今日量為 20 日均量 {s['volume'][i] / vol20[i - 1]:.1f} 倍、收盤上漲")
     if levels.get("atr_ratio") and levels["atr_ratio"] > 1.5:
         add("watch", "波動放大", f"ATR(14) 為 60 日平均的 {levels['atr_ratio']:.1f} 倍")
     if chips:
@@ -331,6 +397,7 @@ def analyze(symbol, refresh=False):
     s["rsi"] = rsi(cl)
     s["bb_up"], s["bb_mid"], s["bb_low"] = bollinger(cl)
     atr14 = atr(s["high"], s["low"], cl)
+    s["vol_ma20"] = sma(s["volume"], 20)
 
     chips = None
     if market == "TW":
@@ -358,7 +425,8 @@ def analyze(symbol, refresh=False):
     prev = cl[i - 1]
     quote = {"date": s["date"][i], "close": cl[i], "change": cl[i] - prev, "change_pct": cl[i] / prev - 1,
              "open": s["open"][i], "high": s["high"][i], "low": s["low"][i], "volume": s["volume"][i],
-             "trades": rows[i]["trades"], "rows": len(rows)}
+             "trades": rows[i]["trades"], "rows": len(rows),
+             "vol_state": volume_state(s, sma(s["volume"], 20), i)}
 
     sig = signals(s)
     checks = checklist(s, chips)

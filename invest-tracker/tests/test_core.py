@@ -186,6 +186,37 @@ class Analytics(unittest.TestCase):
         self.assertEqual(ta_plus.percentile([1, 2, 3, 4, 5], 0.5), 3)
         self.assertEqual(ta_plus.percentile([1, 2, 3, 4, 5], 0.0), 1)
 
+    def test_quiet_then_surge(self):
+        from lib import ta as t
+        vol = [1000.0] * 30 + [500.0] * 3 + [2000.0]
+        close = [100.0] * 33 + [101.0]
+        s = {"volume": vol, "close": close}
+        v20 = t.sma(vol, 20)
+        self.assertTrue(t.quiet_then_surge(s, v20, 33))
+        self.assertFalse(t.quiet_then_surge(s, v20, 32))
+        s2 = {"volume": vol, "close": close[:-1] + [99.0]}          # 帶量但收跌
+        self.assertFalse(t.quiet_then_surge(s2, v20, 33))
+        s3 = {"volume": vol[:31] + [900.0, 500.0, 2000.0], "close": close}   # 中間有一天沒量縮
+        self.assertFalse(t.quiet_then_surge(s3, t.sma(s3["volume"], 20), 33))
+        self.assertFalse(t.quiet_then_surge(s, v20, 5))             # 均量還沒算出來
+
+    def test_volume_state(self):
+        from lib import ta as t
+        vol = [1000.0] * 30 + [500.0] * 3
+        st = t.volume_state({"volume": vol}, t.sma(vol, 20), 32)
+        self.assertEqual((st["label"], st["quiet_streak"]), ("量縮", 3))
+        vol2 = vol + [3000.0]
+        st = t.volume_state({"volume": vol2}, t.sma(vol2, 20), 33)
+        self.assertEqual((st["label"], st["quiet_streak"]), ("爆量", 0))
+        self.assertIsNone(t.volume_state({"volume": vol}, t.sma(vol, 20), 10))
+
+    def test_hints_cover_signal_titles(self):
+        from lib import ta as t
+        for title in ["KD 黃金交叉（低檔）", "跌破 MA60", "爆量", "量縮後帶量上漲", "月線乖離過大（+12.0%）",
+                      "今日量縮後帶量上漲", "收盤低於季線"]:
+            self.assertTrue(t.hint(title), title)
+        self.assertIsNone(t.hint("目前無警示"))
+
     def test_inst_cost_weights_buy_days_only(self):
         from lib import ta_plus
         s = {"date": ["d1", "d2", "d3"], "close": [10, 20, 30]}
