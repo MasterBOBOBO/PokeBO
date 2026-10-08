@@ -22,13 +22,17 @@ def _pct(x):
 
 # ---------- 額外資料 ----------
 
-def fetch_extra(symbol, start):
-    """當沖與股本／外資持股（台股）。"""
+def fetch_extra(symbol, start, hold_start=None):
+    """當沖與股本／外資持股（台股）。外資持股從 hold_start（預設同 start）開始，給籌碼分頁畫歷史走勢。"""
     dt = {r["date"]: r["Volume"] for r in data.fetch("TaiwanStockDayTrading", symbol, start)}
-    sh = data.fetch("TaiwanStockShareholding", symbol, start)
+    sh = data.fetch("TaiwanStockShareholding", symbol, min(start, hold_start or start))
+    recent = [r for r in sh if r["date"] >= start]
     return {"daytrade": dt,
             "shares_issued": sh[-1]["NumberOfSharesIssued"] if sh else None,
-            "foreign_ratio": [(r["date"], r["ForeignInvestmentSharesRatio"]) for r in sh]}
+            "foreign_ratio": [(r["date"], r["ForeignInvestmentSharesRatio"]) for r in recent],
+            "foreign_hold": {"date": [r["date"] for r in sh],
+                             "shares": [round(r["ForeignInvestmentShares"] / 1000) for r in sh],     # 張
+                             "ratio": [r["ForeignInvestmentSharesRatio"] for r in sh]} if sh else None}
 
 
 def market(today=None):

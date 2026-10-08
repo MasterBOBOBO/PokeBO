@@ -62,6 +62,12 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .seg button+button{border-left:1px solid var(--axis)}
 .seg button.on{background:rgba(91,141,239,.22);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
 .vb-note{color:var(--muted);font-size:12px}
+/* 籌碼分頁的小型分段按鈕（法人切換、大戶／散戶門檻）：按鈕多，不設最小寬度 */
+.seg.sm button{min-width:0;padding:4px 9px;font-size:12px}
+.chipbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:8px;font-size:12px;color:var(--ink-2)}
+.chipbar .lab{min-width:4.5em}
+.inst-head{font-size:13px;color:var(--ink-2);margin:0 0 4px}
+.tablewrap.short{max-height:300px}
 .cardf{margin-left:auto;display:flex;align-items:center;gap:8px}
 .card-pick{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0 0}
 .card-pick button{font-size:12px;padding:3px 10px;border-radius:999px;color:var(--muted)}
@@ -347,13 +353,20 @@ footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;paddi
 
     <section class="panel" id="p-chips">
       <div class="grid" id="chips-grid">
-        <div class="card c12"><h3>三大法人每日買賣超（張）</h3><div class="chart" id="ch-inst"></div></div>
+        <div class="card c12"><h3>三大法人每日買賣超（張）<span class="hint">右軸為收盤價</span></h3>
+          <div class="chipbar"><span class="seg sm" id="inst-pick" role="group" aria-label="法人">
+            <button type="button" data-g="all" class="on">全部</button><button type="button" data-g="foreign">外資</button>
+            <button type="button" data-g="trust">投信</button><button type="button" data-g="dealer">自營商</button><button type="button" data-g="total">合計</button></span></div>
+          <p class="inst-head" id="inst-head"></p><div class="chart" id="ch-inst"></div></div>
+        <div class="card c12"><h3>法人每日明細（張）<span class="hint">顯示區間內，新到舊</span></h3><div class="tablewrap short"><table id="inst-daily"></table></div></div>
         <div class="card c6"><h3>法人累計買賣超（張）</h3><div class="chart short" id="ch-inst-cum"></div></div>
         <div class="card c6"><h3>融資餘額（張）</h3><div class="chart short" id="ch-margin"></div></div>
         <div class="card c6"><h3>融券餘額（張）</h3><div class="chart short" id="ch-short"></div></div>
         <div class="card c6"><h3>法人統計</h3><div class="kv" id="inst-stats"></div></div>
-        <div class="card c6"><h3>借券賣出餘額（張）<button class="info" data-x="sbl">ⓘ</button></h3><div class="chart short" id="ch-sbl"></div><p class="note" id="sbl-note"></p></div>
-        <div class="card c6"><h3>集保股權分散（大戶／散戶）<button class="info" data-x="tdcc">ⓘ</button><span class="hint">每週</span></h3><div id="tdcc"></div></div>
+        <div class="card c6"><h3>外資持股<button class="info" data-x="fhold">ⓘ</button></h3><div class="chart short" id="ch-fhold"></div><div class="kv" id="fhold-kv"></div></div>
+        <div class="card c6"><h3>借券賣出餘額（張）<button class="info" data-x="sbl">ⓘ</button></h3><div class="chart short" id="ch-sbl"></div><p class="note" id="sbl-note"></p>
+          <div class="tablewrap short"><table id="sbl-table"></table></div></div>
+        <div class="card c12"><h3>集保股權分散（大戶／散戶）<button class="info" data-x="tdcc">ⓘ</button><span class="hint">每週</span></h3><div id="tdcc"></div></div>
       </div>
       <div class="grid" id="us-chips-grid" hidden>
         <div class="card c12"><h3>每日放空成交量比例（FINRA）<button class="info" data-x="sv">ⓘ</button><span class="hint">近 60 個交易日</span></h3><div class="chart" id="ch-sv"></div></div>
@@ -994,7 +1007,8 @@ const EXPLAIN = () => ({
   si: D.plus.us_chips && D.plus.us_chips.short_interest && D.plus.us_chips.short_interest.explain,
   ins: D.plus.us_chips && D.plus.us_chips.insider ? D.plus.us_chips.insider.explain : "ETF 沒有內部人申報。",
   sbl: "借券賣出餘額＝向股東借股票來賣、還沒買回還券的張數（FinMind TaiwanDailyShortSaleBalances）。借券賣出多半是外資、法人放空或避險，和散戶的融券是兩套制度。餘額增加代表看壞或避險的部位變多，減少代表在回補。",
-  tdcc: "臺灣集中保管結算所「集保戶股權分散表」（每週五資料，免費開放資料）。千張大戶＝持有 1,000 張以上的股東持股占集保庫存比例；400 張以上同理；散戶＝持有 50 張以下。官方只提供最新一週，所以從開始使用的那週起每週累積。網站沒有開放跨網域，只有本機版能抓。",
+  fhold: "外資持股＝外資及陸資持有的股數（FinMind TaiwanStockShareholding，證交所每日公布的官方數字），比例是占發行股數。和 XQ 等軟體用買賣超累加的「估計持股」不同，這是實際申報值。",
+  tdcc: "臺灣集中保管結算所「集保戶股權分散表」（每週五資料，免費開放資料）。大戶＝持有超過所選張數的股東持股占集保庫存比例，散戶＝持有所選張數以下；門檻依官方分級（1、5、10、15、20、30、40、50、100、200、400、600、800、1,000 張）加總。2026-10-02 那週只存了千張／400 張／50 張摘要，其他門檻從之後的週次開始才有。官方只提供最新一週，所以從開始使用的那週起每週累積。網站沒有開放跨網域，只有本機版能抓。",
   daytrade: "當沖比例＝當沖成交股數 ÷ 總成交股數；週轉率＝日成交股數 ÷ 發行股數；日內振幅＝(最高−最低) ÷ 收盤。資料：FinMind TaiwanStockDayTrading、TaiwanStockShareholding。",
 });
 
@@ -1072,6 +1086,27 @@ function renderSBL() {
   const SI = D.chips.shares_issued;
   $("#sbl-note").textContent = `最新 ${fmt(B.sbl.at(-1), 0)} 張` + (SI ? `，約占股本 ${(B.sbl.at(-1) * 1000 / SI * 100).toFixed(2)}%` : "")
     + (B.sbl.length >= 21 ? `；20 日變化 ${fmt(B.sbl.at(-1) - B.sbl.at(-21), 0)} 張` : "");
+  let h = '<thead><tr><th>日期</th><th class="n">借券賣出</th><th class="n">還券</th><th class="n">餘額</th><th class="n">增減</th></tr></thead><tbody>';
+  for (let i = B.date.length - 1; i >= Math.max(0, B.date.length - k); i--) {
+    const d = i ? B.sbl[i] - B.sbl[i - 1] : null;
+    h += `<tr><td>${B.date[i].slice(5)}</td><td class="n">${B.sell ? fmt(B.sell[i], 0) : "—"}</td><td class="n">${B.ret ? fmt(B.ret[i], 0) : "—"}</td>`
+      + `<td class="n">${fmt(B.sbl[i], 0)}</td><td class="n ${cls(d)}">${d == null ? "—" : (d > 0 ? "+" : "") + fmt(d, 0)}</td></tr>`;
+  }
+  $("#sbl-table").innerHTML = h + "</tbody>";
+}
+
+// 外資持股（官方每日申報值）
+function renderFHold() {
+  const F = D.chips.foreign_hold;
+  if (!F || !F.date.length) { Plotly.purge("ch-fhold"); $("#fhold-kv").innerHTML = '<span>外資持股</span><span>沒有資料</span>'; return; }
+  const k = Math.min(N, F.date.length), x = lbl(F.date.slice(-k));
+  Plotly.react("ch-fhold", [line("外資持股比例", F.ratio.slice(-k), C.s7, {x, showlegend: false, customdata: F.shares.slice(-k),
+    hovertemplate: "%{y:.2f}%（%{customdata:,} 張）"})], baseLayout({margin: {l: 52, r: 16, t: 12, b: 28}, yaxis: {gridcolor: C.grid, ticksuffix: "%", tickfont: {size: 11}}}), cfgPlot);
+  const n = F.date.length, chg = (j, unit) => n > j ? (unit ? F.shares[n - 1] - F.shares[n - 1 - j] : F.ratio[n - 1] - F.ratio[n - 1 - j]) : null;
+  const sgn = (v, d) => v == null ? "—" : `<span class="${cls(v)}">${v > 0 ? "+" : ""}${fmt(v, d)}</span>`;
+  $("#fhold-kv").innerHTML = [["資料日期", esc(F.date[n - 1])], ["持股張數", `${fmt(F.shares[n - 1], 0)} 張`], ["占發行股數", `${F.ratio[n - 1].toFixed(2)}%`],
+    ["近 5 日增減", `${sgn(chg(5, 1), 0)} 張（${sgn(chg(5), 2)} 個百分點）`], ["近 20 日增減", `${sgn(chg(20, 1), 0)} 張（${sgn(chg(20), 2)} 個百分點）`]]
+    .map(([a, b]) => `<span>${esc(a)}</span><span>${b}</span>`).join("");
 }
 
 // 集保股權分散：只有本機版有；歷史從開始累積的那週算起
@@ -1085,30 +1120,59 @@ function tdccSummary(T, short) {
     ["股東總人數", `${fmt(T.holders[n - 1], 0)} 人` + (n >= 2 ? `（較上週 ${T.holders[n - 1] - T.holders[n - 2] >= 0 ? "+" : ""}${fmt(T.holders[n - 1] - T.holders[n - 2], 0)}）` : "")]]
     .map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
 }
+// 大戶／散戶門檻（張）對應集保分級：大戶 > X 張＝第 lv 級以上；散戶 ≤ X 張＝第 1 到 lv 級
+const TD_BIG = {100: 10, 200: 11, 400: 12, 600: 13, 800: 14, 1000: 15}, TD_RET = {10: 3, 20: 5, 30: 6, 40: 7, 50: 8, 100: 9};
+let tdBig = 1000, tdRet = 50, tdView = "pct";
+function tdccSeries(T) {
+  const sum = (arr, from, to) => arr ? arr.slice(from - 1, to).reduce((x, y) => x + y, 0) : null;
+  // 舊格式週次沒有分級，只能用存下來的千張／400 張／50 張摘要補
+  const pick = (key, fb, from, to) => T[key].map((L, i) => L ? sum(L, from, to) : fb ? fb[i] : null);
+  const bl = TD_BIG[tdBig], rl = TD_RET[tdRet];
+  return tdView === "pct"
+    ? {big: pick("levels", tdBig === 1000 ? T.big1000 : tdBig === 400 ? T.big400 : null, bl, 15),
+       ret: pick("levels", tdRet === 50 ? T.retail50 : null, 1, rl)}
+    : {big: pick("level_people", tdBig === 1000 ? T.big1000_holders : null, bl, 15), ret: pick("level_people", null, 1, rl)};
+}
 function renderTDCC() {
   const T = D.chips.tdcc, el = $("#tdcc");
   if (!T) {
     el.innerHTML = `<p class="note">${D.chips.tdcc_local_only ? "集保中心的資料沒有開放跨網域讀取，網頁版無法取得；本機版每週自動累積。" : "目前沒有這檔的集保資料（例如剛上市）。"}</p>`;
     return;
   }
-  const n = T.date.length;
-  el.innerHTML = `${n >= 2 ? '<div class="chart xshort" id="ch-tdcc"></div>' : ""}<div class="kv">${tdccSummary(T)}</div>
-    <p class="note">${n >= 2 ? `近 ${n} 週趨勢。` : `目前只有 ${T.date[0]} 這一週；集保官方只提供最新一週，之後每週自動累積，2 週以上就會畫出趨勢。`}大戶比例上升不代表一定會漲，只是持股集中的程度。</p>`;
-  if (n >= 2) Plotly.react("ch-tdcc", [line("千張大戶 %", T.big1000, C.s1, {x: T.date, hovertemplate: "%{y:.2f}%"}),
-    line("散戶 %", T.retail50, C.s2, {x: T.date, yaxis: "y2", hovertemplate: "%{y:.2f}%"})],
-    baseLayout({margin: {l: 44, r: 44, t: 24, b: 24}, yaxis2: {overlaying: "y", side: "right", showgrid: false}}), cfgPlot);
+  const n = T.date.length, seg = (id, vals, cur, fmtv) => `<span class="seg sm" id="${id}" role="group">${vals.map(v =>
+    `<button type="button" data-v="${v}" class="${String(v) === String(cur) ? "on" : ""}">${fmtv(v)}</button>`).join("")}</span>`;
+  const V = tdccSeries(T), unit = tdView === "pct" ? "%" : " 人", dg = tdView === "pct" ? 2 : 0;
+  const close = Object.fromEntries(D.series.date.map((d, i) => [d, D.series.close[i]]));
+  let rows = "";
+  for (let i = n - 1; i >= 0; i--) {
+    const d = i && V.big[i] != null && V.big[i - 1] != null ? V.big[i] - V.big[i - 1] : null;
+    rows += `<tr><td style="white-space:nowrap">${T.date[i]}</td><td class="n">${V.big[i] == null ? "—" : fmt(V.big[i], dg)}</td>`
+      + `<td class="n ${cls(d)}">${d == null ? "—" : (d > 0 ? "+" : "") + fmt(d, dg)}</td><td class="n">${V.ret[i] == null ? "—" : fmt(V.ret[i], dg)}</td>`
+      + `<td class="n">${close[T.date[i]] == null ? "—" : fmt(close[T.date[i]], 2)}</td></tr>`;
+  }
+  el.innerHTML = `<div class="chipbar"><span class="lab">大戶持股 &gt;</span>${seg("td-big", Object.keys(TD_BIG), tdBig, v => v)}</div>
+    <div class="chipbar"><span class="lab">散戶持股 ≤</span>${seg("td-ret", Object.keys(TD_RET), tdRet, v => v)}<span>張</span></div>
+    <div class="chipbar"><span class="seg sm" id="td-view" role="group"><button type="button" data-v="pct" class="${tdView === "pct" ? "on" : ""}">持股比例</button><button type="button" data-v="ppl" class="${tdView === "ppl" ? "on" : ""}">持股人數</button></span></div>
+    ${n >= 2 ? '<div class="chart short" id="ch-tdcc"></div>' : ""}
+    <div class="tablewrap short"><table><thead><tr><th>資料日期</th><th class="n">大戶${tdView === "pct" ? "%" : "人數"}</th><th class="n">增減</th>
+      <th class="n">散戶${tdView === "pct" ? "%" : "人數"}</th><th class="n">收盤</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="kv" style="margin-top:8px">${tdccSummary(T)}</div>
+    <p class="note">${n >= 2 ? `近 ${n} 週趨勢。` : `目前只有 ${T.date[0]} 這一週；集保官方只提供最新一週，之後每週自動累積，2 週以上就會畫出趨勢。`}「—」表示那一週沒有存這個門檻的分級資料。大戶比例上升不代表一定會漲，只是持股集中的程度。</p>`;
+  const bind = (id, fn) => $(id).querySelectorAll("button").forEach(b => b.onclick = () => { fn(b.dataset.v); renderTDCC(); });
+  bind("#td-big", v => tdBig = +v); bind("#td-ret", v => tdRet = +v); bind("#td-view", v => tdView = v);
+  if (n >= 2) Plotly.react("ch-tdcc", [line(`大戶 > ${tdBig} 張`, V.big, C.s1, {x: T.date, hovertemplate: `%{y:,.${dg}f}${unit}`}),
+    line(`散戶 ≤ ${tdRet} 張`, V.ret, C.s2, {x: T.date, yaxis: "y2", hovertemplate: `%{y:,.${dg}f}${unit}`})],
+    baseLayout({margin: {l: 52, r: 52, t: 24, b: 24}, yaxis2: {overlaying: "y", side: "right", showgrid: false}}), cfgPlot);
 }
 
 function renderChips() {
   const has = !!D.chips;
   $("#chips-grid").hidden = !has; $("#us-chips-grid").hidden = has;
   if (!has) return renderUSChips();
-  renderSBL(); renderTDCC();
+  renderSBL(); renderTDCC(); renderFHold(); renderInst();
   const I = D.chips.institutional, M = D.chips.margin, k = Math.min(N, I.date.length);
   const xd = lbl(I.date.slice(-k));
   const names = ["外資", "投信", "自營商"], keys = ["foreign", "trust", "dealer"], cs = [C.s1, C.s2, C.s3];
-  Plotly.react("ch-inst", keys.map((g, i) => ({type: "bar", name: names[i], x: xd, y: I[g].slice(-k), marker: {color: cs[i]}, hovertemplate: "%{y:,} 張"})),
-    baseLayout({barmode: "group", bargap: .2}), cfgPlot);
   const cum = a => a.slice(-k).reduce((acc, v) => (acc.push((acc.at(-1) || 0) + v), acc), []);
   Plotly.react("ch-inst-cum", keys.map((g, i) => line(names[i], cum(I[g]), cs[i], {x: xd, hovertemplate: "%{y:,} 張"})),
     baseLayout({margin: {l: 64, r: 16, t: 28, b: 28}}), cfgPlot);
@@ -1129,6 +1193,44 @@ function renderChips() {
   if (B && B.sbl.length >= 6) rows.push(["借券賣出餘額 5 日增減", `${fmt(B.sbl.at(-1) - B.sbl.at(-6), 0)} 張`]);
   $("#inst-stats").innerHTML = rows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join("");
 }
+
+// 法人買賣超：可切換單一法人（紅買綠賣）＋收盤價；明細表跟著顯示區間
+let instPick = "all";
+const INST_NAME = {foreign: "外資", trust: "投信", dealer: "自營商", total: "三大法人合計"};
+function instTrend(a) {
+  const n = a.length, t = a[n - 1], p = a[n - 2];
+  if (n < 2 || !t) return "";
+  if (p < 0 && t > 0) return "賣轉買";
+  if (p > 0 && t < 0) return "買轉賣";
+  let c = 0;
+  for (let i = n - 1; i >= 0 && Math.sign(a[i]) === Math.sign(t); i--) c++;
+  return `連${t > 0 ? "買" : "賣"} ${c} 日`;
+}
+function renderInst() {
+  const I = D.chips.institutional, k = Math.min(N, I.date.length), xd = lbl(I.date.slice(-k));
+  const close = Object.fromEntries(D.series.date.map((d, i) => [d, D.series.close[i]]));
+  const px = I.date.slice(-k).map(d => close[d] ?? null);
+  const keys = ["foreign", "trust", "dealer"], cs = [C.s1, C.s2, C.s3];
+  const bars = instPick === "all"
+    ? keys.map((g, i) => ({type: "bar", name: INST_NAME[g], x: xd, y: I[g].slice(-k), marker: {color: cs[i]}, hovertemplate: "%{y:,} 張"}))
+    : [{type: "bar", name: INST_NAME[instPick], x: xd, y: I[instPick].slice(-k), marker: {color: I[instPick].slice(-k).map(v => v >= 0 ? C.up : C.down)}, hovertemplate: "%{y:,} 張"}];
+  bars.push(line("收盤", px, C.ink2, {x: xd, yaxis: "y2", line: {color: C.ink2, width: 1.5}, hovertemplate: "%{y:,.2f}"}));
+  const L0 = baseLayout();
+  Plotly.react("ch-inst", bars, baseLayout({barmode: "group", bargap: .2, margin: {l: 56, r: 56, t: 28, b: 32},
+    xaxis: Object.assign(L0.xaxis, {tickangle: 0, nticks: innerWidth < 640 ? 5 : 10}),
+    yaxis2: {overlaying: "y", side: "right", showgrid: false, tickfont: {size: 11}}}), cfgPlot);
+  const g = instPick === "all" ? "total" : instPick, a = I[g], s5 = a.slice(-5).reduce((x, y) => x + y, 0), tr = instTrend(a);
+  $("#inst-head").innerHTML = `${esc(INST_NAME[g])} ${esc(I.date.at(-1))}：<b class="${cls(a.at(-1))}">${a.at(-1) > 0 ? "+" : ""}${fmt(a.at(-1), 0)}</b> 張`
+    + `${tr ? ` · ${esc(tr)}` : ""} · 近 5 日 <span class="${cls(s5)}">${s5 > 0 ? "+" : ""}${fmt(s5, 0)}</span> 張`;
+  const td = v => `<td class="n ${cls(v)}">${v > 0 ? "+" : ""}${fmt(v, 0)}</td>`;
+  let h = '<thead><tr><th>日期</th><th class="n">外資</th><th class="n">投信</th><th class="n">自營商</th><th class="n">合計</th><th class="n">收盤</th></tr></thead><tbody>';
+  for (let i = I.date.length - 1; i >= I.date.length - k; i--)
+    h += `<tr><td>${I.date[i].slice(5)}</td>${td(I.foreign[i])}${td(I.trust[i])}${td(I.dealer[i])}${td(I.total[i])}<td class="n">${fmt(close[I.date[i]], 2)}</td></tr>`;
+  $("#inst-daily").innerHTML = h + "</tbody>";
+}
+document.querySelectorAll("#inst-pick button").forEach(b => b.onclick = () => {
+  instPick = b.dataset.g; document.querySelectorAll("#inst-pick button").forEach(x => x.classList.toggle("on", x === b)); if (D && D.chips) renderInst();
+});
 
 const RAW_COLS = [["date", "日期", 0], ["open", "開", 2], ["high", "高", 2], ["low", "低", 2], ["close", "收", 2], ["volume", "量", 0],
   ["ma5", "MA5", 2], ["ma20", "MA20", 2], ["ma60", "MA60", 2], ["k", "K", 1], ["d", "D", 1], ["dif", "DIF", 2], ["macd", "MACD", 2],

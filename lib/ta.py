@@ -14,7 +14,7 @@ CACHE = data.DATA / "ta_cache"
 INFO = data.DATA / "stock_info.csv"
 LOOKBACK_DAYS = 1100     # 約 3 年：MA60 / MACD 暖機，並提供訊號回測樣本
 SHOW = 260               # 回傳最近 260 個交易日給前端切換 60/120/250 日
-CACHE_VERSION = 14       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
+CACHE_VERSION = 15       # 分析結果的欄位有變動時加 1，讓舊快取自動失效
 
 
 # ---------- 基本資料 ----------
@@ -157,10 +157,11 @@ def _margin(symbol, start):
 
 
 def _sbl(symbol, start):
-    """借券賣出餘額（張）。借券賣出多為法人放空或避險；和融券是兩套制度。"""
+    """借券賣出餘額與當日借券賣出、還券（張）。借券賣出多為法人放空或避險；和融券是兩套制度。"""
     rows = data.fetch("TaiwanDailyShortSaleBalances", symbol, start)
-    return {"date": [r["date"] for r in rows],
-            "sbl": [round(r["SBLShortSalesCurrentDayBalance"] / 1000) for r in rows]}
+    k = lambda f: [round(r.get(f, 0) / 1000) for r in rows]
+    return {"date": [r["date"] for r in rows], "sbl": k("SBLShortSalesCurrentDayBalance"),
+            "sell": k("SBLShortSalesShortSales"), "ret": k("SBLShortSalesReturns"), "adj": k("SBLShortSalesAdjustments")}
 
 
 def _optional(fn, *args):
@@ -464,8 +465,9 @@ def analyze(symbol, refresh=False):
 
     extra = {}
     if market == "TW":
-        x = ta_plus.fetch_extra(symbol, s["date"][-60])
+        x = ta_plus.fetch_extra(symbol, s["date"][-60], cstart)
         chips["shares_issued"] = x["shares_issued"]
+        chips["foreign_hold"] = x["foreign_hold"]
         dts = [(d, x["daytrade"].get(d, 0) / (v * 1000) if v else 0) for d, v in zip(s["date"][-60:], s["volume"][-60:])]
         extra = {"daytrade_series": {"date": [d for d, _ in dts], "ratio": [round(r, 4) for _, r in dts]},
                  "daytrade_ratio20": sum(r for _, r in dts[-20:]) / 20,
