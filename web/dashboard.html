@@ -363,7 +363,13 @@ const cfgPlot = {displaylogo: false, responsive: false, displayModeBar: TOUCH ? 
 
 function slice(arr) { return arr ? arr.slice(-N) : []; }
 function S(k) { return slice(D.series[k]); }
-function dates() { return S("date").map(d => d.slice(5)); }
+// X 軸是類別軸，標籤必須唯一：區間超過約 11 個月時「月-日」會重複（去年 10-07 和今年 10-07），
+// 後面的點會被畫回前面同名的位置，所以跨年時改用「年/月/日」
+function lbl(arr) {
+  const long = arr.length > 1 && (new Date(arr.at(-1)) - new Date(arr[0])) / 864e5 > 330;
+  return arr.map(d => long ? d.slice(2).replace(/-/g, "/") : d.slice(5));
+}
+function dates() { return lbl(S("date")); }
 function fullDates() { return S("date"); }
 
 function line(name, y, color, extra = {}) {
@@ -703,7 +709,7 @@ function renderOverview() {
   if (tw) {
     const k = 20;
     Plotly.react("ch-inst-mini", ["foreign", "trust", "dealer"].map((g, i) => ({type: "bar", name: ["外資", "投信", "自營商"][i],
-      x: inst.date.slice(-k).map(d => d.slice(5)), y: inst[g].slice(-k), marker: {color: [C.s1, C.s2, C.s3][i]}, hovertemplate: "%{y:,} 張"})),
+      x: lbl(inst.date.slice(-k)), y: inst[g].slice(-k), marker: {color: [C.s1, C.s2, C.s3][i]}, hovertemplate: "%{y:,} 張"})),
       baseLayout({barmode: "group", bargap: .25, margin: {l: 52, r: 8, t: 24, b: 24}}), cfgPlot);
     const sum = (a, n) => a.slice(-n).reduce((x, y) => x + y, 0);
     $("#inst-table").innerHTML = `<table><thead><tr><th></th><th class="n">今日</th><th class="n">5 日</th><th class="n">20 日</th><th class="n">連續</th></tr></thead><tbody>` +
@@ -713,7 +719,7 @@ function renderOverview() {
 
     // 09 當沖與週轉
     const dt = P.daytrade;
-    Plotly.react("ch-daytrade", [{type: "bar", x: dt.date.slice(-20).map(d => d.slice(5)), y: dt.ratio.slice(-20), marker: {color: C.s2},
+    Plotly.react("ch-daytrade", [{type: "bar", x: lbl(dt.date.slice(-20)), y: dt.ratio.slice(-20), marker: {color: C.s2},
       hovertemplate: "%{y:.1%}<extra>當沖比例</extra>"}], baseLayout({margin: {l: 40, r: 8, t: 8, b: 22}, yaxis: {tickformat: ".0%", gridcolor: C.grid}}), cfgPlot);
     $("#daytrade-kv").innerHTML = [["20 日當沖比例", pct(P.daytrade_ratio20, 1).replace("+", "")], ["20 日平均週轉率", P.turnover20 == null ? "—" : (P.turnover20 * 100).toFixed(2) + "%"],
       ["日內振幅（20 日平均）", (P.intraday_range20 * 100).toFixed(2) + "%"], ["外資持股比例", P.foreign_ratio == null ? "—" : (P.foreign_ratio * 100).toFixed(2) + "%"]]
@@ -828,7 +834,7 @@ function renderUS() {
       <span>美元兌台幣</span><span>${fmt(U.fx_then, 3)} → ${fmt(U.fx_now, 3)}</span></div>
     <p class="note">${diff == null ? "" : diff >= 0 ? "這段期間美元升值，換回台幣的報酬變多。" : "這段期間台幣升值，換回台幣的報酬變少。"}你是用台幣投資，匯率也是報酬的一部分。</p>`;
   API.fx().then(j => {
-    Plotly.react("ch-fx", [{type: "scatter", mode: "lines", x: j.date.map(d => d.slice(5)), y: j.rate, line: {color: C.s4, width: 2},
+    Plotly.react("ch-fx", [{type: "scatter", mode: "lines", x: lbl(j.date), y: j.rate, line: {color: C.s4, width: 2},
       hovertemplate: "%{y:.3f}<extra>USD/TWD</extra>"}], baseLayout({margin: {l: 44, r: 8, t: 8, b: 22}, xaxis: {type: "category", nticks: 6, gridcolor: C.grid}}), cfgPlot);
   }).catch(() => { $("#ch-fx").hidden = true; });
 }
@@ -855,8 +861,8 @@ function usChipSummary() {
 function renderUSChips() {
   const U = D.plus.us_chips || {}, sv = U.short_volume, si = U.short_interest, ins = U.insider;
   if (sv) Plotly.react("ch-sv", [
-    {type: "bar", name: "每日放空比例", x: sv.date.map(d => d.slice(5)), y: sv.ratio, marker: {color: C.s2}, hovertemplate: "%{y:.1%}"},
-    line("60 日平均", sv.date.map(() => sv.avg60), C.ink2, {x: sv.date.map(d => d.slice(5)), line: {color: C.ink2, width: 1.5, dash: "dash"}, hovertemplate: "%{y:.1%}"}),
+    {type: "bar", name: "每日放空比例", x: lbl(sv.date), y: sv.ratio, marker: {color: C.s2}, hovertemplate: "%{y:.1%}"},
+    line("60 日平均", sv.date.map(() => sv.avg60), C.ink2, {x: lbl(sv.date), line: {color: C.ink2, width: 1.5, dash: "dash"}, hovertemplate: "%{y:.1%}"}),
   ], baseLayout({yaxis: {tickformat: ".0%", gridcolor: C.grid, range: [0, Math.max(0.8, ...sv.ratio) * 1.05]}}), cfgPlot);
   if (si) {
     Plotly.react("ch-si", [{type: "bar", name: "放空股數", x: si.date.map(d => d.slice(2)), y: si.shares, marker: {color: C.s1}, hovertemplate: "%{y:,} 股"}],
@@ -996,14 +1002,14 @@ function renderChips() {
   $("#chips-grid").hidden = !has; $("#us-chips-grid").hidden = has;
   if (!has) return renderUSChips();
   const I = D.chips.institutional, M = D.chips.margin, k = Math.min(N, I.date.length);
-  const xd = I.date.slice(-k).map(d => d.slice(5));
+  const xd = lbl(I.date.slice(-k));
   const names = ["外資", "投信", "自營商"], keys = ["foreign", "trust", "dealer"], cs = [C.s1, C.s2, C.s3];
   Plotly.react("ch-inst", keys.map((g, i) => ({type: "bar", name: names[i], x: xd, y: I[g].slice(-k), marker: {color: cs[i]}, hovertemplate: "%{y:,} 張"})),
     baseLayout({barmode: "group", bargap: .2}), cfgPlot);
   const cum = a => a.slice(-k).reduce((acc, v) => (acc.push((acc.at(-1) || 0) + v), acc), []);
   Plotly.react("ch-inst-cum", keys.map((g, i) => line(names[i], cum(I[g]), cs[i], {x: xd, hovertemplate: "%{y:,} 張"})),
     baseLayout({margin: {l: 64, r: 16, t: 28, b: 28}}), cfgPlot);
-  const mk = M.date.length, km = Math.min(N, mk), xm = M.date.slice(-km).map(d => d.slice(5));
+  const mk = M.date.length, km = Math.min(N, mk), xm = lbl(M.date.slice(-km));
   Plotly.react("ch-margin", [line("融資餘額", M.margin.slice(-km), C.s1, {x: xm, showlegend: false, fill: "tozeroy", fillcolor: "rgba(57,135,229,.1)", hovertemplate: "%{y:,} 張"})],
     baseLayout({margin: {l: 64, r: 16, t: 12, b: 28}}), cfgPlot);
   Plotly.react("ch-short", [line("融券餘額", M.short.slice(-km), C.s2, {x: xm, showlegend: false, fill: "tozeroy", fillcolor: "rgba(217,89,38,.1)", hovertemplate: "%{y:,} 張"})],
