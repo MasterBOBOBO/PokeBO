@@ -220,6 +220,7 @@ class Analytics(unittest.TestCase):
         s = by["2330"]
         self.assertEqual(day, "20261002")
         self.assertEqual((s["holders"], s["big1000"], s["big400"], s["retail50"]), (1000, 85, 88, 8))
+        self.assertEqual((s["p1"], s["p15"], s["n15"]), (1, 85, 10))      # 每一級都存，前端自選門檻
 
     def test_hints_cover_signal_titles(self):
         from lib import ta as t
