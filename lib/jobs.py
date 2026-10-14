@@ -31,6 +31,8 @@ SCHEDULE = {
     "weekly": [{"Weekday": 6, "Hour": 9, "Minute": 0}],
 }
 LOG = data.ROOT / "logs" / "jobs.log"
+CATCHUP_TRIES = 3                # 補跑失敗（多半是剛開機網路不穩）時重試，每次間隔 3 分鐘
+CATCHUP_RETRY_GAP = 180
 
 
 def log(msg):
@@ -231,10 +233,12 @@ def missed(now=None, runs=None):
 
 
 def _wait_network(host="api.finmindtrade.com", tries=20, gap=15):
-    """開機登入時網路可能還沒好，最多等 5 分鐘。"""
+    """開機登入時網路可能還沒好，最多等 5 分鐘。
+    要完成 TLS 握手並驗證憑證才算通：Wi-Fi 剛連上時連線可能被導到登入頁，單純 TCP 連得上但憑證不符。"""
     for _ in range(tries):
         try:
-            socket.create_connection((host, 443), timeout=5).close()
+            with socket.create_connection((host, 443), timeout=5) as sock:
+                data.SSL_CTX.wrap_socket(sock, server_hostname=host).close()
             return True
         except OSError:
             time.sleep(gap)
@@ -257,14 +261,18 @@ def catchup(cfg):
         return []
     log(f"catchup: 補跑 {todo}")
     for name in todo:
-        try:
-            run(name)
-        except Exception:
-            pass                      # run() 已記錄並通知，繼續補下一個
+        for attempt in range(CATCHUP_TRIES):
+            last = attempt == CATCHUP_TRIES - 1
+            try:
+                run(name, alert=last)     # 前幾次失敗只記錄、不推播，最後一次才通知
+                break
+            except Exception:
+                if not last:
+                    time.sleep(CATCHUP_RETRY_GAP)
     return todo
 
 
-def run(name):
+def run(name, alert=True):
     cfg = data.load_config()
     jobs = {"daily": daily, "monthly": monthly, "weekly": weekly, "news": news_job, "catchup": catchup}
     try:
@@ -274,5 +282,6 @@ def run(name):
         return result
     except Exception as e:
         log(f"{name} FAILED: {e}\n{traceback.format_exc()}")
-        notify(cfg, f"投資追蹤排程失敗（{name}）", f"{type(e).__name__}: {e}"[:200])
+        if alert:
+            notify(cfg, f"投資追蹤排程失敗（{name}）", f"{type(e).__name__}: {e}"[:200])
         raise

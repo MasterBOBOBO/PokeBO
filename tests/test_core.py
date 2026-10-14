@@ -340,3 +340,32 @@ class EmptyPortfolio(unittest.TestCase):
         r = report.build(cfg, txns=[])
         self.assertEqual(r["holdings"], [])
         self.assertEqual(r["health"][0]["item"], "尚無持倉")
+
+
+class CatchupRetry(unittest.TestCase):
+    """開機補跑：失敗時安靜重試，最後一次才推播失敗通知。"""
+
+    def _catchup(self, results):
+        from unittest import mock
+        from lib import jobs
+        calls = []
+
+        def fake_run(name, alert=True):
+            calls.append((name, alert))
+            if results.pop(0) == "fail":
+                raise RuntimeError("network")
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(jobs, "RUNS", Path(tmp) / "runs.json"), \
+                mock.patch.object(jobs, "missed", return_value=["daily"]), \
+                mock.patch.object(jobs, "_wait_network", return_value=True), \
+                mock.patch.object(jobs, "run", fake_run), \
+                mock.patch.object(jobs, "log"), \
+                mock.patch.object(jobs.time, "sleep"):
+            jobs.catchup({})
+        return calls
+
+    def test_retry_then_success_no_alert(self):
+        self.assertEqual(self._catchup(["fail", "ok"]), [("daily", False), ("daily", False)])
+
+    def test_alert_only_on_last_try(self):
+        self.assertEqual(self._catchup(["fail"] * 3), [("daily", False), ("daily", False), ("daily", True)])
