@@ -1,0 +1,51 @@
+# 南投假期訂票小幫手（ntbus-helper/）：Mac 關機時由 GitHub 代為盯新日期開放，結果送 Telegram。
+# 這是公開 repo，Actions log 任何人都看得到：程式在 GitHub 上不會印出日期與座位。
+# 要搭的日期放在 Settings → Secrets and variables → Actions → Variables 的 NTBUS_TARGETS（每行「2026-10-27 去 08:00」）；
+# Telegram 憑證放在 Secrets 的 TELEGRAM_BOT_TOKEN、TELEGRAM_CHAT_ID。
+name: ntbus-helper
+
+on:
+  schedule:
+    # 台灣 23:40（UTC 15:40）。GitHub 排程常延遲 5～30 分鐘，所以提早啟動，程式會自己等到 23:58 再開始查
+    - cron: "40 15 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "ping = 測試連線並送 Telegram；watch = 立刻開始盯"
+        default: ping
+        type: choice
+        options: [ping, watch]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ntbus-helper
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ntbus-helper
+    env:
+      TZ: Asia/Taipei
+      NTBUS_TARGETS: ${{ vars.NTBUS_TARGETS }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ntbus-helper
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 盯新日期開放（排程）
+        if: github.event_name == 'schedule'
+        run: python3 ntbus.py watch
+      - name: 手動執行
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ inputs.mode }}" = "watch" ]; then python3 ntbus.py watch --now; else python3 ntbus.py ping --notify; fi
