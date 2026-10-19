@@ -1,0 +1,6 @@
+.env.local
+data/
+logs/
+# launchd 設定檔含本機路徑，用 `python3 ntbus.py launchd` 產生
+launchd/
+__pycache__/

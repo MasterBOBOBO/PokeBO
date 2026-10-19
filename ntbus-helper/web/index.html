@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>南投假期小幫手</title>
+<style>
+:root{--bg:#f5f7f6;--card:#fff;--fg:#1c2622;--muted:#66736d;--line:#e2e8e5;--ok:#13895c;--okbg:#e3f5ec;--full:#8a9590;--fullbg:#eef1f0;--warn:#c25a12;--accent:#0f7a52}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--okbg:#173327;--full:#7d8a84;--fullbg:#1f2724;--warn:#f0a35e;--accent:#3cc48a}}
+:root[data-theme="dark"]{--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--okbg:#173327;--full:#7d8a84;--fullbg:#1f2724;--warn:#f0a35e;--accent:#3cc48a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+h1{font-size:20px;margin:4px 0}
+.sub{color:var(--muted);font-size:13px}
+.grid{display:grid;gap:12px;margin-top:12px}
+@media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h2{font-size:16px;margin:0}
+.meta{color:var(--muted);font-size:13px;margin:2px 0 10px}
+.days{list-style:none;margin:0;padding:0}
+.days li{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.pill{font-size:13px;padding:2px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+.ok{background:var(--okbg);color:var(--ok)}
+.full{background:var(--fullbg);color:var(--full)}
+.last{font-weight:600}
+.btn{display:block;text-align:center;margin-top:12px;padding:10px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
+.err{color:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 4px;border-top:1px solid var(--line)}
+th{color:var(--muted);font-weight:500}
+.note{color:var(--muted);font-size:12px;margin-top:14px}
+.form{display:grid;gap:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=date],select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+label.chk{display:flex;gap:6px;align-items:center;flex:1;min-width:150px}
+.add{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px;font-weight:600;font-size:15px}
+.tg{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.tg small{display:block;color:var(--muted)}
+.del{color:var(--warn);border-color:var(--line)}
+.msg{font-size:13px;color:var(--warn);min-height:1em}
+button{background:none;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:4px 10px;font:inherit;font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>🚌 南投假期小幫手</h1><div class="sub" id="sub">讀取中…</div></div>
+    <button id="theme" type="button">深淺色</button>
+  </header>
+  <div class="card" style="margin-top:12px">
+    <h2>我要搭的日期</h2>
+    <div class="meta" id="rule">搭乘日前 5 天的 00:00 開放；只有你指定的日期開放那晚才會去查</div>
+    <div class="form">
+      <div class="row"><input type="date" id="d"></div>
+      <div id="picks" class="form"></div>
+      <button class="add" id="addbtn" type="button">加入</button>
+      <div class="msg" id="msg"></div>
+    </div>
+    <div id="targets" style="margin-top:8px"></div>
+    <details style="margin-top:10px">
+      <summary class="sub">Mac 關機時：同步到 GitHub</summary>
+      <div class="meta">GitHub 版讀的是 PokeBO 的 Actions 變數 <b>NTBUS_TARGETS</b>。改完日期後，把下面這段複製貼到 GitHub：Settings → Secrets and variables → Actions → Variables。</div>
+      <textarea id="ghtext" readonly rows="3" style="width:100%;font:13px ui-monospace,monospace;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px"></textarea>
+      <div class="row"><button type="button" id="copy">複製</button><a class="sub" href="https://github.com/MasterBOBOBO/PokeBO/settings/variables/actions" target="_blank" rel="noopener">開啟 GitHub 變數設定</a></div>
+    </details>
+  </div>
+  <div class="grid" id="routes"></div>
+  <div class="card" style="margin-top:12px">
+    <h2>新日期開放紀錄</h2>
+    <div class="meta">每次偵測到新日期的時間（距離 00:00 幾分幾秒）與當下座位</div>
+    <div id="history"></div>
+  </div>
+  <p class="note">只查詢、不下單。新日期開放時會推播到 Telegram 與 Mac 通知，請自己在官網按「立即購買」。網站資料每 30 秒最多查一次。</p>
+</main>
+<script>
+const S={AVAILABLE:'可預約',FULL:'額滿',WAITING:'候補',INSUFFICIENT:'不足',COMING_SOON:'尚未開放',NO_SESSION:'沒有這班'};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const md=d=>d?`${d.slice(4,6)}/${d.slice(6,8)}`:'';
+const delay=s=>{const neg=s<0;s=Math.abs(s);return (neg?'-':'')+Math.floor(s/60)+' 分 '+String(s%60).padStart(2,'0')+' 秒'};
+function route(r){
+  if(r.error) return `<div class="card"><h2>${esc(r.name)} ${esc(r.time)}</h2><p class="err">查詢失敗：${esc(r.error)}</p><a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">開訂票頁</a></div>`;
+  const li=r.days.map(d=>{const ok=d.status==='AVAILABLE';return `<li class="${d.date===r.last?'last':''}"><span>${esc(d.label)}${d.date===r.last?' ・最新':''}</span><span class="pill ${ok?'ok':'full'}">${esc(S[d.status]||d.status||'—')}${ok?' '+d.remain+' 位':''}</span></li>`}).join('');
+  return `<div class="card"><h2>${esc(r.name)}</h2><div class="meta">${esc(r.time)} 班（預設）・最後可預約 ${md(r.last)}</div><ul class="days">${li}</ul><a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">前往訂票頁</a></div>`;
+}
+function history(h){
+  const rows=h.filter(x=>x.type==='open').reverse();
+  if(!rows.length) return '<div class="meta">還沒有紀錄，第一次排程跑完後會出現。</div>';
+  return `<table><tr><th>偵測時間</th><th>路線</th><th>日期</th><th>延遲</th><th>座位</th></tr>${rows.map(x=>`<tr><td>${esc(x.at.slice(5))}</td><td>${esc(x.route)} ${esc(x.time)}</td><td>${md(x.target)}</td><td>${delay(x.delay_sec)}</td><td>${esc(S[x.status]||'—')} ${x.remain??''}</td></tr>`).join('')}</table>`;
+}
+let TARGETS=[],ROUTES=[];
+function gh(t){document.getElementById('ghtext').value=t||'（沒有指定日期）'}
+document.getElementById('copy').onclick=async()=>{const t=document.getElementById('ghtext');try{await navigator.clipboard.writeText(t.value);document.getElementById('copy').textContent='已複製'}catch(e){t.select()}};
+function picks(){
+  const box=document.getElementById('picks');
+  if(box.dataset.ready) return;
+  box.innerHTML=ROUTES.map(r=>`<div class="row"><label class="chk"><input type="checkbox" data-r="${esc(r.id)}" checked>${esc(r.name)}</label><select data-t="${esc(r.id)}">${(r.times.length?r.times:[r.time]).map(t=>`<option${t===r.time?' selected':''}>${esc(t)}</option>`).join('')}</select></div>`).join('');
+  box.dataset.ready=1;
+}
+function targets(list){
+  TARGETS=list;
+  document.getElementById('targets').innerHTML=list.length?list.map((t,i)=>{
+    const st=t.open?(t.seat?(t.seat.status==='AVAILABLE'?`已開放・可預約 ${t.seat.remain} 位`:`已開放・${S[t.seat.status]||t.seat.status}`):'已開放'):`${esc(t.opens)} 開放，會自動盯`;
+    return `<div class="tg"><div>${esc(t.label)} ${esc(t.route_name)} ${esc(t.time)}<small>${st}</small></div><button class="del" type="button" data-i="${i}">刪除</button></div>`}).join('')
+    :'<div class="meta">還沒有指定日期</div>';
+}
+async function saveTargets(list){
+  const r=await fetch('/api/targets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(list)});
+  const j=await r.json(); if(!r.ok) throw new Error(j.error||r.status); targets(j.targets); gh(j.github_text);
+}
+document.getElementById('addbtn').onclick=async()=>{
+  const msg=document.getElementById('msg'); msg.textContent='';
+  const d=document.getElementById('d').value.replaceAll('-','');
+  if(!d){msg.textContent='請先選日期';return}
+  const add=[...document.querySelectorAll('#picks input[data-r]:checked')].map(c=>({date:d,route:c.dataset.r,time:document.querySelector(`select[data-t="${c.dataset.r}"]`).value}));
+  if(!add.length){msg.textContent='至少勾一條路線';return}
+  try{await saveTargets(TARGETS.map(({date,route,time})=>({date,route,time})).concat(add))}catch(e){msg.textContent='儲存失敗：'+e.message}
+};
+document.getElementById('targets').onclick=async e=>{
+  const i=e.target.dataset.i; if(i===undefined) return;
+  try{await saveTargets(TARGETS.filter((_,k)=>k!=i).map(({date,route,time})=>({date,route,time})))}catch(err){document.getElementById('msg').textContent='刪除失敗：'+err.message}
+};
+async function load(){
+  try{
+    const j=await (await fetch('/api/status')).json();
+    ROUTES=j.routes; picks(); targets(j.targets); gh(j.github_text);
+    document.getElementById('rule').textContent=`搭乘日前 ${j.advance_days} 天的 00:00 開放；只有你指定的日期開放那晚才會去查`;
+    document.getElementById('routes').innerHTML=j.routes.map(route).join('');
+    document.getElementById('history').innerHTML=history(j.history);
+    document.getElementById('sub').textContent=`${j.checked_at} 更新・每晚 23:57 檢查`;
+  }catch(e){document.getElementById('sub').textContent='連不到本機伺服器：'+e.message}
+}
+{const t=new Date();t.setDate(t.getDate()+1);document.getElementById('d').min=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`}
+const root=document.documentElement;
+try{const t=localStorage.getItem('ntbus-theme');if(t)root.dataset.theme=t}catch(e){}
+document.getElementById('theme').onclick=()=>{const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('ntbus-theme',root.dataset.theme)}catch(e){}};
+load();setInterval(load,30000);
+</script>
+</body>
+</html>

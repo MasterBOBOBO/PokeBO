@@ -1,0 +1,41 @@
+{
+  "routes": [
+    {
+      "name": "高鐵台中站→溪頭",
+      "sale_item_id": "9Oqr",
+      "product_id": "6Bl2",
+      "time": "08:00",
+      "quantity": 1,
+      "alias": "去"
+    },
+    {
+      "name": "溪頭→高鐵台中站",
+      "sale_item_id": "yj9k",
+      "product_id": "9Ab2",
+      "time": "13:35",
+      "quantity": 1,
+      "alias": "回"
+    }
+  ],
+  "watch": {
+    "advance_days": 5,
+    "start_before_sec": 120,
+    "stop_after_min": 40,
+    "interval_sec": 10,
+    "follow_min": 10,
+    "follow_interval_sec": 60
+  },
+  "notify": {
+    "macos": true,
+    "macos_sound": "Glass",
+    "say": true,
+    "telegram": true
+  },
+  "env_files": [
+    ".env.local"
+  ],
+  "serve": {
+    "port": 8766,
+    "cache_sec": 30
+  }
+}
