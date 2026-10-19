@@ -54,7 +54,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   <div class="card">
     <h2>已指定的日期</h2>
     <div id="list" class="meta">讀取中…</div>
-    <button class="main-btn" id="save" type="button" disabled>儲存並通知</button>
+    <button class="main-btn" id="save" type="button" disabled>傳送確認到 Telegram</button>
     <div class="msg" id="msg"></div>
   </div>
 
@@ -103,7 +103,8 @@ const sortT=l=>l.sort((a,b)=>(a.date+a.route+a.time).localeCompare(b.date+b.rout
 
 function render(){
   $('list').innerHTML=TARGETS.length?TARGETS.map((t,i)=>`<div class="tg"><div>${label(t.date)} ${esc(route(t.route).name)} ${esc(t.time)}<small>${opens(t.date)} 開放</small></div><button class="del" type="button" data-i="${i}">刪除</button></div>`).join(''):'還沒有指定日期';
-  $('save').disabled=!dirty;
+  $('save').disabled=!tokenGet();
+  $('save').textContent=dirty?'儲存並通知':'傳送確認到 Telegram';
 }
 function msg(t,ok){$('msg').textContent=t;$('msg').className='msg '+(ok===true?'ok':ok===false?'bad':'')}
 
