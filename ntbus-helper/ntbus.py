@@ -17,6 +17,7 @@
   python3 ntbus.py add 2026-10-27 去 08:00   # 指定要搭的日期（去／回，也可以在網頁上設定）
   python3 ntbus.py remove 2026-10-27 [9Oqr]
   python3 ntbus.py targets             # 列出指定的日期與開放時間
+  python3 ntbus.py sync                # 把日期同步到 GitHub 變數（add／remove／網頁儲存時會自動同步）
   python3 ntbus.py watch               # 盯新日期開放（launchd 每晚 23:57 啟動，沒指定的日子不查）
   python3 ntbus.py watch --now         # 立刻開始盯（測試用，不等 23:58）
   python3 ntbus.py serve               # 狀態網頁 http://127.0.0.1:8766/
@@ -24,12 +25,14 @@
   python3 ntbus.py ping [--notify]     # 測試能否連到網站（GitHub 用，不印日期）
   python3 ntbus.py launchd --install   # 產生並安裝排程
 """
+import itertools
 import json
 import os
 import ssl
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta
@@ -249,6 +252,52 @@ def save_targets(cfg, items):
     return clean
 
 
+def sync_github(cfg, items):
+    """把指定日期寫到 GitHub Actions 變數，Mac 關機時 GitHub 版也盯同樣的日期。
+    需要 .env.local 的 GITHUB_VARIABLES_TOKEN：fine-grained token，只授權 PokeBO 的 Variables（Read and write）。
+    回傳 (成功與否, 訊息)。"""
+    g = cfg.get("github") or {}
+    token = _env(cfg, "GITHUB_VARIABLES_TOKEN")
+    if not g.get("repo") or not token:
+        return False, "未設定 GITHUB_VARIABLES_TOKEN，請手動複製到 GitHub"
+    name = g.get("variable", "NTBUS_TARGETS")
+    # GitHub 變數不能是空字串，沒有日期時放一行註解（parse_targets_text 會忽略）
+    value = targets_text(cfg, items) or "# 沒有指定日期"
+    base = f"https://api.github.com/repos/{g['repo']}/actions/variables"
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+               "X-GitHub-Api-Version": "2022-11-28", "User-Agent": UA, "Content-Type": "application/json"}
+
+    def call(method, url):
+        body = None if method == "GET" else json.dumps({"name": name, "value": value}).encode()
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=15, context=SSL_CTX) as r:
+            return json.loads(r.read() or b"{}")
+
+    try:
+        try:
+            call("PATCH", f"{base}/{name}")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            call("POST", base)          # 第一次：變數還不存在
+        # 讀回 GitHub 上的值，用 GitHub 版同一套解析算筆數，確認它讀得到
+        saved = parse_targets_text(cfg, call("GET", f"{base}/{name}").get("value", ""))
+    except urllib.error.HTTPError as e:
+        msg = {401: "token 無效或過期", 403: "token 沒有 Variables 寫入權限"}.get(e.code, f"HTTP {e.code}")
+        log(f"同步 GitHub 失敗：{msg}")
+        return False, f"同步 GitHub 失敗：{msg}"
+    except Exception as e:
+        log(f"同步 GitHub 失敗：{e}")
+        return False, f"同步 GitHub 失敗：{type(e).__name__}"
+    except ValueError as e:
+        return False, f"GitHub 上的內容無法解析：{e}"
+    if sorted(map(str, saved)) != sorted(map(str, items)):
+        log(f"同步 GitHub 後讀回不一致：送出 {len(items)} 筆、讀回 {len(saved)} 筆")
+        return False, f"GitHub 讀回 {len(saved)} 筆，和本機 {len(items)} 筆不一致"
+    log(f"已同步 GitHub 變數 {name}（{len(items)} 筆）")
+    return True, f"已同步到 GitHub，GitHub 確認讀到 {len(saved)} 筆"
+
+
 def opens_on(cfg, day):
     """搭乘日 day（YYYYMMDD）在哪一天的 00:00 開放。"""
     return datetime.strptime(day, "%Y%m%d").date() - timedelta(days=cfg["watch"]["advance_days"])
@@ -439,10 +488,12 @@ class Handler(BaseHTTPRequestHandler):
         cfg = load_config()
         try:
             items = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"[]")
-            save_targets(cfg, items)
+            items = save_targets(cfg, items)
         except (ValueError, KeyError, TypeError) as e:
             return self._json(400, {"error": str(e)})
-        self._json(200, {"targets": targets_view(cfg), "github_text": targets_text(cfg, load_targets(cfg))})
+        ok, msg = sync_github(cfg, items)
+        self._json(200, {"targets": targets_view(cfg), "github_text": targets_text(cfg, load_targets(cfg)),
+                         "github_sync": {"ok": ok, "message": msg}})
 
 
 def targets_view(cfg):
@@ -502,6 +553,27 @@ def launchd(cfg, install=False):
             print(f"  安裝 {label}：{'成功' if r.returncode == 0 else r.stderr.strip()}")
 
 
+def targets_summary(cfg, items, results):
+    """每個指定日期：還沒開放 → 何時開放；已開放 → 目前座位（額滿附其他有位班次）。"""
+    if not items:
+        return "目前沒有指定日期，不會去盯。"
+    lines = []
+    key = lambda t: (t["date"], t["route"])  # noqa: E731
+    for (day, rid), group in itertools.groupby(sorted(items, key=key), key=key):
+        r, times = route_by_id(cfg, rid), [t["time"] for t in group]
+        res = results.get(rid)
+        lines.append(f"📅 {fmt_day(day)} {r['name']}")
+        if res is None:
+            lines.append("　查不到網站，稍後再試")
+        elif ymd(res.get("lastBookingDate")) >= day:
+            text, _ = seat_text(res, day, times)
+            lines += ["　" + x for x in text.splitlines()] + [f"　{purchase_url(r, day)}"]
+        else:
+            o = opens_on(cfg, day)
+            lines.append(f"　{'、'.join(times)}：{o:%m/%d}（{'一二三四五六日'[o.weekday()]}）00:00 開放，到時會自動盯並通知")
+    return "\n".join(lines)
+
+
 def _print_targets(cfg, items):
     if not items:
         print("目前沒有指定日期")
@@ -525,25 +597,30 @@ def main(argv):
         r = route_by_id(cfg, argv[3])
         items = save_targets(cfg, load_targets() + [{"date": argv[2], "route": r["sale_item_id"], "time": argv[4] if len(argv) > 4 else r["time"]}])
         _print_targets(cfg, items)
+        print(sync_github(cfg, items)[1])
     elif cmd == "remove":       # remove 2026-10-27 [9Oqr]
         d = ymd(argv[2])
         items = save_targets(cfg, [t for t in load_targets() if not (t["date"] == d and (len(argv) < 4 or t["route"] == argv[3]))])
         _print_targets(cfg, items)
+        print(sync_github(cfg, items)[1])
+    elif cmd == "sync":         # 手動把目前的日期同步到 GitHub
+        print(sync_github(cfg, load_targets(cfg))[1])
     elif cmd == "targets":
         _print_targets(cfg, load_targets())
-    elif cmd == "ping":         # GitHub 上測試能不能連到網站（不印日期與座位）
-        ok = 0
+    elif cmd == "ping":         # GitHub 上測試連線；--notify 把指定日期的狀態送 Telegram（log 不印日期與座位）
+        ok, results = 0, {}
         for r in cfg["routes"]:
             try:
-                query(r)
+                first = query(r)
+                results[r["sale_item_id"]] = query_through(r, ymd(first.get("lastBookingDate")), first)
                 ok += 1
             except Exception as e:
                 print(f"連線失敗：{type(e).__name__} {e}"[:200])
         print(f"網站可連線：{ok}/{len(cfg['routes'])} 條路線；指定日期 {len(load_targets(cfg))} 筆")
+        if "--notify" in argv:
+            notify(cfg, "🚌 南投假期小幫手：已收到設定", targets_summary(cfg, load_targets(cfg), results))
         if ok < len(cfg["routes"]):
             sys.exit(1)
-        if "--notify" in argv:
-            notify(cfg, "🚌 南投假期小幫手（GitHub）", f"GitHub 連線正常，指定日期 {len(load_targets(cfg))} 筆")
     elif cmd == "watch":
         watch(cfg, now_mode="--now" in argv)
     elif cmd == "serve":

@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>南投假期小幫手</title>
+<style>
+:root{--bg:#f5f7f6;--card:#fff;--fg:#1c2622;--muted:#66736d;--line:#e2e8e5;--ok:#13895c;--warn:#c25a12;--accent:#0f7a52}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--warn:#f0a35e;--accent:#3cc48a}}
+:root[data-theme="dark"]{--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--warn:#f0a35e;--accent:#3cc48a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+h1{font-size:20px;margin:4px 0}
+h2{font-size:16px;margin:0 0 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.meta{color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+label.chk{display:flex;gap:6px;align-items:center;flex:1;min-width:150px}
+input,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+input[type=password]{flex:1;min-width:0}
+button{font:inherit;color:var(--fg);background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.main-btn{width:100%;margin-top:12px;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px;font-weight:600;font-size:16px}
+.main-btn:disabled{opacity:.5}
+.tg{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line)}
+.tg small{display:block;color:var(--muted)}
+.del{color:var(--warn)}
+.msg{font-size:14px;margin-top:10px;min-height:1.2em}
+.ok{color:var(--ok)}.bad{color:var(--warn)}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>🚌 南投假期小幫手</h1><button id="theme" type="button">深淺色</button></header>
+  <div class="meta">選好要搭的日期按「儲存並通知」：GitHub 會在開放那晚自動盯，並馬上傳一則 Telegram 確認給你。只查詢、不下單。</div>
+
+  <div class="card" id="setup" hidden>
+    <h2>第一次使用：輸入 GitHub token</h2>
+    <div class="meta">需要 PokeBO 的 <b>Variables</b> 與 <b>Actions</b> 讀寫權限（fine-grained token）。只存在這台裝置的瀏覽器，不會上傳。</div>
+    <div class="row"><input type="password" id="tok" placeholder="github_pat_…" autocomplete="off"><button type="button" id="savetok">儲存</button></div>
+  </div>
+
+  <div class="card">
+    <h2>新增日期</h2>
+    <div class="meta" id="rule"></div>
+    <div class="row"><input type="date" id="d"></div>
+    <div id="picks"></div>
+    <button class="main-btn" id="add" type="button">加入</button>
+  </div>
+
+  <div class="card">
+    <h2>已指定的日期</h2>
+    <div id="list" class="meta">讀取中…</div>
+    <button class="main-btn" id="save" type="button" disabled>儲存並通知</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>設定</summary>
+      <div class="row"><button type="button" id="cleartok">清除這台裝置的 token</button></div>
+      <div class="meta" style="margin-top:8px">每晚 23:40 GitHub 會啟動；只有指定日期開放那晚才會查網站。Mac 版（本機）會各自另外盯，日期在本機網頁設定時也會同步到這裡。</div>
+    </details>
+  </div>
+</main>
+<script>
+const REPO='MasterBOBOBO/PokeBO', VAR='NTBUS_TARGETS', WF='ntbus.yml';
+const API=`https://api.github.com/repos/${REPO}/actions`;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const W='日一二三四五六';
+let CFG, TARGETS=[], dirty=false;
+
+function tokenGet(){try{return localStorage.getItem('ntbus-gh-token')||''}catch(e){return ''}}
+function tokenSet(v){try{v?localStorage.setItem('ntbus-gh-token',v):localStorage.removeItem('ntbus-gh-token')}catch(e){}}
+async function gh(method,path,body){
+  const r=await fetch(API+path,{method,headers:{Authorization:'Bearer '+tokenGet(),Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body:body?JSON.stringify(body):undefined});
+  if(!r.ok){const e=new Error(r.status===401?'token 無效或過期':r.status===403?'token 權限不足':r.status===404?'找不到':'HTTP '+r.status);e.status=r.status;throw e}
+  return r.status===204?{}:r.json();
+}
+const ymd=dt=>`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}`;
+const toDate=s=>new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8));
+const label=s=>{const t=toDate(s);return `${s.slice(4,6)}/${s.slice(6,8)}（${W[t.getDay()]}）`};
+function opens(s){const t=toDate(s);t.setDate(t.getDate()-CFG.watch.advance_days);return `${ymd(t).slice(4,6)}/${ymd(t).slice(6,8)}（${W[t.getDay()]}）00:00`}
+const route=id=>CFG.routes.find(r=>r.sale_item_id===id||r.alias===id);
+
+// 和 ntbus.py 的 parse_targets_text／targets_text 同一種格式：每行「2026-10-27 去 08:00」
+function parse(text){
+  const out=[], today=ymd(new Date());
+  for(const raw of text.replace(/，/g,',').replace(/,/g,'\n').split('\n')){
+    const p=raw.split('#')[0].trim().split(/\s+/).filter(Boolean); if(p.length<2) continue;
+    let d=p[0].replace(/[-/]/g,''); if(d.length===4){d=new Date().getFullYear()+d; if(d<today) d=(new Date().getFullYear()+1)+d.slice(4)}
+    const r=route(p[1]); if(!r) continue;
+    out.push({date:d,route:r.sale_item_id,time:p[2]||r.time});
+  }
+  return out.filter(t=>t.date>=today);
+}
+const fmt=list=>list.map(t=>`${t.date.slice(0,4)}-${t.date.slice(4,6)}-${t.date.slice(6)} ${route(t.route).alias} ${t.time}`).join('\n')||'# 沒有指定日期';
+const sortT=l=>l.sort((a,b)=>(a.date+a.route+a.time).localeCompare(b.date+b.route+b.time));
+
+function render(){
+  $('list').innerHTML=TARGETS.length?TARGETS.map((t,i)=>`<div class="tg"><div>${label(t.date)} ${esc(route(t.route).name)} ${esc(t.time)}<small>${opens(t.date)} 開放</small></div><button class="del" type="button" data-i="${i}">刪除</button></div>`).join(''):'還沒有指定日期';
+  $('save').disabled=!dirty;
+}
+function msg(t,ok){$('msg').textContent=t;$('msg').className='msg '+(ok===true?'ok':ok===false?'bad':'')}
+
+async function load(){
+  CFG=await (await fetch('config.json',{cache:'no-store'})).json();
+  $('rule').textContent=`搭乘日前 ${CFG.watch.advance_days} 天的 00:00 開放`;
+  $('picks').innerHTML=CFG.routes.map(r=>`<div class="row"><label class="chk"><input type="checkbox" data-r="${esc(r.sale_item_id)}" checked>${esc(r.name)}</label><select data-t="${esc(r.sale_item_id)}">${(r.times||[r.time]).map(t=>`<option${t===r.time?' selected':''}>${esc(t)}</option>`).join('')}</select></div>`).join('');
+  const t=new Date();t.setDate(t.getDate()+1);$('d').min=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  if(!tokenGet()){$('setup').hidden=false;$('list').textContent='請先輸入 token';return}
+  $('setup').hidden=true;
+  try{TARGETS=sortT(parse((await gh('GET',`/variables/${VAR}`)).value||''));dirty=false;render()}
+  catch(e){if(e.status===404){TARGETS=[];render()}else{$('list').textContent='讀取失敗：'+e.message;if(e.status===401)$('setup').hidden=false}}
+}
+
+$('savetok').onclick=()=>{const v=$('tok').value.trim();if(!v)return;tokenSet(v);$('tok').value='';load()};
+$('cleartok').onclick=()=>{tokenSet('');load()};
+$('add').onclick=()=>{
+  const d=$('d').value.replace(/-/g,''); if(!d){msg('請先選日期',false);return}
+  const add=[...document.querySelectorAll('#picks input[data-r]:checked')].map(c=>({date:d,route:c.dataset.r,time:document.querySelector(`select[data-t="${c.dataset.r}"]`).value}));
+  if(!add.length){msg('至少勾一條路線',false);return}
+  for(const a of add) if(!TARGETS.some(t=>t.date===a.date&&t.route===a.route&&t.time===a.time)) TARGETS.push(a);
+  sortT(TARGETS);dirty=true;render();msg('已加入，記得按「儲存並通知」');
+};
+$('list').onclick=e=>{const i=e.target.dataset.i;if(i===undefined)return;TARGETS.splice(+i,1);dirty=true;render();msg('已刪除，記得按「儲存並通知」')};
+$('save').onclick=async()=>{
+  $('save').disabled=true;msg('儲存中…');
+  try{
+    const body={name:VAR,value:fmt(TARGETS)};
+    try{await gh('PATCH',`/variables/${VAR}`,body)}catch(e){if(e.status!==404)throw e;await gh('POST','/variables',body)}
+    const back=parse((await gh('GET',`/variables/${VAR}`)).value||'');
+    if(back.length!==TARGETS.length) throw new Error(`GitHub 讀回 ${back.length} 筆，和這裡的 ${TARGETS.length} 筆不一致`);
+    dirty=false;
+    try{
+      await gh('POST',`/workflows/${WF}/dispatches`,{ref:'main',inputs:{mode:'ping'}});
+      msg(`✅ 已儲存 ${back.length} 筆。約 1 分鐘內 Telegram 會收到確認訊息。`,true);
+    }catch(e){msg(`✅ 已儲存 ${back.length} 筆，但沒辦法觸發通知（${e.message}，token 要有 Actions 讀寫權限）`,false)}
+  }catch(e){msg('儲存失敗：'+e.message,false);$('save').disabled=false}
+  render();
+};
+const root=document.documentElement;
+try{const t=localStorage.getItem('ntbus-theme');if(t)root.dataset.theme=t}catch(e){}
+$('theme').onclick=()=>{const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('ntbus-theme',root.dataset.theme)}catch(e){}};
+load();
+</script>
+</body>
+</html>

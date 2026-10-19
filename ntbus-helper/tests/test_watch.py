@@ -99,6 +99,65 @@ class GitHubModeTest(Base):
         self.assertFalse(ntbus.LOG.exists())
 
 
+class SummaryTest(Base):
+    def test_summary(self):
+        items = [{"date": d(9), "route": "yj9k", "time": "13:35"}, {"date": d(3), "route": "9Oqr", "time": "08:00"}]
+        text = ntbus.targets_summary(self.cfg, items, {"9Oqr": fake_result(5, SESSIONS), "yj9k": fake_result(5, SESSIONS)})
+        first, second = text.split("📅")[1:]
+        self.assertIn("❌ 08:00 額滿；其他有位：08:45 剩 2", first)          # 已開放：篩座位
+        self.assertIn("00:00 開放，到時會自動盯", second)                    # 未開放：開放時間
+        self.assertIn("目前沒有指定日期", ntbus.targets_summary(self.cfg, [], {}))
+
+
+class SyncTest(Base):
+    def test_no_token_skips(self):
+        with mock.patch.object(ntbus, "_env", return_value=None), mock.patch("urllib.request.urlopen") as op:
+            ok, msg = ntbus.sync_github(self.cfg, [])
+        self.assertFalse(ok)
+        op.assert_not_called()
+
+    def test_patch_then_create(self):
+        import urllib.error
+        sent = []
+
+        class Resp:
+            status = 201
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        store = {}
+
+        def op(req, timeout=None, context=None):
+            if req.get_method() == "GET":
+                r = Resp()
+                r.read = lambda: json.dumps(store).encode()
+                return r
+            sent.append((req.get_method(), req.full_url, json.loads(req.data)))
+            if req.get_method() == "PATCH":
+                raise urllib.error.HTTPError(req.full_url, 404, "nf", {}, None)
+            store.update(sent[-1][2])
+            r = Resp()
+            r.read = lambda: b"{}"
+            return r
+
+        items = [{"date": "20991027", "route": "9Oqr", "time": "08:00"}]
+        with mock.patch.object(ntbus, "_env", return_value="tok"), mock.patch("urllib.request.urlopen", side_effect=op):
+            ok, msg = ntbus.sync_github(self.cfg, items)
+        self.assertTrue(ok, msg)
+        self.assertIn("確認讀到 1 筆", msg)
+        self.assertEqual([m for m, _, _ in sent], ["PATCH", "POST"])
+        self.assertEqual(sent[1][2], {"name": "NTBUS_TARGETS", "value": "2099-10-27 去 08:00"})
+        self.assertTrue(sent[1][1].endswith("/repos/MasterBOBOBO/PokeBO/actions/variables"))
+
+    def test_empty_list_uses_comment(self):
+        with mock.patch.object(ntbus, "_env", return_value="tok"), mock.patch("urllib.request.urlopen") as op:
+            op.return_value.__enter__.return_value.read.return_value = json.dumps({"value": "# 沒有指定日期"}).encode()
+            ok, _ = ntbus.sync_github(self.cfg, [])
+        self.assertTrue(ok)
+        value = json.loads(op.call_args_list[0].args[0].data)["value"]
+        self.assertEqual(ntbus.parse_targets_text(self.cfg, value), [])
+
+
 class WatchTest(Base):
     def run_watch(self, side_effect):
         with mock.patch.object(ntbus, "query", side_effect=side_effect) as q, \
