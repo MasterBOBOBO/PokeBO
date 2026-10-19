@@ -50,9 +50,9 @@
   ],
   "watch": {
     "advance_days": 5,
-    "start_before_sec": 120,
+    "start_before_sec": 300,
     "stop_after_min": 40,
-    "interval_sec": 10,
+    "interval_sec": 5,
     "follow_min": 10,
     "follow_interval_sec": 60
   },
@@ -60,7 +60,8 @@
     "macos": true,
     "macos_sound": "Glass",
     "say": true,
-    "telegram": true
+    "telegram": true,
+    "pre_alert": true
   },
   "env_files": [
     ".env.local"

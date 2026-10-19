@@ -4,7 +4,7 @@
 
 資料來源：網站日曆用的 /ajax/tour/queryBooking/summary（不用登入）。
 回傳 lastBookingDate（目前可預約的最後一天）與每天每班次的 status / remainQuantity。
-新日期大約在 00:00～00:10 之間出現（伺服器刷新時間不固定），所以從 23:58 開始每 10 秒查一次。
+新日期大約在 00:00～00:10 之間出現（伺服器刷新時間不固定），所以從 23:55 開始每 5 秒查一次。
 要搭哪天由使用者指定（data/targets.json）；只有指定的日期開放那晚才會查網站。
 
 兩種執行環境：
@@ -18,7 +18,7 @@
   python3 ntbus.py remove 2026-10-27 [9Oqr]
   python3 ntbus.py targets             # 列出指定的日期與開放時間
   python3 ntbus.py sync                # 把日期同步到 GitHub 變數（add／remove／網頁儲存時會自動同步）
-  python3 ntbus.py watch               # 盯新日期開放（launchd 每晚 23:57 啟動，沒指定的日子不查）
+  python3 ntbus.py watch               # 盯新日期開放（launchd 每晚 23:50 啟動，沒指定的日子不查）
   python3 ntbus.py watch --now         # 立刻開始盯（測試用，不等 23:58）
   python3 ntbus.py serve               # 狀態網頁 http://127.0.0.1:8766/
   python3 ntbus.py notify-test         # 測試通知
@@ -344,7 +344,11 @@ def _next_midnight(now):
 
 
 def watch(cfg, now_mode=False):
-    """每晚 23:57 由 launchd 啟動：今晚 00:00 會開放的日期裡有使用者指定的，才去盯。"""
+    """每晚由 launchd／GitHub 提早啟動：今晚 00:00 會開放的日期裡有使用者指定的，才去盯。
+
+    網站刷新時間不固定（00:00～00:10 都有可能，伺服器時鐘也可能偏快），所以從 start_before_sec 前
+    就開始每 interval_sec 秒查一次，直到開放或 stop_after_min。「開放」的條件是日期出現、而且指定班次
+    已經不是「尚未開放」——日期先出現但班次還不能訂時繼續等，避免通知了卻點進去訂不到。"""
     w = cfg["watch"]
     start = datetime.now()
     midnight = _next_midnight(start) if start.hour >= 12 else datetime.combine(start.date(), datetime.min.time())
@@ -357,6 +361,8 @@ def watch(cfg, now_mode=False):
     log(f"今晚有 {len(wanted)} 個班次要盯", public=True)
     begin = start if now_mode else midnight - timedelta(seconds=w["start_before_sec"])
     stop = (start if now_mode else midnight) + timedelta(minutes=w["stop_after_min"])
+    # GitHub 排程可能延遲到結束時間之後才啟動：只查一輪，有開放就通知座位，沒有就安靜結束
+    late = datetime.now() >= stop
     if not now_mode and datetime.now() < begin:
         log(f"等到 {begin:%H:%M:%S} 開始（等待 {fmt_day(opening)} 開放）")
         time.sleep((begin - datetime.now()).total_seconds())
@@ -367,9 +373,16 @@ def watch(cfg, now_mode=False):
         pending.setdefault(r["name"], {"route": r, "target": opening, "times": []})["times"].append(t["time"])
     for name, p in pending.items():
         log(f"{name} {'、'.join(p['times'])}：等待 {fmt_day(opening)} 開放")
+    if cfg.get("notify", {}).get("pre_alert", True) and not now_mode and datetime.now() < midnight:
+        links = "\n".join(f"{p['route']['alias']}：{purchase_url(p['route'])}" for p in pending.values())
+        what = "\n".join(f"{name} {'、'.join(p['times'])}" for name, p in pending.items())
+        notify(cfg, f"⏰ 開始盯 {fmt_day(opening)}，請先登入南投假期",
+               f"{what}\n開放後馬上通知；先把訂票頁開好、登入等著：\n{links}")
 
     errors = 0
-    while pending and datetime.now() < stop:
+    first = True
+    while pending and (first or datetime.now() < stop):
+        first = False
         for name, p in list(pending.items()):
             r = p["route"]
             try:
@@ -381,7 +394,8 @@ def watch(cfg, now_mode=False):
                 if errors >= 5:  # 連續失敗多半是被擋或網站忙，放慢避免加重負擔
                     time.sleep(30)
                 continue
-            if ymd(res.get("lastBookingDate")) >= p["target"]:
+            states = [(session_of(res, p["target"], tm) or {}).get("status") for tm in p["times"]]
+            if ymd(res.get("lastBookingDate")) >= p["target"] and not any(x in (None, "COMING_SOON") for x in states):
                 opened = datetime.now()
                 text, best = seat_text(res, p["target"], p["times"])
                 head = "🚌" if best else "⚠️"
@@ -392,10 +406,12 @@ def watch(cfg, now_mode=False):
                 del pending[name]
                 if w.get("follow_min"):
                     _follow.setdefault(name, p)
-        if pending:
+        if pending and not late:
             time.sleep(w["interval_sec"])
+        if late:
+            break
 
-    for name, p in pending.items():
+    for name, p in ({} if late else pending).items():
         notify(cfg, "南投假期小幫手：還沒看到新日期",
                f"{name} 到 {stop:%H:%M} 仍未開放 {fmt_day(p['target'])}，請手動確認", url=purchase_url(p["route"]))
     log("盯開放結束", public=True)
@@ -531,11 +547,11 @@ def _plist(label, args, extra):
 
 def launchd(cfg, install=False):
     LABEL = cfg.get("launchd_label", "local.ntbus-helper")
-    # 每晚 23:57 啟動：今晚開放的日期沒有被指定就直接結束；有的話睡到 23:58 再開始查
+    # 每晚 23:50 啟動：今晚開放的日期沒有被指定就直接結束；有的話睡到 23:55（start_before_sec）再開始查
     # （launchd 在 Mac 睡眠時錯過的排程，醒來會補跑）
     jobs = {
         f"{LABEL}.watch": _plist(f"{LABEL}.watch", ["watch"],
-                                 {"StartCalendarInterval": [{"Hour": 23, "Minute": 57}]}),
+                                 {"StartCalendarInterval": [{"Hour": 23, "Minute": 50}]}),
         f"{LABEL}.serve": _plist(f"{LABEL}.serve", ["serve"], {"RunAtLoad": True, "KeepAlive": True}),
     }
     out = ROOT / "launchd"

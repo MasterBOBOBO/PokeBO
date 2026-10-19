@@ -194,6 +194,51 @@ class WatchTest(Base):
         rows = [json.loads(l) for l in ntbus.OPEN_LOG.read_text().splitlines()]
         self.assertEqual(len(rows), 2)
 
+    def test_waits_while_session_coming_soon(self):
+        offset = 6 if datetime.now().hour >= 12 else 5
+        ntbus.save_targets(self.cfg, [{"date": d(offset), "route": "9Oqr", "time": "08:00"}])
+        calls = {"n": 0}
+        soon = dict(SESSIONS, **{"08:00": ("COMING_SOON", 0)})
+        ready = dict(SESSIONS, **{"08:00": ("AVAILABLE", 20)})
+
+        def q(route, month=None):
+            calls["n"] += 1   # 日期已出現，但前 3 次班次還是「尚未開放」
+            return fake_result(offset, soon if calls["n"] <= 3 else ready)
+
+        _, notify = self.run_watch(q)
+        self.assertEqual(len(notify.call_args_list), 1)
+        self.assertIn("✅ 08:00 可預約，剩 20 位", notify.call_args_list[0].args[2])
+        self.assertEqual(calls["n"], 4)
+
+    def test_late_start_checks_once_quietly(self):
+        offset = 6 if datetime.now().hour >= 12 else 5
+        ntbus.save_targets(self.cfg, [{"date": d(offset), "route": "9Oqr", "time": "08:00"}])
+        self.cfg["watch"]["stop_after_min"] = -1     # 模擬 GitHub 排程晚到結束時間之後才啟動
+        q, notify = self.run_watch(lambda *a, **k: fake_result(offset - 1, SESSIONS))
+        self.assertEqual(q.call_count, 1)
+        notify.assert_not_called()                   # 還沒開放：不發「還沒看到新日期」
+
+    def test_scheduled_night_sends_pre_alert_then_open(self):
+        t0 = datetime.combine(TODAY, datetime.min.time()).replace(hour=23, minute=50)
+        opening = (TODAY + timedelta(days=6)).strftime("%Y%m%d")
+        ntbus.save_targets(self.cfg, [{"date": opening, "route": "9Oqr", "time": "08:00"}])
+        ticks = iter([t0 + timedelta(seconds=10 * i) for i in range(1000)])
+        with mock.patch.object(ntbus, "datetime", wraps=datetime) as dt:
+            dt.now.side_effect = lambda: next(ticks)
+            dt.strptime, dt.combine = datetime.strptime, datetime.combine
+            _, notify = self.run_watch_scheduled(lambda *a, **k: fake_result(6, SESSIONS))
+        titles = [c.args[1] for c in notify.call_args_list]
+        self.assertTrue(titles[0].startswith("⏰ 開始盯"), titles)
+        self.assertIn("請先登入", titles[0])
+        self.assertIn("/tour/9Oqr/purchase/", notify.call_args_list[0].args[2])
+        self.assertIn("開放了", titles[1])
+
+    def run_watch_scheduled(self, side_effect):
+        with mock.patch.object(ntbus, "query", side_effect=side_effect) as q, \
+             mock.patch.object(ntbus, "notify") as notify, mock.patch("time.sleep"):
+            ntbus.watch(self.cfg)
+        return q, notify
+
     def test_gives_up_with_notice(self):
         offset = 6 if datetime.now().hour >= 12 else 5
         ntbus.save_targets(self.cfg, [{"date": d(offset), "route": "9Oqr", "time": "08:00"}])
