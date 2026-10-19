@@ -6,8 +6,8 @@ name: ntbus-helper
 
 on:
   schedule:
-    # 台灣 23:40（UTC 15:40）。GitHub 排程常延遲 5～30 分鐘，所以提早啟動，程式會自己等到 23:58 再開始查
-    - cron: "40 15 * * *"
+    # 台灣 23:20（UTC 15:20）。GitHub 排程常延遲 5～30 分鐘，所以提早啟動，程式會自己等到 23:55 再開始查
+    - cron: "20 15 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -26,7 +26,7 @@ concurrency:
 jobs:
   watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     defaults:
       run:
         working-directory: ntbus-helper
