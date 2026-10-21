@@ -2,31 +2,36 @@
 # 這是公開 repo，Actions log 任何人都看得到：程式在 GitHub 上不會印出日期與座位。
 # 要搭的日期放在 Settings → Secrets and variables → Actions → Variables 的 NTBUS_TARGETS（每行「2026-10-27 去 08:00」）；
 # Telegram 憑證放在 Secrets 的 TELEGRAM_BOT_TOKEN、TELEGRAM_CHAT_ID。
+#
+# 啟動方式：
+# - 主要：cron-job.org 每晚 23:45 呼叫 workflow_dispatch（mode=night），幾十秒內就會開始跑
+# - 備援：GitHub 排程（實測會延遲 4～5 小時），所以從傍晚就排；先啟動的會一直等到 23:55 開始盯，
+#   其他次啟動發現已有執行在盯、或今晚已盯過，就直接結束，不會重複通知
 name: ntbus-helper
 
 on:
   schedule:
-    # 台灣 23:20（UTC 15:20）。GitHub 排程常延遲 5～30 分鐘，所以提早啟動，程式會自己等到 23:55 再開始查
-    - cron: "20 15 * * *"
+    # 台灣 19:00、20:30、22:00（UTC 11:00、12:30、14:00）
+    - cron: "0 11 * * *"
+    - cron: "30 12 * * *"
+    - cron: "0 14 * * *"
   workflow_dispatch:
     inputs:
       mode:
-        description: "ping = 測試連線並送 Telegram；watch = 立刻開始盯"
+        description: "night = 盯今晚開放（cron-job.org 用）；ping = 測試連線並送 Telegram；watch = 立刻開始盯"
         default: ping
         type: choice
-        options: [ping, watch]
+        options: [night, ping, watch]
 
 permissions:
   contents: read
-
-concurrency:
-  group: ntbus-helper
-  cancel-in-progress: false
+  actions: read
 
 jobs:
   watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # GitHub 上限 6 小時：19:00 啟動要一路等到 00:40 之後
+    timeout-minutes: 360
     defaults:
       run:
         working-directory: ntbus-helper
@@ -35,6 +40,7 @@ jobs:
       NTBUS_TARGETS: ${{ vars.NTBUS_TARGETS }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,10 +48,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: 盯新日期開放（排程）
-        if: github.event_name == 'schedule'
+      - name: 盯今晚開放（排程／cron-job.org）
+        if: github.event_name == 'schedule' || inputs.mode == 'night'
         run: python3 ntbus.py watch
       - name: 手動執行
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.mode != 'night'
         run: |
           if [ "${{ inputs.mode }}" = "watch" ]; then python3 ntbus.py watch --now; else python3 ntbus.py ping --notify; fi
