@@ -6,9 +6,9 @@
 <meta name="robots" content="noindex">
 <title>南投假期小幫手</title>
 <style>
-:root{--bg:#f5f7f6;--card:#fff;--fg:#1c2622;--muted:#66736d;--line:#e2e8e5;--ok:#13895c;--warn:#c25a12;--accent:#0f7a52}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--warn:#f0a35e;--accent:#3cc48a}}
-:root[data-theme="dark"]{--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--warn:#f0a35e;--accent:#3cc48a}
+:root{color-scheme:light;--bg:#f5f7f6;--card:#fff;--fg:#1c2622;--muted:#66736d;--line:#e2e8e5;--ok:#13895c;--warn:#c25a12;--accent:#0f7a52}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--warn:#f0a35e;--accent:#3cc48a}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--warn:#f0a35e;--accent:#3cc48a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
 main{max-width:560px;margin:0 auto;padding:16px}
@@ -19,6 +19,7 @@ h2{font-size:16px;margin:0 0 4px}
 .meta{color:var(--muted);font-size:13px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
 label.chk{display:flex;gap:6px;align-items:center;flex:1;min-width:150px}
+input[type=date]{cursor:pointer}
 input,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
 input[type=password]{flex:1;min-width:0}
 button{font:inherit;color:var(--fg);background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
@@ -144,6 +145,8 @@ $('save').onclick=async()=>{
   }catch(e){msg('儲存失敗：'+e.message,false);$('save').disabled=false}
   render();
 };
+// 點輸入框任何地方都打開日曆（電腦版 Chrome 預設只有點小圖示才會開）
+{const d=$('d');const open=()=>{try{d.showPicker()}catch(e){}};d.addEventListener('click',open);d.addEventListener('focus',open)}
 const root=document.documentElement;
 try{const t=localStorage.getItem('ntbus-theme');if(t)root.dataset.theme=t}catch(e){}
 $('theme').onclick=()=>{const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('ntbus-theme',root.dataset.theme)}catch(e){}};

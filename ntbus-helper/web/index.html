@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>南投假期小幫手</title>
 <style>
-:root{--bg:#f5f7f6;--card:#fff;--fg:#1c2622;--muted:#66736d;--line:#e2e8e5;--ok:#13895c;--okbg:#e3f5ec;--full:#8a9590;--fullbg:#eef1f0;--warn:#c25a12;--accent:#0f7a52}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--okbg:#173327;--full:#7d8a84;--fullbg:#1f2724;--warn:#f0a35e;--accent:#3cc48a}}
-:root[data-theme="dark"]{--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--okbg:#173327;--full:#7d8a84;--fullbg:#1f2724;--warn:#f0a35e;--accent:#3cc48a}
+:root{color-scheme:light;--bg:#f5f7f6;--card:#fff;--fg:#1c2622;--muted:#66736d;--line:#e2e8e5;--ok:#13895c;--okbg:#e3f5ec;--full:#8a9590;--fullbg:#eef1f0;--warn:#c25a12;--accent:#0f7a52}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--okbg:#173327;--full:#7d8a84;--fullbg:#1f2724;--warn:#f0a35e;--accent:#3cc48a}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1513;--card:#18201d;--fg:#e4ebe8;--muted:#93a29b;--line:#29332f;--ok:#4fd39a;--okbg:#173327;--full:#7d8a84;--fullbg:#1f2724;--warn:#f0a35e;--accent:#3cc48a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
 main{max-width:760px;margin:0 auto;padding:16px}
@@ -33,6 +33,7 @@ th{color:var(--muted);font-weight:500}
 .note{color:var(--muted);font-size:12px;margin-top:14px}
 .form{display:grid;gap:10px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=date]{cursor:pointer}
 input[type=date],select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 label.chk{display:flex;gap:6px;align-items:center;flex:1;min-width:150px}
 .add{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px;font-weight:600;font-size:15px}
@@ -130,10 +131,12 @@ async function load(){
     document.getElementById('rule').textContent=`搭乘日前 ${j.advance_days} 天的 00:00 開放；只有你指定的日期開放那晚才會去查`;
     document.getElementById('routes').innerHTML=j.routes.map(route).join('');
     document.getElementById('history').innerHTML=history(j.history);
-    document.getElementById('sub').textContent=`${j.checked_at} 更新・每晚 23:57 檢查`;
+    document.getElementById('sub').textContent=`${j.checked_at} 更新・每晚 23:45 開始（GitHub），23:55 起每 5 秒查`;
   }catch(e){document.getElementById('sub').textContent='連不到本機伺服器：'+e.message}
 }
 {const t=new Date();t.setDate(t.getDate()+1);document.getElementById('d').min=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`}
+// 點輸入框任何地方都打開日曆（電腦版 Chrome 預設只有點小圖示才會開）
+{const d=document.getElementById('d');const open=()=>{try{d.showPicker()}catch(e){}};d.addEventListener('click',open);d.addEventListener('focus',open)}
 const root=document.documentElement;
 try{const t=localStorage.getItem('ntbus-theme');if(t)root.dataset.theme=t}catch(e){}
 document.getElementById('theme').onclick=()=>{const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('ntbus-theme',root.dataset.theme)}catch(e){}};
