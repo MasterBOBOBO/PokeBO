@@ -36,7 +36,9 @@ class Base(unittest.TestCase):
         tmp = Path(self.tmp.name)
         self.patches = [mock.patch.object(ntbus, k, v) for k, v in
                         {"DATA": tmp, "OPEN_LOG": tmp / "open_log.jsonl", "LOG": tmp / "ntbus.log",
-                         "TARGETS": tmp / "targets.json"}.items()]
+                         "TARGETS": tmp / "targets.json",
+                         # 測試不連 GitHub：預設讀不到，日期只看本機檔案
+                         "fetch_github_targets": lambda cfg: None}.items()]
         for p in self.patches:
             p.start()
         self.cfg = json.loads((ntbus.ROOT / "config.json").read_text(encoding="utf-8"))
@@ -97,6 +99,54 @@ class GitHubModeTest(Base):
         self.assertNotIn(d(offset)[4:6] + "/" + d(offset)[6:], printed)   # log 不出現日期
         self.assertNotIn("08:00", printed)
         self.assertFalse(ntbus.LOG.exists())
+
+
+class RemoteTargetsTest(Base):
+    def test_github_targets_win_and_are_cached_locally(self):
+        remote = [{"date": "20990105", "route": "yj9k", "time": "13:35"}]
+        ntbus.save_targets(self.cfg, [{"date": "20990101", "route": "9Oqr", "time": "08:00"}])
+        with mock.patch.object(ntbus, "fetch_github_targets", return_value=remote):
+            self.assertEqual(ntbus.load_targets(self.cfg), remote)
+        self.assertEqual(json.loads(ntbus.TARGETS.read_text()), remote)   # 連不到 GitHub 時用這份
+
+
+class DedupeTest(Base):
+    def runs(self, *items):
+        class R:
+            def __init__(s, body): s.body = body
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+            def read(s): return json.dumps({"workflow_runs": list(items)}).encode()
+        return mock.patch("urllib.request.urlopen", return_value=R(None))
+
+    @staticmethod
+    def iso(dt):
+        return dt.astimezone(ntbus.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def check(self, start, begin, late, *runs):
+        env = {"GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "100"}
+        with mock.patch.dict("os.environ", env), self.runs(*runs):
+            return ntbus._another_watcher(start, begin, late)
+
+    def test_older_running_watcher_wins(self):
+        now = datetime.now().replace(microsecond=0)
+        other = {"id": 90, "status": "in_progress", "run_started_at": self.iso(now - timedelta(hours=2)),
+                 "updated_at": self.iso(now)}
+        self.assertTrue(self.check(now, now + timedelta(hours=1), False, other))
+
+    def test_short_ping_does_not_block(self):
+        now = datetime.now().replace(microsecond=0)
+        ping = {"id": 90, "status": "in_progress", "run_started_at": self.iso(now - timedelta(seconds=10)),
+                "updated_at": self.iso(now)}
+        self.assertFalse(self.check(now, now + timedelta(hours=1), False, ping))
+
+    def test_late_run_skips_when_tonight_handled(self):
+        now = datetime.now().replace(microsecond=0)
+        begin = now - timedelta(hours=4)
+        done = {"id": 90, "status": "completed", "run_started_at": self.iso(begin - timedelta(minutes=30)),
+                "updated_at": self.iso(begin + timedelta(minutes=50))}
+        self.assertTrue(self.check(now, begin, True, done))
+        self.assertFalse(self.check(now, begin, True))          # 今晚沒人盯過：照常查一輪
 
 
 class SummaryTest(Base):

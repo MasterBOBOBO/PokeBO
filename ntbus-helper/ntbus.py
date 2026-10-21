@@ -35,7 +35,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -193,14 +193,53 @@ TARGETS = DATA / "targets.json"
 
 
 def load_targets(cfg=None):
+    """日期來源：GitHub 上執行 → 環境變數；Mac → GitHub 變數（手機網頁設定的也看得到），
+    連不到 GitHub 或沒有 token 時用本機 data/targets.json（每次讀到 GitHub 都會更新這份）。"""
+    cfg = cfg or load_config()
     today = date.today().strftime("%Y%m%d")
     if os.environ.get("NTBUS_TARGETS") is not None:
-        items = parse_targets_text(cfg or load_config(), os.environ["NTBUS_TARGETS"])
-    elif TARGETS.exists():
-        items = json.loads(TARGETS.read_text(encoding="utf-8"))
+        items = parse_targets_text(cfg, os.environ["NTBUS_TARGETS"])
     else:
-        items = []
+        items = fetch_github_targets(cfg)
+        if items is not None:
+            _write_targets(items)
+        elif TARGETS.exists():
+            items = json.loads(TARGETS.read_text(encoding="utf-8"))
+        else:
+            items = []
     return [t for t in items if t["date"] >= today]
+
+
+_gh_cache = {"at": 0, "items": None}
+
+
+def fetch_github_targets(cfg):
+    """讀 GitHub 變數 NTBUS_TARGETS；沒有 token、連不到或格式錯誤時回傳 None。30 秒內用快取。"""
+    g = cfg.get("github") or {}
+    token = _env(cfg, "GITHUB_VARIABLES_TOKEN")
+    if GH or not g.get("repo") or not token:
+        return None
+    if time.time() - _gh_cache["at"] < 30:
+        return _gh_cache["items"]
+    url = f"https://api.github.com/repos/{g['repo']}/actions/variables/{g.get('variable', 'NTBUS_TARGETS')}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "User-Agent": UA,
+                                               "Accept": "application/vnd.github+json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10, context=SSL_CTX) as r:
+            items = parse_targets_text(cfg, json.loads(r.read()).get("value", ""))
+    except urllib.error.HTTPError as e:
+        items = [] if e.code == 404 else None      # 404：變數還沒建立 = 沒有日期
+    except Exception as e:
+        log(f"讀取 GitHub 日期失敗，改用本機：{e}")
+        items = None
+    if items is not None:
+        _gh_cache.update(at=time.time(), items=items)
+    return items
+
+
+def _write_targets(items):
+    DATA.mkdir(parents=True, exist_ok=True)
+    TARGETS.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def parse_targets_text(cfg, text):
@@ -247,8 +286,8 @@ def save_targets(cfg, items):
             seen.add((d, rid, tm))
             clean.append({"date": d, "route": rid, "time": tm})
     clean.sort(key=lambda t: (t["date"], t["route"], t["time"]))
-    DATA.mkdir(parents=True, exist_ok=True)
-    TARGETS.write_text(json.dumps(clean, ensure_ascii=False, indent=1), encoding="utf-8")
+    _write_targets(clean)
+    _gh_cache.update(at=time.time(), items=clean)
     return clean
 
 
@@ -339,6 +378,42 @@ def seat_text(res, day, times):
 
 # ── 盯開放 ────────────────────────────────────────
 
+def _another_watcher(start, begin, late):
+    """GitHub 上同一晚可能有好幾次啟動（cron-job.org 準時觸發＋GitHub 排程備援，排程常延遲好幾小時）。
+    已經有別的執行在盯 → 這次結束；晚到的這次如果今晚已有執行在開始盯之前就啟動 → 已處理過，安靜結束。"""
+    repo, me = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_RUN_ID")
+    if not repo or not me:
+        return False
+    url = f"https://api.github.com/repos/{repo}/actions/workflows/ntbus.yml/runs?per_page=30"
+    headers = {"User-Agent": UA, "Accept": "application/vnd.github+json"}
+    if os.environ.get("GITHUB_TOKEN"):
+        headers["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=15, context=SSL_CTX) as r:
+            runs = json.loads(r.read()).get("workflow_runs", [])
+    except Exception as e:
+        log(f"查詢其他執行失敗，照常盯：{type(e).__name__}", public=True)
+        return False
+
+    def ts(v):
+        return datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None) if v else None
+
+    for run in runs:
+        if str(run["id"]) == me:
+            continue
+        started, updated = ts(run.get("run_started_at")), ts(run.get("updated_at"))
+        if not started:
+            continue
+        # 手動 ping 只跑十幾秒；開始超過 60 秒還在跑的才算「在盯」
+        if run["status"] == "in_progress" and run["id"] < int(me) and (start - started).total_seconds() > 60:
+            log("已有其他執行在盯，這次結束", public=True)
+            return True
+        if late and begin - timedelta(hours=6) <= started <= begin and updated and (updated - started).total_seconds() > 300:
+            log("今晚已有執行盯過，這次結束", public=True)
+            return True
+    return False
+
+
 def _next_midnight(now):
     return datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
 
@@ -363,6 +438,8 @@ def watch(cfg, now_mode=False):
     stop = (start if now_mode else midnight) + timedelta(minutes=w["stop_after_min"])
     # GitHub 排程可能延遲到結束時間之後才啟動：只查一輪，有開放就通知座位，沒有就安靜結束
     late = datetime.now() >= stop
+    if GH and _another_watcher(start, begin, late):
+        return
     if not now_mode and datetime.now() < begin:
         log(f"等到 {begin:%H:%M:%S} 開始（等待 {fmt_day(opening)} 開放）")
         time.sleep((begin - datetime.now()).total_seconds())
