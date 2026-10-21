@@ -149,6 +149,34 @@ class DedupeTest(Base):
         self.assertFalse(self.check(now, begin, True))          # 今晚沒人盯過：照常查一輪
 
 
+class FamilyTest(Base):
+    def test_notify_sends_to_family_and_survives_failure(self):
+        env = {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "1", "TELEGRAM_FAMILY_CHAT_IDS": "2, 3,1"}
+        cfg = {**self.cfg, "notify": {"macos": False, "telegram": True}}
+        sent = []
+
+        def op(url, payload, timeout=None, context=None):
+            chat = urllib.parse.parse_qs(payload.decode())["chat_id"][0]
+            sent.append(chat)
+            if chat == "2":
+                raise OSError("blocked")      # 家人封鎖 bot 也不影響其他人
+
+        import urllib.parse
+        with mock.patch.dict("os.environ", env), mock.patch("urllib.request.urlopen", side_effect=op):
+            ntbus.notify(cfg, "t", "b")
+        self.assertEqual(sent, ["1", "2", "3"])   # 本人先送、重複的本人不再送
+
+    def test_set_family_keeps_other_lines(self):
+        env = Path(self.tmp.name) / ".env.local"
+        env.write_text("TELEGRAM_BOT_TOKEN=x\nOTHER=1\n")
+        cfg = {**self.cfg, "env_files": [str(env)]}
+        with mock.patch.dict("os.environ", {}, clear=False):
+            ntbus.set_family(cfg, ["5", "6"])
+            self.assertEqual(env.read_text().splitlines(), ["TELEGRAM_BOT_TOKEN=x", "OTHER=1", "TELEGRAM_FAMILY_CHAT_IDS=5,6"])
+            ntbus.set_family(cfg, [])
+            self.assertNotIn("FAMILY", env.read_text())
+
+
 class SummaryTest(Base):
     def test_summary(self):
         items = [{"date": d(9), "route": "yj9k", "time": "13:35"}, {"date": d(3), "route": "9Oqr", "time": "08:00"}]

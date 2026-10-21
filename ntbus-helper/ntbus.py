@@ -23,6 +23,8 @@
   python3 ntbus.py serve               # 狀態網頁 http://127.0.0.1:8766/
   python3 ntbus.py notify-test         # 測試通知
   python3 ntbus.py ping [--notify]     # 測試能否連到網站（GitHub 用，不印日期）
+  python3 ntbus.py family who          # 家人一起收通知：先請家人傳訊息給 bot，這裡列出他們的 chat id
+  python3 ntbus.py family add <id>     # 加入（訂票與 invest-tracker 通知都會送）；family remove <id> 移除
   python3 ntbus.py launchd --install   # 產生並安裝排程
 """
 import itertools
@@ -174,12 +176,13 @@ def notify(cfg, title, body, url=None):
         token, chat = _env(cfg, "TELEGRAM_BOT_TOKEN"), _env(cfg, "TELEGRAM_CHAT_ID")
         if token and chat:
             text = f"{title}\n{body}" + (f"\n{url}" if url else "")
-            payload = urllib.parse.urlencode({"chat_id": chat, "text": text, "disable_web_page_preview": "true"}).encode()
-            try:
-                urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", payload,
-                                       timeout=20, context=SSL_CTX)
-            except Exception as e:
-                log(f"Telegram 送出失敗：{type(e).__name__}", public=True)
+            for i, c in enumerate([chat] + [c for c in family_ids(cfg) if c != chat]):
+                payload = urllib.parse.urlencode({"chat_id": c, "text": text, "disable_web_page_preview": "true"}).encode()
+                try:
+                    urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", payload,
+                                           timeout=20, context=SSL_CTX)
+                except Exception as e:
+                    log(f"Telegram 送{'出' if i == 0 else '給家人'}失敗：{type(e).__name__}", public=True)
         else:
             log("Telegram 未設定 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID", public=True)
     log(f"notify: {title} | {body}")
@@ -374,6 +377,46 @@ def seat_text(res, day, times):
             lines.append(f"❌ {t} {STATUS_TEXT.get(s['status'], s['status'])}"
                          + (f"；其他有位：{'、'.join(alt)}" if alt else "；當天其他班也沒位子"))
     return "\n".join(lines), best
+
+
+# ── 家人一起收（TELEGRAM_FAMILY_CHAT_IDS，和 invest-tracker 共用同一個 .env.local）───
+
+def family_ids(cfg):
+    return [c.strip() for c in (_env(cfg, "TELEGRAM_FAMILY_CHAT_IDS") or "").split(",") if c.strip()]
+
+
+def _env_file_with(cfg, key):
+    """存放 key 的 .env.local（Telegram 設定在 invest-tracker 那份）；都沒有就用第一份。"""
+    files = [(ROOT / p).resolve() for p in cfg.get("env_files", [".env.local"])]
+    for f in files:
+        if f.exists() and any(l.startswith(f"{key}=") for l in f.read_text().splitlines()):
+            return f
+    return files[0]
+
+
+def set_family(cfg, ids):
+    env = _env_file_with(cfg, "TELEGRAM_BOT_TOKEN")
+    lines = [l for l in (env.read_text().splitlines() if env.exists() else [])
+             if not l.startswith("TELEGRAM_FAMILY_CHAT_IDS=")]
+    if ids:
+        lines.append(f"TELEGRAM_FAMILY_CHAT_IDS={','.join(ids)}")
+    env.write_text("\n".join(lines) + "\n")
+    env.chmod(0o600)
+    return env
+
+
+def telegram_chats(cfg):
+    """最近 24 小時傳訊息給 bot 的人（Telegram 只保留這麼久）：[(chat_id, 名字)]。"""
+    token = _env(cfg, "TELEGRAM_BOT_TOKEN")
+    with urllib.request.urlopen(f"https://api.telegram.org/bot{token}/getUpdates", timeout=20, context=SSL_CTX) as r:
+        ups = json.loads(r.read()).get("result", [])
+    seen = {}
+    for u in ups:
+        c = (u.get("message") or {}).get("chat")
+        if c and c.get("type") == "private":
+            name = " ".join(x for x in (c.get("first_name"), c.get("last_name")) if x)
+            seen[str(c["id"])] = name + (f" (@{c['username']})" if c.get("username") else "")
+    return list(seen.items())
 
 
 # ── 盯開放 ────────────────────────────────────────
@@ -714,6 +757,28 @@ def main(argv):
             notify(cfg, "🚌 南投假期小幫手：已收到設定", targets_summary(cfg, load_targets(cfg), results))
         if ok < len(cfg["routes"]):
             sys.exit(1)
+    elif cmd == "family":       # family ／ family who ／ family add <id> ／ family remove <id>
+        sub = argv[2] if len(argv) > 2 else "list"
+        me = _env(cfg, "TELEGRAM_CHAT_ID")
+        ids = family_ids(cfg)
+        if sub == "who":
+            chats = [(c, n) for c, n in telegram_chats(cfg) if c != me]
+            print("最近 24 小時傳訊息給 bot 的人（不含你自己）：" if chats else
+                  "沒有找到：請家人先在 Telegram 搜尋你的 bot、按「開始」並傳一則訊息，再執行一次")
+            for c, n in chats:
+                print(f"  {c}　{n}{'（已加入）' if c in ids else ''}")
+        elif sub in ("add", "remove") and len(argv) > 3:
+            c = argv[3].strip()
+            ids = (ids + [c] if c not in ids else ids) if sub == "add" else [x for x in ids if x != c]
+            env = set_family(cfg, ids)
+            print(f"已更新 {env.parent.name}/.env.local：家人 {len(ids)} 位")
+            if sub == "add":   # 只傳給新加入的人，確認收得到
+                payload = urllib.parse.urlencode({"chat_id": c, "text": "🚌 已加入通知：之後南投假期開放訂票、投資每週摘要等通知都會傳到這裡。"}).encode()
+                urllib.request.urlopen(f"https://api.telegram.org/bot{_env(cfg, 'TELEGRAM_BOT_TOKEN')}/sendMessage",
+                                       payload, timeout=20, context=SSL_CTX)
+                print("已傳送加入通知給對方")
+        else:
+            print(f"家人 {len(ids)} 位：{', '.join(ids) or '（無）'}")
     elif cmd == "watch":
         watch(cfg, now_mode="--now" in argv)
     elif cmd == "serve":
