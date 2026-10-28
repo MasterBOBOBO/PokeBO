@@ -1,0 +1,12 @@
+# 個人資料與可重新產生的輸出，不納入知識圖譜（同 .gitignore）
+private/
+data/
+reports/
+logs/
+launchd/
+CLAUDE.local.md
+.env.local
+graphify-out/
+# 網頁圖示，對圖譜沒有資訊量
+web/*.png
+web/icon-src/

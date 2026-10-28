@@ -11,3 +11,8 @@ launchd/
 __pycache__/
 .DS_Store
 .claude/settings.local.json
+
+# graphify 知識圖譜輸出（本機用）
+graphify-out/
+# archify 架構圖輸出（本機用）
+.archify/
