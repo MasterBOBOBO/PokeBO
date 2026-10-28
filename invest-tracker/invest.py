@@ -131,6 +131,8 @@ def cmd_launchd(cfg, args):
             for name, specs in J.SCHEDULE.items()}
     # 登入（開機）時補跑關機期間錯過的排程
     jobs["catchup"] = {"ProgramArguments": [py, f"{root}/invest.py", "job", "catchup"], "RunAtLoad": True}
+    # 每分鐘檢查 Telegram bot 收到的記帳指令（lib/tgbot.py）
+    jobs["telegram"] = {"ProgramArguments": [py, f"{root}/invest.py", "job", "telegram"], "StartInterval": 60}
     jobs["dashboard"] = {"ProgramArguments": [py, f"{root}/invest.py", "serve"], "RunAtLoad": True, "KeepAlive": True}
     out = data.ROOT / "launchd"
     out.mkdir(exist_ok=True)
@@ -263,7 +265,7 @@ def main():
     k = sub.add_parser("backup", help="把帳本與設定的變動 commit 到本機 git")
     k.add_argument("--reason", default="manual")
     j = sub.add_parser("job", help="排程工作：daily（更新 + 健檢通知）/ monthly（月報）")
-    j.add_argument("name", choices=["daily", "news", "weekly", "monthly", "catchup"])
+    j.add_argument("name", choices=["daily", "news", "weekly", "monthly", "catchup", "telegram"])
     w = sub.add_parser("weekly", help="預覽每週摘要（不送出）")
     w.add_argument("--amounts", action="store_true", help="預覽含金額的版本")
     sub.add_parser("telegram-test", help="設定 Telegram：自動找出 chat id 並送一則測試訊息")

@@ -6,6 +6,7 @@ Mac 睡眠時錯過的排程，launchd 會在醒來後自動補跑；關機時�
 通知管道：
 - macOS 通知中心（預設，免設定）
 - Telegram（選用）：.env.local 加上 TELEGRAM_BOT_TOKEN、TELEGRAM_CHAT_ID，config.json > notify.telegram = true
+  家人一起收：TELEGRAM_FAMILY_CHAT_IDS（逗號分隔；用 ntbus-helper 的 `ntbus.py family` 管理）
 預設不在通知裡放金額（notify.include_amounts = false），只放百分比與狀態。
 """
 import json
@@ -59,9 +60,17 @@ def notify(cfg, title, body, telegram_text=None):
     if n.get("telegram"):
         token, chat = _env("TELEGRAM_BOT_TOKEN"), _env("TELEGRAM_CHAT_ID")
         if token and chat:
-            payload = urllib.parse.urlencode({"chat_id": chat, "text": f"{title}\n{telegram_text or body}"}).encode()
-            urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", payload,
-                                   timeout=20, context=data.SSL_CTX)
+            # 家人：.env.local 的 TELEGRAM_FAMILY_CHAT_IDS（逗號分隔，和 ntbus-helper 共用）；送不到不影響本人
+            family = [c.strip() for c in (_env("TELEGRAM_FAMILY_CHAT_IDS") or "").split(",") if c.strip()]
+            for i, c in enumerate([chat] + [c for c in family if c != chat]):
+                payload = urllib.parse.urlencode({"chat_id": c, "text": f"{title}\n{telegram_text or body}"}).encode()
+                try:
+                    urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", payload,
+                                           timeout=20, context=data.SSL_CTX)
+                except Exception as e:
+                    if i == 0:
+                        raise
+                    log(f"Telegram 送給家人失敗：{type(e).__name__}")
     log(f"notify: {title} | {body}")
 
 
@@ -136,7 +145,7 @@ def remind_missing(cfg, r):
     todo = [(k, msg) for k, msg in due
             if k not in sent or (today - date.fromisoformat(sent[k])).days >= 7]
     if todo:
-        notify(cfg, "請記錄成交", "、".join(m for _, m in todo) + "。用 /buy 補記，例：/buy 0050 成交 265 股 均價 113.2")
+        notify(cfg, "請記錄成交", "、".join(m for _, m in todo) + "。直接回覆這個 bot 記帳，例：/buy 0050 成交 265 股 均價 113.2（Mac 開機時約 1 分鐘內處理）")
         for k, _ in todo:
             sent[k] = today.isoformat()
     # 已補記的項目從提醒紀錄移除
@@ -188,6 +197,19 @@ def news_job(cfg):
         news.mark_sent(items)
     log(f"news ok new={len(items)}")
     return items
+
+
+def telegram_job(cfg):
+    """每分鐘檢查 bot 有沒有收到本人的記帳指令（lib/tgbot.py）。網路不通就等下一分鐘，不推播失敗通知。"""
+    from . import tgbot
+    try:
+        n = tgbot.poll(cfg, _env)
+    except Exception as e:
+        print(f"telegram poll failed: {e}")
+        return 0
+    if n:
+        log(f"telegram: 處理 {n} 則指令")
+    return n
 
 
 def last_due(specs, now):
@@ -274,10 +296,11 @@ def catchup(cfg):
 
 def run(name, alert=True):
     cfg = data.load_config()
-    jobs = {"daily": daily, "monthly": monthly, "weekly": weekly, "news": news_job, "catchup": catchup}
+    jobs = {"daily": daily, "monthly": monthly, "weekly": weekly, "news": news_job, "catchup": catchup,
+            "telegram": telegram_job}
     try:
         result = jobs[name](cfg)
-        if name != "catchup":
+        if name in SCHEDULE:
             _mark(name)
         return result
     except Exception as e:

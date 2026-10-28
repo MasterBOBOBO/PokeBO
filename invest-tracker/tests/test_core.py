@@ -369,3 +369,45 @@ class CatchupRetry(unittest.TestCase):
 
     def test_alert_only_on_last_try(self):
         self.assertEqual(self._catchup(["fail"] * 3), [("daily", False), ("daily", False), ("daily", True)])
+
+
+class TelegramParse(unittest.TestCase):
+    from datetime import date as _d
+    TODAY = _d(2026, 10, 28)
+
+    def p(self, text):
+        from lib import tgbot
+        return tgbot.parse(text, self.TODAY)
+
+    def test_buy_full(self):
+        self.assertEqual(self.p("/buy 0050 成交 281 股 均價 106.45"),
+                         {"symbol": "0050", "shares": 281.0, "price": 106.45, "fee": 0.0, "date": None})
+
+    def test_sell_with_fee_and_date(self):
+        self.assertEqual(self.p("/sell 1216 成交 1,000 股 均價 81.1 手續費 275 日期 10/27"),
+                         {"symbol": "1216", "shares": -1000.0, "price": 81.1, "fee": 275.0, "date": "2026-10-27"})
+
+    def test_short_form_us_fraction(self):
+        r = self.p("/buy voo 0.0283 707.5")
+        self.assertEqual((r["symbol"], r["shares"], r["price"]), ("VOO", 0.0283, 707.5))
+
+    def test_december_trade_recorded_in_january(self):
+        from lib import tgbot
+        self.assertEqual(tgbot.parse("/buy 0050 1 股 均價 100 12/30", self._d(2027, 1, 3))["date"], "2026-12-30")
+
+    def test_errors(self):
+        self.assertIsInstance(self.p("/buy 0050 成交 281 股"), str)
+        self.assertIsInstance(self.p("/buy 0050 1 股 均價 100 日期 11/5"), str)   # 未來日期
+        self.assertIsInstance(self.p("/buy"), str)
+
+
+class ClosedPosition(unittest.TestCase):
+    def test_fully_sold_goes_to_closed(self):
+        from lib import ledger
+        cfg = data.load_config()
+        txns = [ledger.make_txn(cfg, "1216", "2026-10-05", 1000, 70.0),
+                ledger.make_txn(cfg, "1216", "2026-10-27", -1000, 81.1, fee=275)]
+        r = report.build(cfg, txns)
+        self.assertEqual(r["holdings"], [])
+        self.assertEqual(r["closed"][0]["symbol"], "1216")
+        self.assertAlmostEqual(r["summary"]["realized_twd"], 81100 - 275 - 70000)

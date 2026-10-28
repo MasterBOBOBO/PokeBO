@@ -89,7 +89,7 @@ def build(cfg, txns=None):
     txns = ledger.load() if txns is None else txns
     fx_series = data.load_series(data.FX_PATH, "spot_buy")
     fx_now = fx_series[-1] if fx_series else None
-    holdings, flows, flows_by_mkt = [], [], {"TW": [], "US": []}
+    holdings, closed, flows, flows_by_mkt = [], [], [], {"TW": [], "US": []}
 
     symbols = sorted({(t["market"], t["symbol"]) for t in txns})
     for mk, sym in symbols:
@@ -125,6 +125,10 @@ def build(cfg, txns=None):
              "category": cfg.get("categories", {}).get(sym, "其他"),
              "estimated_txns": sum(t["source"] == "estimated" for t in mine),
              "txns": len(mine), "first": mine[0]["date"], "last": mine[-1]["date"]}
+        if abs(shares) < 1e-6:         # 已全部賣出：不列入持股，賣出獲利算進已實現損益
+            closed.append({k: h[k] for k in ("market", "symbol", "currency", "category", "txns", "first", "last")}
+                          | {"realized_twd": -h["cost_twd"]})
+            continue
         holdings.append(h)
         today = date.today().isoformat()
         flows.append((today, value_twd))
@@ -168,15 +172,17 @@ def build(cfg, txns=None):
     alloc.setdefault("market", {})
     alloc.setdefault("category", {})
     div_total = sum(d["amount_twd"] for d in divs)
+    realized = sum(c["realized_twd"] for c in closed)
     r = {
         "as_of": max((h["price_date"] for h in holdings), default=None),
         "fx_usd_twd": fx_now,
         "summary": {"cost_twd": cost, "value_twd": value, "dividends_twd": div_total,
-                    "pnl_twd": value + div_total - cost,
-                    "pnl_pct": (value + div_total) / cost - 1 if cost else 0,
+                    "realized_twd": realized,
+                    "pnl_twd": value + div_total + realized - cost,
+                    "pnl_pct": (value + div_total + realized) / cost - 1 if cost else 0,
                     "xirr": xirr(flows),
                     "xirr_tw": xirr(flows_by_mkt["TW"]), "xirr_us": xirr(flows_by_mkt["US"])},
-        "holdings": holdings, "dividends": divs, "drift": drift, "allocation": alloc,
+        "holdings": holdings, "closed": closed, "dividends": divs, "drift": drift, "allocation": alloc,
         "has_opening": any(t["source"] == "opening" for t in txns),
         "dividend_outlook": dividend_outlook(cfg, holdings, fx_now[1] if fx_now else 0),
         "risk": risk.analyze(cfg, holdings),
@@ -340,6 +346,8 @@ def render(r):
                      f"{h['cost_twd']:>13,.0f}{h['value_twd']:>13,.0f}{_pct(h['pnl_pct']):>9}{flag}")
     if any(h["estimated_txns"] for h in r["holdings"]):
         lines.append("  * 含定期定額估算交易，可用實際成交紀錄修正")
+    for c in r.get("closed", []):
+        lines.append(f"{c['symbol']:<6}{'已全部賣出':>12}  已實現損益 NT$ {c['realized_twd']:,.0f}（{c['last']}）")
     if r["allocation"]:
         lines += ["", "資產配置（占總市值）"]
         lines.append("  " + " ｜ ".join(f"{k} {v:.1%}" for k, v in r["allocation"]["market"].items()))
