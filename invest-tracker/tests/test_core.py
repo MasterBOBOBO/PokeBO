@@ -411,3 +411,13 @@ class ClosedPosition(unittest.TestCase):
         self.assertEqual(r["holdings"], [])
         self.assertEqual(r["closed"][0]["symbol"], "1216")
         self.assertAlmostEqual(r["summary"]["realized_twd"], 81100 - 275 - 70000)
+
+
+class MergeDropsBadDates(unittest.TestCase):
+    def test_bad_date_rows_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "m.csv"
+            p.write_text("date,balance\n2026-10-16,1\n3000,\n", encoding="utf-8")
+            data._merge(p, [{"date": "2026-10-19", "balance": 2}, {"date": "", "balance": 3}], ["date", "balance"])
+            self.assertEqual([r["date"] for r in data._read(p)], ["2026-10-16", "2026-10-19"])
+            self.assertEqual(data._next_start(p, "2020-01-01"), "2026-10-20")
