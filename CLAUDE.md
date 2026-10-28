@@ -60,6 +60,8 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
   台股單筆 ≥ NT$20,000 扣 2.11% 二代健保，美股扣 30% 預扣稅（`private/config.json > tax`）。
 - 風險（lib/risk.py）：以目前股數不變回測 5 年含息總報酬，計算最大回撤、回到前高的日期和年化波動度。
   上市未滿回測期的標的用 `backtest_proxies` 指定的代理標的往前延伸（例如新上市的高股息 ETF 用 0056 代替），沒有代理的標的就排除。
+- 全部賣出的標的（股數 0）不列入 holdings，改放 `closed`（含已實現損益 realized_twd = 賣出淨額 − 總成本）；
+  `summary.realized_twd` 計入總損益，XIRR 現金流照常包含買賣。賣出的手續費＋證交稅記在 fee。
 - Health Check 規則在 `lib/report.py > health_checks`，報告和月報共用。
 
 ## 已知限制
@@ -79,12 +81,18 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
 | <launchd_prefix>.weekly | 每週六 09:00 | 更新行情 → 每週摘要：本機存完整版 reports/weekly/，通知只送不含金額的版本 |
 | <launchd_prefix>.monthly | 每月 28 日 22:15 | 更新行情 → 產出 reports/YYYY-MM.html → 通知摘要 |
 | <launchd_prefix>.catchup | 登入（開機）時 | 補跑關機期間錯過的排程（依 data/state/job_runs.json）；睡眠中錯過的由 launchd 醒來後自動補 |
+| <launchd_prefix>.telegram | 每 60 秒 | 處理 Telegram bot 收到的記帳指令（lib/tgbot.py），只接受本人 TELEGRAM_CHAT_ID |
 | <launchd_prefix>.dashboard | 登入時啟動、常駐 | 我的組合 http://127.0.0.1:8765/ 、技術分析 /ta |
 - 排程時間集中在 `lib/jobs.py > SCHEDULE`，改時間後執行 `invest.py launchd --install`。
 - 手動執行：`python3 invest.py job daily|news|weekly|monthly|catchup`；log 在 logs/jobs.log。預覽每週摘要：`python3 invest.py weekly [--amounts]`。
 - 通知：預設用 macOS 通知中心，且不顯示金額（`private/config.json > notify.include_amounts=false`）。
   Telegram 是選用功能：在 .env.local 加上 TELEGRAM_BOT_TOKEN，傳一則訊息給 bot 後執行 `invest.py telegram-test`
-  （自動寫入 TELEGRAM_CHAT_ID 並送測試訊息），再設定 notify.telegram=true。Telegram 是外部服務：預設只送百分比、狀態與日期，不送金額。
+  （自動寫入 TELEGRAM_CHAT_ID 並送測試訊息），再設定 notify.telegram=true。
+  家人一起收：.env.local 的 TELEGRAM_FAMILY_CHAT_IDS（逗號分隔，和 ntbus-helper 共用；用 `ntbus-helper/ntbus.py family who／add／remove` 管理），所有 Telegram 通知都會一併送出。Telegram 是外部服務：預設只送百分比、狀態與日期，不送金額。
+- Telegram 記帳（lib/tgbot.py）：回覆 bot `/buy 0050 成交 281 股 均價 106.45`、`/sell 1216 成交 1000 股 均價 81.1`，
+  可加「手續費 20」「日期 10/27」；沒寫日期時定額標的用本月尚未記帳的扣款成交日，其他用今天。`/undo` 刪除最後一筆 Telegram 記的交易，`/help` 看說明。
+  getUpdates 不帶 offset（不向 Telegram 確認，ntbus-helper `family who` 還要讀最近訊息），處理進度存在 data/state/telegram_offset；
+  Telegram 只保留 24 小時，Mac 關機超過一天期間傳的指令會遺失。賣超過帳上股數、找不到股價資料的代號會拒絕。回覆不含金額。
 - 停用排程：`launchctl bootout gui/$(id -u)/<launchd_prefix>.<name>`。
 - 備份：`python3 invest.py backup`（buy、daily、monthly 會自動執行），commit 到 private/ 的本機 git（不推送）。
 - 公開 repo（GitHub）只有程式碼；個人資料都在 private/、CLAUDE.local.md、data/、reports/，全部被 .gitignore 排除。
