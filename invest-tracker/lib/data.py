@@ -252,8 +252,9 @@ def update_fx(history_start):
     if start > date.today().isoformat():
         return 0
     raw = fetch("TaiwanExchangeRate", "USD", start)
+    # 買入、賣出價都要有：美股成本用 spot_sell 換算，任一欄空白都會讓 load_series 讀檔失敗
     rows = [{"date": r["date"], "spot_buy": r["spot_buy"], "spot_sell": r["spot_sell"]}
-            for r in raw if r["spot_buy"] and r["spot_buy"] > 0]
+            for r in raw if r["spot_buy"] and r["spot_buy"] > 0 and r["spot_sell"] and r["spot_sell"] > 0]
     return _merge(FX_PATH, rows, ["date", "spot_buy", "spot_sell"])
 
 
@@ -262,12 +263,11 @@ def dividend_path(symbol):
 
 
 def update_tw_dividends(symbol, history_start):
-    """配息資料量小，每次全量重抓。"""
+    """配息資料量小，每次全量重抓。走 _merge：依日期排序、丟掉日期錯誤的列，抓到空結果也不會清掉舊資料。"""
     raw = fetch("TaiwanStockDividendResult", symbol, history_start)
     rows = [{"date": r["date"], "cash": r["stock_and_cache_dividend"]}
             for r in raw if r["stock_or_cache_dividend"] == "息"]
-    _write(dividend_path(symbol), rows, ["date", "cash"])
-    return len(rows)
+    return _merge(dividend_path(symbol), rows, ["date", "cash"])
 
 
 def announce_path(symbol):

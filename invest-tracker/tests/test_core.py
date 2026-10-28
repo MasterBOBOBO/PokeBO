@@ -421,3 +421,29 @@ class MergeDropsBadDates(unittest.TestCase):
             data._merge(p, [{"date": "2026-10-19", "balance": 2}, {"date": "", "balance": 3}], ["date", "balance"])
             self.assertEqual([r["date"] for r in data._read(p)], ["2026-10-16", "2026-10-19"])
             self.assertEqual(data._next_start(p, "2020-01-01"), "2026-10-20")
+
+
+class UpdateGuards(unittest.TestCase):
+    def test_fx_skips_rows_without_spot_sell(self):
+        from unittest import mock
+        raw = [{"date": "2026-10-26", "spot_buy": 31.5, "spot_sell": 31.6},
+               {"date": "2026-10-27", "spot_buy": 31.4, "spot_sell": None},
+               {"date": "2026-10-28", "spot_buy": 31.3, "spot_sell": -1}]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "USD.csv"
+            with mock.patch.object(data, "FX_PATH", p), mock.patch.object(data, "fetch", return_value=raw):
+                data.update_fx("2026-10-01")
+            self.assertEqual(data.load_series(p, "spot_sell"), [("2026-10-26", 31.6)])
+
+    def test_tw_dividends_sorted_and_kept_on_empty_fetch(self):
+        from unittest import mock
+        raw = [{"date": "2026-07-16", "stock_and_cache_dividend": 1.0, "stock_or_cache_dividend": "息"},
+               {"date": "2026-01-15", "stock_and_cache_dividend": 0.8, "stock_or_cache_dividend": "息"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(data, "DATA", Path(tmp)):
+                with mock.patch.object(data, "fetch", return_value=raw):
+                    data.update_tw_dividends("0056", "2020-01-01")
+                with mock.patch.object(data, "fetch", return_value=[]):
+                    data.update_tw_dividends("0056", "2020-01-01")
+                self.assertEqual(data.load_series(data.dividend_path("0056"), "cash"),
+                                 [("2026-01-15", 0.8), ("2026-07-16", 1.0)])
