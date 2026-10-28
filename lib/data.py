@@ -192,16 +192,26 @@ def _write(path, rows, fields):
         w.writerows(rows)
 
 
+def _valid_date(d):
+    try:
+        return len(d) == 10 and bool(date.fromisoformat(d))
+    except (TypeError, ValueError):
+        return False
+
+
 def _merge(path, new_rows, fields):
-    rows = {r["date"]: r for r in _read(path)}
+    """依日期合併。日期不是 YYYY-MM-DD 的列一律丟掉：2026-10 融資餘額檔曾混進一列日期是「3000」的資料，
+    排序後落在最後一列，_next_start 解析失敗，之後每天更新都失敗。"""
+    rows = {r["date"]: r for r in _read(path) if _valid_date(r.get("date"))}
     for r in new_rows:
-        rows[r["date"]] = r
+        if _valid_date(r.get("date")):
+            rows[r["date"]] = r
     _write(path, [rows[d] for d in sorted(rows)], fields)
     return len(new_rows)
 
 
 def _next_start(path, default):
-    rows = _read(path)
+    rows = [r for r in _read(path) if _valid_date(r.get("date"))]
     if not rows:
         return default
     return (date.fromisoformat(rows[-1]["date"]) + timedelta(days=1)).isoformat()
