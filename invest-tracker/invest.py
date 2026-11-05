@@ -136,12 +136,14 @@ def cmd_launchd(cfg, args):
     jobs["dashboard"] = {"ProgramArguments": [py, f"{root}/invest.py", "serve"], "RunAtLoad": True, "KeepAlive": True}
     out = data.ROOT / "launchd"
     out.mkdir(exist_ok=True)
-    (data.ROOT / "logs").mkdir(exist_ok=True)
+    # launchd 在 Downloads 等受隱私保護的資料夾開不了 stdout/stderr 檔（錯誤碼 78），紀錄檔改放 ~/Library/Logs
+    logdir = os.path.expanduser("~/Library/Logs/invest-tracker")
+    os.makedirs(logdir, exist_ok=True)
     uid = os.getuid()
     for name, j in jobs.items():
         label = f"{prefix}.{name}"
         j.update({"Label": label, "WorkingDirectory": root,
-                  "StandardOutPath": f"{root}/logs/{name}.out.log", "StandardErrorPath": f"{root}/logs/{name}.err.log",
+                  "StandardOutPath": f"{logdir}/{name}.out.log", "StandardErrorPath": f"{logdir}/{name}.err.log",
                   "EnvironmentVariables": {"PYTHONUNBUFFERED": "1", "LANG": "zh_TW.UTF-8"}})
         path = out / f"{label}.plist"
         with path.open("wb") as f:
