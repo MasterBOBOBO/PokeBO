@@ -91,6 +91,7 @@ python3 invest.py buy 2882 1000 70 --date 2026-11-03 --source opening   # 補建
   家人一起收：.env.local 的 TELEGRAM_FAMILY_CHAT_IDS（逗號分隔，和 ntbus-helper 共用；用 `ntbus-helper/ntbus.py family who／add／remove` 管理），所有 Telegram 通知都會一併送出。Telegram 是外部服務：預設只送百分比、狀態與日期，不送金額。
 - Telegram 記帳（lib/tgbot.py）：回覆 bot `/buy 0050 成交 281 股 均價 106.45`、`/sell 1216 成交 1000 股 均價 81.1`，
   可加「手續費 20」「日期 10/27」；沒寫日期時定額標的用本月尚未記帳的扣款成交日，其他用今天。`/undo` 刪除最後一筆 Telegram 記的交易，`/help` 看說明。
+  也可以直接貼國泰 App 複製的【海外股票扣款明細】（`tgbot.parse_cathay`）：每檔成交價 = 金額 ÷ 股數、手續費 0，國泰標的 QQQ 對照為 QQQM；同標的同日同股數已記過會跳過。
   getUpdates 不帶 offset（不向 Telegram 確認，ntbus-helper `family who` 還要讀最近訊息），處理進度存在 data/state/telegram_offset；
   Telegram 只保留 24 小時，Mac 關機超過一天期間傳的指令會遺失。賣超過帳上股數、找不到股價資料的代號會拒絕。回覆不含金額。
 - 停用排程：`launchctl bootout gui/$(id -u)/<launchd_prefix>.<name>`。
