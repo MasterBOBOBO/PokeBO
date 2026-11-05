@@ -121,8 +121,44 @@ def undo(cfg):
             f"{_summary(cfg)}")
 
 
+# 國泰把 QQQM（Invesco NASDAQ 100 ETF）標成 QQQ
+# shortcut: 只認得目前定額的標的，真的買 QQQ 時要拿掉這個對照
+CATHAY_ALIAS = {"QQQ": "QQQM"}
+
+
+def parse_cathay(text):
+    """解析國泰 App 複製的【海外股票扣款明細】，回傳交易 dict 清單或錯誤訊息字串。"""
+    d = re.search(r"交易日期[：:]\s*(\d{4})/(\d{1,2})/(\d{1,2})", text)
+    if not d:
+        return "扣款明細裡找不到交易日期"
+    when = date(*(int(x) for x in d.groups())).isoformat()
+    sign = -1 if re.search(r"交易類別[：:]\s*賣出", text) else 1
+    rows = re.findall(r"\(([A-Z.]+)\)\s*股數[：:]\s*" + _NUM + r"\s*股\s*金額[：:]\s*-?" + _NUM, text)
+    if not rows:
+        return "扣款明細裡找不到股數和金額"
+    return [{"symbol": CATHAY_ALIAS.get(sym, sym), "shares": sign * _num(sh),
+             "price": round(_num(amt) / _num(sh), 6), "fee": 0.0, "date": when}
+            for sym, sh, amt in rows]
+
+
+def record_many(cfg, items, today=None):
+    """逐筆記帳；同標的、同日期、同股數已記過就跳過。"""
+    txns = ledger.load()
+    out = []
+    for p in items:
+        if any(t["symbol"] == p["symbol"] and t["date"] == p["date"]
+               and abs(t["shares"] - p["shares"]) < 1e-6 for t in txns):
+            out.append(f"⏭️ {p['symbol']} {p['date']} 已記過，跳過")
+        else:
+            out.append(record(cfg, p, today).split("\n")[0])
+    return "\n".join(out) + f"\n{_summary(cfg)}\n記錯了回 /undo（一次刪一筆）"
+
+
 def handle(cfg, text, today=None):
     t = text.strip()
+    if "海外股票扣款明細" in t:      # 國泰 App 複製的扣款明細，前面有沒有 /buy 都可以
+        items = parse_cathay(t)
+        return items if isinstance(items, str) else record_many(cfg, items, today)
     if re.match(r"^/undo(@\w+)?$", t):
         return undo(cfg)
     if re.match(r"^/(help|start)(@\w+)?$", t):

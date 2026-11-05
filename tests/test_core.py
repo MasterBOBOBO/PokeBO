@@ -400,6 +400,17 @@ class TelegramParse(unittest.TestCase):
         self.assertIsInstance(self.p("/buy 0050 1 股 均價 100 日期 11/5"), str)   # 未來日期
         self.assertIsInstance(self.p("/buy"), str)
 
+    def test_cathay_statement(self):
+        from lib import tgbot
+        text = ("/buy 【海外股票扣款明細】 • 交易日期：2026/10/26 • 交易類別：買進\n"
+                "Invesco NASDAQ 100 ETF (QQQ)\n股數：0.06867 股\n金額：-20.1 美元\n"
+                "VanEck Semiconductor ETF (SMH)\n股數：0.11289 股\n金額：-60.1 美元\n總計扣款：100.3 美元")
+        r = tgbot.parse_cathay(text)
+        self.assertEqual([(x["symbol"], x["shares"], x["date"]) for x in r],
+                         [("QQQM", 0.06867, "2026-10-26"), ("SMH", 0.11289, "2026-10-26")])
+        self.assertAlmostEqual(r[0]["price"], 20.1 / 0.06867, places=5)
+        self.assertIsInstance(tgbot.parse_cathay("【海外股票扣款明細】 股數：1 股"), str)
+
 
 class ClosedPosition(unittest.TestCase):
     def test_fully_sold_goes_to_closed(self):
