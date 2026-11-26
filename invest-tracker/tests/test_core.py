@@ -400,6 +400,25 @@ class TelegramParse(unittest.TestCase):
         self.assertIsInstance(self.p("/buy 0050 1 股 均價 100 日期 11/5"), str)   # 未來日期
         self.assertIsInstance(self.p("/buy"), str)
 
+    def test_replies_to_every_owner_message(self):
+        from unittest import mock
+        from lib import tgbot
+        ups = [{"update_id": 2, "message": {"message_id": 1, "chat": {"id": 9}, "text": "你好"}},
+               {"update_id": 3, "message": {"message_id": 2, "chat": {"id": 9}, "photo": [{}]}},
+               {"update_id": 4, "message": {"message_id": 3, "chat": {"id": 8}, "text": "家人"}}]
+        sent = []
+        def api(token, method, params=None):
+            if method == "getUpdates":
+                return {"result": ups}
+            sent.append(params["text"])
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(tgbot, "_api", api), \
+                mock.patch.object(tgbot, "STATE", Path(d) / "off"):
+            (Path(d) / "off").write_text("1")
+            n = tgbot.poll({}, {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "9"}.get)
+        self.assertEqual(n, 2)                          # 本人兩則都回、別人的不回
+        self.assertTrue(all(x.startswith("📩 收到了") for x in sent))
+        self.assertIn("只看得懂文字", sent[1])
+
     def test_cathay_statement(self):
         from lib import tgbot
         text = ("/buy 【海外股票扣款明細】 • 交易日期：2026/10/26 • 交易類別：買進\n"
@@ -410,6 +429,12 @@ class TelegramParse(unittest.TestCase):
                          [("QQQM", 0.06867, "2026-10-26"), ("SMH", 0.11289, "2026-10-26")])
         self.assertAlmostEqual(r[0]["price"], 20.1 / 0.06867, places=5)
         self.assertIsInstance(tgbot.parse_cathay("【海外股票扣款明細】 股數：1 股"), str)
+        trade = ("/buy 【海外股票成交明細】 • 交易日期：2026/11/26 • 交易類別：買進\n"
+                 "Vanguard S&P 500 ETF (VOO)\n股數：0.03094 股\n成交價：646.409744 美元\n"
+                 "金額：-20 美元（約 -20.00 美元，不含手續費）\n總計成交金額：100 美元")
+        r = tgbot.parse_cathay(trade)
+        self.assertEqual([(x["symbol"], x["shares"], x["price"], x["date"]) for x in r],
+                         [("VOO", 0.03094, 646.409744, "2026-11-26")])
 
 
 class ClosedPosition(unittest.TestCase):
