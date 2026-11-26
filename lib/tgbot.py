@@ -127,18 +127,20 @@ CATHAY_ALIAS = {"QQQ": "QQQM"}
 
 
 def parse_cathay(text):
-    """解析國泰 App 複製的【海外股票扣款明細】，回傳交易 dict 清單或錯誤訊息字串。"""
+    """解析國泰 App 複製的【海外股票扣款明細】或【成交明細】，回傳交易 dict 清單或錯誤訊息字串。"""
     d = re.search(r"交易日期[：:]\s*(\d{4})/(\d{1,2})/(\d{1,2})", text)
     if not d:
         return "扣款明細裡找不到交易日期"
     when = date(*(int(x) for x in d.groups())).isoformat()
     sign = -1 if re.search(r"交易類別[：:]\s*賣出", text) else 1
-    rows = re.findall(r"\(([A-Z.]+)\)\s*股數[：:]\s*" + _NUM + r"\s*股\s*金額[：:]\s*-?" + _NUM, text)
+    rows = re.findall(r"\(([A-Z.]+)\)\s*股數[：:]\s*" + _NUM + r"\s*股\s*(?:成交價[：:]\s*" + _NUM
+                      + r"\s*美元\s*)?金額[：:]\s*-?" + _NUM, text)
     if not rows:
         return "扣款明細裡找不到股數和金額"
     return [{"symbol": CATHAY_ALIAS.get(sym, sym), "shares": sign * _num(sh),
-             "price": round(_num(amt) / _num(sh), 6), "fee": 0.0, "date": when}
-            for sym, sh, amt in rows]
+             # 成交明細有成交價就用它；扣款明細沒有，用金額 ÷ 股數
+             "price": _num(px) if px else round(_num(amt) / _num(sh), 6), "fee": 0.0, "date": when}
+            for sym, sh, px, amt in rows]
 
 
 def record_many(cfg, items, today=None):
@@ -156,7 +158,7 @@ def record_many(cfg, items, today=None):
 
 def handle(cfg, text, today=None):
     t = text.strip()
-    if "海外股票扣款明細" in t:      # 國泰 App 複製的扣款明細，前面有沒有 /buy 都可以
+    if re.search(r"海外股票(扣款|成交)明細", t):   # 國泰 App 複製的扣款／成交明細，前面有沒有 /buy 都可以
         items = parse_cathay(t)
         return items if isinstance(items, str) else record_many(cfg, items, today)
     if re.match(r"^/undo(@\w+)?$", t):
@@ -166,7 +168,7 @@ def handle(cfg, text, today=None):
     if re.match(r"^/(buy|sell)\b", t):
         p = parse(t, today)
         return p if isinstance(p, str) else record(cfg, p, today)
-    return None                     # 一般聊天訊息不回
+    return "📩 收到了，但這不是記帳指令。\n" + HELP + "\n也可以直接貼國泰 App 的【海外股票扣款明細】或【成交明細】"
 
 
 def _api(token, method, params=None):
@@ -191,10 +193,11 @@ def poll(cfg, env):
             continue
         last = u["update_id"]
         msg = u.get("message") or {}
-        if str((msg.get("chat") or {}).get("id")) != str(owner) or not msg.get("text"):
+        if str((msg.get("chat") or {}).get("id")) != str(owner):
             continue
         try:
-            reply = handle(cfg, msg["text"])
+            reply = (handle(cfg, msg["text"]) if msg.get("text") else
+                     "📩 收到了，但目前只看得懂文字，圖片和檔案還不能記帳。請貼國泰 App 複製的明細文字，或用 /buy 指令。")
         except Exception as e:      # 記帳失敗也要回覆，不要讓使用者以為記好了
             reply = f"❌ 記帳失敗：{type(e).__name__}: {e}"[:300]
         if reply:
